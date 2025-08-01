@@ -1,0 +1,222 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-inter: 'Inter', sans-serif;
+    --font-cinzel: 'Cinzel', serif;
+    --font-orbitron: 'Orbitron', sans-serif;
+    --font-fira-code: 'Fira Code', monospace;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-bg-primary text-white;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Scrollbar personalizada */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-bg-secondary;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-mist-purple-600 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-mist-purple-500;
+  }
+}
+
+@layer components {
+  /* Componentes personalizados */
+  .btn-primary {
+    @apply bg-gradient-gold text-black font-ui font-semibold px-6 py-3 rounded-lg 
+           hover:shadow-lg hover:shadow-gold-500/25 transition-all duration-300
+           focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 focus:ring-offset-bg-primary;
+  }
+
+  .btn-secondary {
+    @apply bg-bg-tertiary text-white font-ui font-semibold px-6 py-3 rounded-lg 
+           hover:bg-bg-secondary transition-all duration-300
+           focus:outline-none focus:ring-2 focus:ring-mist-purple-500 focus:ring-offset-2 focus:ring-offset-bg-primary;
+  }
+
+  .card-game {
+    @apply bg-bg-secondary/80 backdrop-blur-sm border border-mist-purple-500/20 
+           rounded-xl p-6 shadow-xl shadow-black/20;
+  }
+
+  .liquid-bar {
+    @apply relative overflow-hidden rounded-full bg-bg-tertiary;
+  }
+
+  .liquid-bar-fill {
+    @apply absolute inset-0 transition-all duration-500 ease-out;
+  }
+
+  .liquid-bar-fill.hp {
+    @apply bg-gradient-success;
+  }
+
+  .liquid-bar-fill.mp {
+    @apply bg-gradient-to-r from-mystic-blue-500 to-mist-purple-500;
+  }
+
+  .question-card {
+    @apply card-game hover:shadow-2xl hover:shadow-mist-purple-500/10 
+           transition-all duration-300 transform hover:scale-105;
+  }
+
+  .timer-ring {
+    @apply relative w-16 h-16;
+  }
+
+  .timer-ring svg {
+    @apply transform -rotate-90;
+  }
+
+  .timer-ring circle {
+    @apply transition-all duration-100 ease-linear;
+  }
+
+  .enemy-sprite {
+    @apply relative w-32 h-32 mx-auto;
+  }
+
+  .enemy-sprite img {
+    @apply w-full h-full object-contain filter drop-shadow-lg;
+  }
+
+  .aura-effect {
+    @apply absolute inset-0 rounded-full opacity-50 animate-pulse-gold;
+    background: radial-gradient(circle, rgba(251, 191, 36, 0.3) 0%, transparent 70%);
+  }
+
+  .damage-text {
+    @apply absolute font-ui font-bold text-2xl pointer-events-none;
+    animation: damageFloat 1s ease-out forwards;
+  }
+
+  .damage-text.critical {
+    @apply text-gold-400 text-3xl;
+  }
+
+  .damage-text.heal {
+    @apply text-success-400;
+  }
+
+  .damage-text.damage {
+    @apply text-danger-400;
+  }
+}
+
+@layer utilities {
+  /* Utilidades personalizadas */
+  .text-shadow {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  }
+
+  .text-glow {
+    text-shadow: 0 0 10px currentColor;
+  }
+
+  .backdrop-blur-xs {
+    backdrop-filter: blur(2px);
+  }
+
+  .animate-damage-float {
+    animation: damageFloat 1s ease-out forwards;
+  }
+
+  .animate-level-up {
+    animation: levelUp 2s ease-out forwards;
+  }
+
+  .animate-combo {
+    animation: comboPulse 0.5s ease-out;
+  }
+}
+
+/* Animaciones personalizadas */
+@keyframes damageFloat {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translateY(-20px) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-40px) scale(0.8);
+  }
+}
+
+@keyframes levelUp {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) rotate(-10deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2) rotate(5deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes comboPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Modo daltónico */
+.colorblind-mode {
+  filter: url('#colorblind-svg');
+}
+
+/* Reducción de motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .card-game {
+    @apply p-4;
+  }
+  
+  .enemy-sprite {
+    @apply w-24 h-24;
+  }
+  
+  .timer-ring {
+    @apply w-12 h-12;
+  }
+} 
