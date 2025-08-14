@@ -9,6 +9,28 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Gamification Color System (additive)
+        game: {
+          void: '#0A0112',
+          abyss: '#12081F',
+          shadow: '#1C0F2E',
+          dark: '#251340',
+          rankE: '#6B7280',
+          rankD: '#60A5FA',
+          rankC: '#34D399',
+          rankB: '#FBBF24',
+          rankA: '#F59E0B',
+          rankS: '#DC2626',
+          rankSS: '#9333EA',
+          correct: '#10B981',
+          incorrect: '#EF4444',
+          warning: '#F59E0B',
+          info: '#3B82F6',
+          neonPurple: '#C084FC',
+          neonBlue: '#60A5FA',
+          neonGold: '#FCD34D',
+          neonGreen: '#4ADE80',
+        },
         // Colores épicos del videojuego
         bg: {
           primary: '#0A0A0A',
@@ -76,13 +98,22 @@ module.exports = {
           900: '#1e3a8a',
         },
       },
+      fontFamily: {
+        epic: ['Bebas Neue', 'Impact', 'sans-serif'],
+        game: ['Rubik', 'Inter', 'sans-serif'],
+      },
       backgroundImage: {
         'gradient-mystic': 'linear-gradient(135deg, #20033d 0%, #001122 100%)',
         'gradient-gold': 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
         'gradient-success': 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
         'gradient-danger': 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-        'fog-purple': "url('/textures/fog-purple.png')",
-        'stars-bg': "url('/textures/stars.png')",
+        'fog-purple': 'radial-gradient(circle at 50% 50%, rgba(139, 69, 19, 0.1) 0%, transparent 50%)',
+        'stars-bg': 'radial-gradient(ellipse at top, rgba(255, 255, 255, 0.1) 0%, transparent 50%), radial-gradient(ellipse at bottom, rgba(255, 255, 255, 0.05) 0%, transparent 50%)',
+        // Gaming gradients
+        'game-radial': 'radial-gradient(ellipse at center, rgba(147, 51, 234, 0.1) 0%, transparent 70%)',
+        'power-gradient': 'linear-gradient(135deg, #F59E0B 0%, #DC2626 50%, #9333EA 100%)',
+        'correct-gradient': 'linear-gradient(135deg, #10B981 0%, #4ADE80 100%)',
+        'incorrect-gradient': 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
       },
       fontFamily: {
         display: ['Cinzel', 'serif'],
@@ -100,15 +131,70 @@ module.exports = {
         'fade-in': 'fadeIn 0.5s ease-in-out',
         'slide-up': 'slideUp 0.3s ease-out',
         'scale-in': 'scaleIn 0.2s ease-out',
+        // New
+        'glow-pulse': 'glowPulse 2s ease-in-out infinite',
+        'float-slow': 'floatSlow 6s ease-in-out infinite',
+        'shake-wrong': 'shakeWrong 0.5s ease-out',
+        'bounce-correct': 'bounceCorrect 0.6s ease-out',
+        'xp-fill': 'xpFill 1s ease-out',
+        'streak-flame': 'streakFlame 2s ease-in-out infinite',
+        'achievement-pop': 'achievementPop 0.5s ease-out',
+        'timer-urgent': 'timerUrgent 1s ease-in-out infinite',
+        'level-up': 'levelUp 1s ease-out',
+        'portal-spin': 'portalSpin 3s linear infinite',
       },
       keyframes: {
         float: {
           '0%, 100%': { transform: 'translateY(0px)' },
           '50%': { transform: 'translateY(-20px)' },
         },
+        glowPulse: {
+          '0%, 100%': { boxShadow: '0 0 20px rgba(192, 132, 252, 0.5)', transform: 'scale(1)' },
+          '50%': { boxShadow: '0 0 40px rgba(192, 132, 252, 0.8)', transform: 'scale(1.02)' },
+        },
+        floatSlow: {
+          '0%, 100%': { transform: 'translateY(0px) rotate(0deg)' },
+          '33%': { transform: 'translateY(-20px) rotate(5deg)' },
+          '66%': { transform: 'translateY(-10px) rotate(-5deg)' },
+        },
+        shakeWrong: {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '10%, 30%, 50%, 70%, 90%': { transform: 'translateX(-8px)' },
+          '20%, 40%, 60%, 80%': { transform: 'translateX(8px)' },
+        },
+        bounceCorrect: {
+          '0%': { transform: 'scale(0.95)' },
+          '40%': { transform: 'scale(1.15)' },
+          '60%': { transform: 'scale(0.98)' },
+          '80%': { transform: 'scale(1.02)' },
+          '100%': { transform: 'scale(1)' },
+        },
+        streakFlame: {
+          '0%, 100%': { transform: 'scale(1) rotate(-5deg)' },
+          '33%': { transform: 'scale(1.1) rotate(5deg)' },
+          '66%': { transform: 'scale(0.95) rotate(-3deg)' },
+        },
+        achievementPop: {
+          '0%': { transform: 'translateY(100px) scale(0.5)', opacity: '0' },
+          '60%': { transform: 'translateY(-20px) scale(1.1)' },
+          '100%': { transform: 'translateY(0) scale(1)', opacity: '1' },
+        },
+        timerUrgent: {
+          '0%, 100%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.1)' },
+        },
         glow: {
           '0%': { boxShadow: '0 0 5px #fbbf24, 0 0 10px #fbbf24, 0 0 15px #fbbf24' },
           '100%': { boxShadow: '0 0 10px #fbbf24, 0 0 20px #fbbf24, 0 0 30px #fbbf24' },
+        },
+        levelUp: {
+          '0%': { transform: 'scale(0) rotate(0deg)', opacity: '0' },
+          '50%': { transform: 'scale(1.2) rotate(180deg)', opacity: '1' },
+          '100%': { transform: 'scale(1) rotate(360deg)', opacity: '1' },
+        },
+        portalSpin: {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
         },
         shimmer: {
           '0%': { backgroundPosition: '-200% 0' },
@@ -147,5 +233,6 @@ module.exports = {
   plugins: [
     require('@tailwindcss/forms'),
     require('@tailwindcss/typography'),
+    require('tailwindcss-animate'),
   ],
 }; 

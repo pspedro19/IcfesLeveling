@@ -1,0 +1,38 @@
+# 🚀 DOCKERFILE DE PRODUCCIÓN SIMPLIFICADO
+# Resuelve definitivamente el problema de memoria del frontend
+
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Instalar solo dependencias esenciales
+RUN apk add --no-cache python3 make g++
+
+# Configurar variables de entorno para optimización
+ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=2048"
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_SHARP_PATH=/app/node_modules/sharp
+
+# Copiar solo archivos de dependencias
+COPY package.json package-lock.json* ./
+
+# Instalar dependencias con optimizaciones
+RUN npm ci --legacy-peer-deps --no-optional --prefer-offline
+
+# Copiar código fuente
+COPY . .
+
+# Build de producción optimizado (sin style-dictionary)
+RUN npm run build:tokens || true
+RUN npm run build
+
+# Exponer puerto
+EXPOSE 4001
+
+# Health check optimizado
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:4001/api/health || exit 1
+
+# Comando de inicio optimizado
+CMD ["npm", "start"]

@@ -1,0 +1,53 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install system dependencies for better performance
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    libc6-compat \
+    && rm -rf /var/cache/apk/*
+
+# Set Node.js memory limits - MÁXIMA OPTIMIZACIÓN
+ENV NODE_OPTIONS="--max-old-space-size=8192 --max-semi-space-size=1024"
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Install dependencies with MAXIMUM memory optimization
+COPY package.json package-lock.json* ./
+RUN npm ci --legacy-peer-deps --no-optional --production=false --prefer-offline --no-audit --no-fund \
+    && npm cache clean --force
+
+# Copy source code (only what exists)
+COPY app/ ./app/
+COPY public/ ./public/
+COPY next.config.js ./
+COPY tailwind.config.js ./
+COPY tsconfig.json ./
+COPY middleware.ts ./
+COPY postcss.config.js ./
+COPY sentry.client.config.ts ./
+COPY sentry.edge.config.ts ./
+COPY sentry.server.config.ts ./
+COPY playwright.config.ts ./
+COPY jest.config.js ./
+COPY jest.setup.js ./
+COPY next-env.d.ts ./
+
+# Set environment variables
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=4001
+ENV HOSTNAME=0.0.0.0
+ENV NODE_ENV=development
+
+# Expose port
+EXPOSE 4001
+
+# Copy ultra-optimized startup script
+COPY start-ultra-optimized.sh ./
+RUN chmod +x start-ultra-optimized.sh
+
+# Start the application with ULTRA optimization
+CMD ["./start-ultra-optimized.sh"]

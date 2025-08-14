@@ -18,8 +18,18 @@ class Item(Base):
     drop_rate = Column(Numeric(5, 4), default=0.01)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
+    # Store fields
+    store_price_orbs = Column(Integer, default=0)
+    store_price_crystals = Column(Integer, default=0)
+    is_available_in_store = Column(Boolean, default=False)
+    is_cosmetic = Column(Boolean, default=False)
+    is_power_up = Column(Boolean, default=False)
+    power_up_effect = Column(JSON, default={})
+    
     # Relationships
     user_items = relationship("UserItem", back_populates="item", cascade="all, delete-orphan")
+    store_transactions = relationship("StoreTransaction", back_populates="item", cascade="all, delete-orphan")
+    user_power_ups = relationship("UserPowerUp", back_populates="item", cascade="all, delete-orphan")
 
 class UserItem(Base):
     __tablename__ = "user_items"

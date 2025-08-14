@@ -1,223 +1,297 @@
 import asyncio
 import json
-import redis.asyncio as redis
-import structlog
-from websockets.server import serve, WebSocketServerProtocol
-from typing import Dict, Set
+import logging
 import os
-from dotenv import load_dotenv
+import uuid
+from datetime import datetime
+from typing import Dict, Set, Optional
 
-load_dotenv()
+import redis.asyncio as redis
+from websockets.server import serve, WebSocketServerProtocol
+from websockets.exceptions import ConnectionClosed
 
 # Configure logging
-structlog.configure(
-    processors=[
-        structlog.stdlib.filter_by_level,
-        structlog.stdlib.add_logger_name,
-        structlog.stdlib.add_log_level,
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.JSONRenderer()
-    ],
-    context_class=dict,
-    logger_factory=structlog.stdlib.LoggerFactory(),
-    wrapper_class=structlog.stdlib.BoundLogger,
-    cache_logger_on_first_use=True,
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-
-logger = structlog.get_logger()
+logger = logging.getLogger(__name__)
 
 class GameWebSocketServer:
     def __init__(self):
-        self.redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
-        self.redis_client = None
         self.connections: Dict[str, Set[WebSocketServerProtocol]] = {
             "global": set(),
             "battles": set(),
-            "leaderboard": set()
+            "guilds": set(),
+            "raids": set(),
+            "diagnostic": set()  # Added for diagnostic tests
         }
-        self.user_connections: Dict[str, WebSocketServerProtocol] = {}
-    
+        self.redis_client: Optional[redis.Redis] = None
+        self.redis_pubsub: Optional[redis.client.PubSub] = None
+
     async def connect_redis(self):
-        """Connect to Redis for pub/sub"""
+        """Connect to Redis for pub/sub functionality"""
         try:
-            self.redis_client = redis.from_url(self.redis_url)
+            redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")  # Changed to localhost
+            self.redis_client = redis.from_url(redis_url)
             await self.redis_client.ping()
             logger.info("Connected to Redis")
+            
+            # Set up pub/sub
+            self.redis_pubsub = self.redis_client.pubsub()
+            await self.redis_pubsub.subscribe("game_events")
+            
+            # Start listening for Redis messages
+            asyncio.create_task(self.listen_redis_messages())
+            
         except Exception as e:
-            logger.error("Failed to connect to Redis", error=str(e))
-            raise
-    
+            logger.warning(f"Redis connection failed (optional): {str(e)}")
+            # Don't raise - allow WebSocket to work without Redis
+            self.redis_client = None
+
+    async def listen_redis_messages(self):
+        """Listen for Redis pub/sub messages and broadcast to WebSocket clients"""
+        if not self.redis_pubsub:
+            return
+            
+        try:
+            async for message in self.redis_pubsub.listen():
+                if message["type"] == "message":
+                    data = json.loads(message["data"])
+                    await self.broadcast_to_room(data.get("room", "global"), data)
+        except Exception as e:
+            logger.error(f"Redis listener error: {str(e)}")
+
+    async def broadcast_to_room(self, room: str, message: dict):
+        """Broadcast message to all connections in a room"""
+        if room in self.connections:
+            disconnected = set()
+            for websocket in self.connections[room]:
+                try:
+                    await websocket.send(json.dumps(message))
+                except ConnectionClosed:
+                    disconnected.add(websocket)
+                except Exception as e:
+                    logger.error(f"Error broadcasting to client: {str(e)}")
+                    disconnected.add(websocket)
+            
+            # Remove disconnected clients
+            self.connections[room] -= disconnected
+
     async def handle_connection(self, websocket: WebSocketServerProtocol, path: str):
-        """Handle new WebSocket connection"""
-        client_id = f"client_{id(websocket)}"
-        logger.info("New WebSocket connection", client_id=client_id, path=path)
+        """Handle individual WebSocket connections"""
+        client_id = f"client_{uuid.uuid4().hex[:12]}"
         
         try:
             # Add to global connections
             self.connections["global"].add(websocket)
             
+            # Send welcome message with more info
+            await websocket.send(json.dumps({
+                "type": "welcome",
+                "message": "Connected to ICFES Leveling WebSocket",
+                "client_id": client_id,
+                "server_time": datetime.now().isoformat(),
+                "version": "2.0.0",
+                "port": 4002  # Confirm port in welcome message
+            }))
+            
+            logger.info(f"Client connected: {client_id}")
+            
             async for message in websocket:
-                await self.handle_message(websocket, message, client_id)
-                
-        except Exception as e:
-            logger.error("WebSocket error", client_id=client_id, error=str(e))
-        finally:
-            await self.handle_disconnection(websocket, client_id)
-    
-    async def handle_message(self, websocket: WebSocketServerProtocol, message: str, client_id: str):
-        """Handle incoming WebSocket message"""
-        try:
-            data = json.loads(message)
-            message_type = data.get("type")
-            
-            logger.info("Received message", client_id=client_id, type=message_type)
-            
-            if message_type == "auth":
-                await self.handle_auth(websocket, data, client_id)
-            elif message_type == "join_battle":
-                await self.handle_join_battle(websocket, data, client_id)
-            elif message_type == "leave_battle":
-                await self.handle_leave_battle(websocket, data, client_id)
-            elif message_type == "battle_action":
-                await self.handle_battle_action(websocket, data, client_id)
-            elif message_type == "ping":
-                await websocket.send(json.dumps({"type": "pong", "timestamp": asyncio.get_event_loop().time()}))
-            else:
-                logger.warning("Unknown message type", client_id=client_id, type=message_type)
-                
-        except json.JSONDecodeError:
-            logger.error("Invalid JSON message", client_id=client_id)
-        except Exception as e:
-            logger.error("Error handling message", client_id=client_id, error=str(e))
-    
-    async def handle_auth(self, websocket: WebSocketServerProtocol, data: dict, client_id: str):
-        """Handle user authentication"""
-        user_id = data.get("user_id")
-        if user_id:
-            self.user_connections[user_id] = websocket
-            await websocket.send(json.dumps({
-                "type": "auth_success",
-                "user_id": user_id,
-                "message": "Authentication successful"
-            }))
-            logger.info("User authenticated", user_id=user_id, client_id=client_id)
-        else:
-            await websocket.send(json.dumps({
-                "type": "auth_error",
-                "message": "Invalid user_id"
-            }))
-    
-    async def handle_join_battle(self, websocket: WebSocketServerProtocol, data: dict, client_id: str):
-        """Handle joining a battle room"""
-        battle_id = data.get("battle_id")
-        if battle_id:
-            room_key = f"battle_{battle_id}"
-            if room_key not in self.connections:
-                self.connections[room_key] = set()
-            self.connections[room_key].add(websocket)
-            
-            await websocket.send(json.dumps({
-                "type": "joined_battle",
-                "battle_id": battle_id,
-                "message": f"Joined battle {battle_id}"
-            }))
-            logger.info("User joined battle", battle_id=battle_id, client_id=client_id)
-    
-    async def handle_leave_battle(self, websocket: WebSocketServerProtocol, data: dict, client_id: str):
-        """Handle leaving a battle room"""
-        battle_id = data.get("battle_id")
-        if battle_id:
-            room_key = f"battle_{battle_id}"
-            if room_key in self.connections:
-                self.connections[room_key].discard(websocket)
-            
-            await websocket.send(json.dumps({
-                "type": "left_battle",
-                "battle_id": battle_id,
-                "message": f"Left battle {battle_id}"
-            }))
-            logger.info("User left battle", battle_id=battle_id, client_id=client_id)
-    
-    async def handle_battle_action(self, websocket: WebSocketServerProtocol, data: dict, client_id: str):
-        """Handle battle actions (answer question, etc.)"""
-        battle_id = data.get("battle_id")
-        action = data.get("action")
-        
-        if battle_id and action:
-            # Broadcast to battle room
-            room_key = f"battle_{battle_id}"
-            if room_key in self.connections:
-                message = json.dumps({
-                    "type": "battle_update",
-                    "battle_id": battle_id,
-                    "action": action,
-                    "data": data.get("data", {}),
-                    "timestamp": asyncio.get_event_loop().time()
-                })
-                
-                # Send to all connections in the battle room
-                await self.broadcast_to_room(room_key, message)
-                logger.info("Battle action broadcasted", battle_id=battle_id, action=action)
-    
-    async def handle_disconnection(self, websocket: WebSocketServerProtocol, client_id: str):
-        """Handle WebSocket disconnection"""
-        logger.info("WebSocket disconnected", client_id=client_id)
-        
-        # Remove from all rooms
-        for room_name, connections in self.connections.items():
-            connections.discard(websocket)
-        
-        # Remove from user connections
-        user_id = None
-        for uid, conn in self.user_connections.items():
-            if conn == websocket:
-                user_id = uid
-                break
-        
-        if user_id:
-            del self.user_connections[user_id]
-            logger.info("User disconnected", user_id=user_id)
-    
-    async def broadcast_to_room(self, room_name: str, message: str):
-        """Broadcast message to all connections in a room"""
-        if room_name in self.connections:
-            disconnected = set()
-            for websocket in self.connections[room_name]:
                 try:
-                    await websocket.send(message)
+                    data = json.loads(message)
+                    await self.handle_message(websocket, data, client_id)
+                except json.JSONDecodeError:
+                    logger.error(f"Invalid JSON message from client: {client_id}")
+                    await websocket.send(json.dumps({
+                        "type": "error",
+                        "message": "Invalid JSON format"
+                    }))
                 except Exception as e:
-                    logger.error("Failed to send message", error=str(e))
-                    disconnected.add(websocket)
+                    logger.error(f"Error handling message from client {client_id}: {str(e)}")
+                    await websocket.send(json.dumps({
+                        "type": "error",
+                        "message": "Internal server error"
+                    }))
+                    
+        except ConnectionClosed:
+            logger.info(f"Client disconnected: {client_id}")
+        except Exception as e:
+            logger.error(f"Connection error for client {client_id}: {str(e)}")
+        finally:
+            # Remove from all rooms
+            for room in self.connections.values():
+                room.discard(websocket)
+            logger.info(f"Cleaned up connection for {client_id}")
+
+    async def handle_message(self, websocket: WebSocketServerProtocol, data: dict, client_id: str):
+        """Handle incoming WebSocket messages"""
+        message_type = data.get("type")
+        
+        logger.debug(f"Received message type '{message_type}' from {client_id}")
+        
+        if message_type == "ping":
+            await websocket.send(json.dumps({
+                "type": "pong", 
+                "timestamp": data.get("timestamp"),
+                "server_time": datetime.now().isoformat()
+            }))
             
-            # Remove disconnected websockets
-            self.connections[room_name] -= disconnected
+        elif message_type == "subscribe":
+            room = data.get("room", "global")
+            if room not in self.connections:
+                self.connections[room] = set()
+            self.connections[room].add(websocket)
+            await websocket.send(json.dumps({
+                "type": "subscribed",
+                "room": room,
+                "message": f"Successfully subscribed to {room}"
+            }))
+            logger.info(f"Client {client_id} subscribed to room {room}")
+            
+        elif message_type == "unsubscribe":
+            room = data.get("room", "global")
+            if room in self.connections:
+                self.connections[room].discard(websocket)
+            await websocket.send(json.dumps({
+                "type": "unsubscribed",
+                "room": room,
+                "message": f"Successfully unsubscribed from {room}"
+            }))
+            logger.info(f"Client {client_id} unsubscribed from room {room}")
+            
+        elif message_type == "broadcast":
+            room = data.get("room", "global")
+            message = data.get("message", {})
+            message["sender_id"] = client_id
+            message["timestamp"] = datetime.now().isoformat()
+            await self.broadcast_to_room(room, message)
+            
+        elif message_type == "diagnostic_update":
+            # Handle diagnostic test updates
+            await self.broadcast_to_room("diagnostic", {
+                "type": "diagnostic_update",
+                "data": data.get("data", {}),
+                "sender_id": client_id,
+                "timestamp": datetime.now().isoformat()
+            })
+            
+        elif message_type == "leaderboard_update":
+            # Handle leaderboard updates
+            await self.broadcast_to_room("global", {
+                "type": "leaderboard_update",
+                "data": data.get("data", {}),
+                "timestamp": datetime.now().isoformat()
+            })
+            
+        else:
+            # Echo back unknown message types
+            await websocket.send(json.dumps({
+                "type": "echo",
+                "original": data,
+                "message": f"Unknown message type: {message_type}"
+            }))
+
+async def start_server():
+    """Start the WebSocket server"""
+    server = GameWebSocketServer()
     
-    async def broadcast_to_all(self, message: str):
-        """Broadcast message to all global connections"""
-        await self.broadcast_to_room("global", message)
+    # Try to connect to Redis (optional)
+    await server.connect_redis()
     
-    async def publish_to_redis(self, channel: str, message: dict):
-        """Publish message to Redis channel"""
-        if self.redis_client:
+    # ✅ FIXED: Changed default port from 8000 to 4002
+    port = int(os.getenv("PORT", 4002))  # Changed from 8000 to 4002
+    host = "0.0.0.0"
+    
+    print("=" * 60)
+    print(f"🔌 ICFES LEVELING WEBSOCKET SERVER")
+    print("=" * 60)
+    print(f"📍 Starting on: ws://{host}:{port}")
+    print(f"🔧 Port: {port}")
+    print(f"🌍 Host: {host}")
+    print(f"⏰ Time: {datetime.now().isoformat()}")
+    print("=" * 60)
+    
+    logger.info(f"Starting WebSocket server on {host}:{port}")
+    
+    try:
+        # Create a custom handler with CORS support
+        async def cors_handler(websocket, path):
             try:
-                await self.redis_client.publish(channel, json.dumps(message))
+                # Add CORS headers for WebSocket (simplified)
+                if hasattr(websocket, 'request_headers'):
+                    origin = websocket.request_headers.get("origin")
+                    if origin:
+                        logger.debug(f"WebSocket connection from origin: {origin}")
+                
+                await server.handle_connection(websocket, path)
             except Exception as e:
-                logger.error("Failed to publish to Redis", error=str(e))
-    
-    async def start_server(self, host: str = "0.0.0.0", port: int = 8001):
-        """Start the WebSocket server"""
-        await self.connect_redis()
+                logger.error(f"Connection handler error: {e}")
+                if websocket.open:
+                    await websocket.close(1011, "Internal server error")
         
-        logger.info("Starting WebSocket server", host=host, port=port)
-        
-        async with serve(self.handle_connection, host, port):
-            logger.info("WebSocket server started successfully")
+        async with serve(
+            cors_handler, 
+            host, 
+            port,
+            ping_interval=30,  # Send ping every 30 seconds
+            ping_timeout=10,    # Wait 10 seconds for pong
+        ):
+            print(f"✅ WebSocket server started successfully on ws://{host}:{port}")
+            print("Press Ctrl+C to stop the server")
+            print("=" * 60)
+            logger.info(f"WebSocket server started successfully on {host}:{port}")
             await asyncio.Future()  # run forever
+    except Exception as e:
+        logger.error(f"Failed to start WebSocket server: {str(e)}")
+        print(f"❌ Failed to start server: {str(e)}")
+        raise
+
+# Health check endpoint for Docker
+async def health_check():
+    """Simple health check for Docker"""
+    return {"status": "healthy", "service": "websocket", "timestamp": datetime.utcnow().isoformat()}
+
+# Add simple HTTP health check server (optional)
+async def run_health_server():
+    """Run a simple HTTP server for health checks on port 5002"""
+    from aiohttp import web
+    
+    async def health_handler(request):
+        return web.json_response({
+            "status": "healthy",
+            "service": "websocket",
+            "port": 4002,
+            "timestamp": datetime.now().isoformat()
+        })
+    
+    app = web.Application()
+    app.router.add_get('/health', health_handler)
+    
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', 5002)
+    await site.start()
+    logger.info("Health check server running on http://0.0.0.0:5002/health")
 
 async def main():
-    """Main function"""
-    server = GameWebSocketServer()
-    await server.start_server()
+    """Main entry point with optional health check server"""
+    # Start health check server in background (optional)
+    try:
+        asyncio.create_task(run_health_server())
+    except Exception as e:
+        logger.warning(f"Health check server not started (optional): {e}")
+    
+    # Start main WebSocket server
+    await start_server()
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    # Check if aiohttp is available for health check
+    try:
+        import aiohttp
+        asyncio.run(main())
+    except ImportError:
+        print("⚠️  aiohttp not installed, running without health check server")
+        print("   Install with: pip install aiohttp")
+        asyncio.run(start_server())

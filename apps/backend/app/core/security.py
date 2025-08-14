@@ -5,6 +5,7 @@ from passlib.context import CryptContext
 from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
+import uuid
 
 from .config import settings
 from .database import get_db
@@ -14,7 +15,7 @@ from ..models.user import User
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 scheme
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login", auto_error=False)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verificar contraseña"""
@@ -24,42 +25,62 @@ def get_password_hash(password: str) -> str:
     """Generar hash de contraseña"""
     return pwd_context.hash(password)
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """Crear token JWT"""
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """Crear token de acceso JWT"""
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
-    
+        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
-def verify_token(token: str) -> Optional[str]:
-    """Verificar token JWT y retornar user_id"""
+def verify_token(token: str) -> Optional[dict]:
+    """Verificar token JWT"""
     try:
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.ALGORITHM])
-        user_id: str = payload.get("sub")
-        if user_id is None:
-            return None
-        return user_id
+        return payload
     except JWTError:
         return None
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    token: Optional[str] = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
-) -> User:
-    """Obtener usuario actual desde token"""
+) -> Optional[User]:
+    """Obtener usuario actual desde token JWT"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="No se pudieron validar las credenciales",
+        detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     
-    user_id = verify_token(token)
-    if user_id is None:
+    # Development mode: allow requests without token
+    if settings.ENVIRONMENT == "development" and not token:
+        # Return a mock user for development
+        mock_user = User(
+            id=uuid.uuid4(),
+            email="dev@example.com",
+            username="dev_user",
+            hashed_password="",
+            is_active=True,
+            created_at=datetime.utcnow()
+        )
+        # Set a consistent ID for development to avoid database lookups
+        mock_user.id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+        return mock_user
+    
+    if not token:
+        raise credentials_exception
+    
+    try:
+        payload = verify_token(token)
+        if payload is None:
+            raise credentials_exception
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+    except JWTError:
         raise credentials_exception
     
     user = db.query(User).filter(User.id == user_id).first()
@@ -67,6 +88,14 @@ async def get_current_user(
         raise credentials_exception
     
     return user
+
+async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
+    """Obtener usuario activo actual"""
+    if not current_user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+# Note: get_current_admin_user removed since is_admin field doesn't exist in User model
 
 def calculate_level(experience: int) -> int:
     """Calcular nivel basado en experiencia"""

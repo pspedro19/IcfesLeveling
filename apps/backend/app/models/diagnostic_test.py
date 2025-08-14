@@ -1,0 +1,59 @@
+from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, JSON, Text, ForeignKey
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
+
+from ..core.database import Base
+
+class DiagnosticTest(Base):
+    __tablename__ = "diagnostic_tests"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    subject_id = Column(UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=False)
+    test_type = Column(String(50), default="real_icfes")  # 'real_icfes', 'monthly_reassessment'
+    reassessment_type = Column(String(50), nullable=True)  # 'initial', 'monthly', 'adaptive'
+    original_test_id = Column(UUID(as_uuid=True), ForeignKey("diagnostic_tests.id"), nullable=True)
+    questions_answered = Column(Integer, default=0)
+    correct_answers = Column(Integer, default=0)
+    time_spent_seconds = Column(Integer, default=0)
+    score_percentage = Column(Float, default=0.0)
+    strengths = Column(JSON, default=[])
+    weaknesses = Column(JSON, default=[])
+    score_by_topic = Column(JSON, default={})
+    status = Column(String(20), default="in_progress")  # 'in_progress', 'completed'
+    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Monthly reassessment specific fields
+    is_monthly_reassessment = Column(Boolean, default=False)
+    days_since_initial = Column(Integer, nullable=True)
+    comparison_with_initial = Column(JSON, nullable=True)  # Store comparison data
+    plan_regenerated = Column(Boolean, default=False)
+    new_goals_generated = Column(Boolean, default=False)
+    notification_sent = Column(Boolean, default=False)
+    
+    # Relationships
+    user = relationship("User", back_populates="diagnostic_tests")
+    subject = relationship("Subject")
+    original_test = relationship("DiagnosticTest", remote_side=[id])
+    answers = relationship("DiagnosticTestAnswer", back_populates="test", cascade="all, delete-orphan", foreign_keys="DiagnosticTestAnswer.diagnostic_test_id")
+
+class DiagnosticTestAnswer(Base):
+    __tablename__ = "diagnostic_test_answers"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    diagnostic_test_id = Column(UUID(as_uuid=True), ForeignKey("diagnostic_tests.id"), nullable=False)
+    question_id = Column(UUID(as_uuid=True), ForeignKey("questions.id"), nullable=False)
+    user_answer = Column(String(10), nullable=False)
+    is_correct = Column(Boolean, nullable=False)
+    response_time_ms = Column(Integer, default=0)
+    topic_id = Column(UUID(as_uuid=True), ForeignKey("topics.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    test = relationship("DiagnosticTest", back_populates="answers", foreign_keys=[diagnostic_test_id])
+    question = relationship("Question")
+    topic = relationship("Topic") 

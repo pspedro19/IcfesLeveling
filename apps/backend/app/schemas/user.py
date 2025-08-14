@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from uuid import UUID
 
@@ -36,4 +36,14 @@ class UserResponse(UserBase):
 
 class UserUpdate(BaseModel):
     display_name: Optional[str] = None
-    avatar_url: Optional[str] = None 
+    avatar_url: Optional[str] = None
+
+class GuestData(BaseModel):
+    initialScore: float
+    questionsAnswered: int
+    timeSpent: int
+    areasExplored: List[str]
+
+class GuestUserCreate(UserBase):
+    password: str
+    guestData: GuestData 

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, DateTime, Text
+from sqlalchemy import Column, String, Integer, DateTime, Text, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -11,9 +11,9 @@ class User(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = Column(String(50), unique=True, nullable=False)
     email = Column(String(255), unique=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
-    display_name = Column(String(100), nullable=False)
-    avatar_url = Column(String(500))
+    hashed_password = Column(String(255), nullable=False)
+    display_name = Column(String(100), default="")  # Ahora existe en la tabla
+    # avatar_url = Column(String(500))  # No existe en la tabla
     level = Column(Integer, default=1)
     experience = Column(Integer, default=0)
     rank = Column(String(10), default="E")
@@ -24,10 +24,20 @@ class User(Base):
     speed = Column(Integer, default=10)
     orbs = Column(Integer, default=1000)
     crystals = Column(Integer, default=0)
-    streak_days = Column(Integer, default=0)
-    last_login = Column(DateTime(timezone=True))
+    streak_days = Column(Integer, default=0)  # Ahora existe en la tabla
+    # last_login = Column(DateTime(timezone=True))  # No existe en la tabla
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Premium fields
+    # is_premium = Column(Boolean, default=False)  # No existe en la tabla
+    # premium_expires_at = Column(DateTime(timezone=True), nullable=True)  # No existe en la tabla
+    premium_plan = Column(String(50), default="free")  # Este sí existe
+    # ai_requests_used = Column(Integer, default=0)  # No existe en la tabla
+    # ai_requests_limit = Column(Integer, default=5)  # No existe en la tabla
+    # simulacros_used = Column(Integer, default=0)  # No existe en la tabla
+    # simulacros_limit = Column(Integer, default=2)  # No existe en la tabla
+    is_active = Column(Boolean, default=True)  # Este sí existe
     
     # Relationships
     battles = relationship("Battle", back_populates="user", cascade="all, delete-orphan")
@@ -36,6 +46,15 @@ class User(Base):
     ai_explanations = relationship("AIExplanation", back_populates="user", cascade="all, delete-orphan")
     user_items = relationship("UserItem", back_populates="user", cascade="all, delete-orphan")
     user_events = relationship("UserEvent", back_populates="user", cascade="all, delete-orphan")
+    profile = relationship("UserProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    diagnostic_tests = relationship("DiagnosticTest", back_populates="user", cascade="all, delete-orphan")
+    study_plans = relationship("StudyPlan", back_populates="user", cascade="all, delete-orphan")
+    video_tracking = relationship("VideoTracking", back_populates="user", cascade="all, delete-orphan")
+    quizzes = relationship("Quiz", back_populates="user", cascade="all, delete-orphan")
+    user_achievements = relationship("UserAchievement", back_populates="user", cascade="all, delete-orphan")
+    store_transactions = relationship("StoreTransaction", back_populates="user", cascade="all, delete-orphan")
+    user_power_ups = relationship("UserPowerUp", back_populates="user", cascade="all, delete-orphan")
+    currency_earnings = relationship("CurrencyEarning", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}', level={self.level})>"

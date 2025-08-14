@@ -37,6 +37,9 @@ class BattleAnswer(BaseModel):
     user_answer: str
     response_time_ms: int
 
+class BattleAnswerCreate(BattleAnswer):
+    pass
+
 class BattleAnswerResponse(BaseModel):
     is_correct: bool
     damage_dealt: int

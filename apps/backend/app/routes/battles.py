@@ -11,6 +11,7 @@ from ..schemas.battle import BattleCreate, BattleResponse, BattleAnswer, BattleA
 from ..models.user import User
 from ..models.battle import Battle, BattleAnswer as BattleAnswerModel
 from ..models.question import Question
+from ..services.cache_service import cache_service
 
 router = APIRouter(prefix="/battles", tags=["battles"])
 

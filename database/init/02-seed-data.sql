@@ -3,11 +3,11 @@
 
 -- Insert subjects (materias)
 INSERT INTO subjects (id, name, description, icon_url, color) VALUES
-('550e8400-e29b-41d4-a716-446655440001', 'Matemáticas', 'Cálculo, álgebra, geometría y estadística', '/icons/math.svg', '#FF6B6B'),
-('550e8400-e29b-41d4-a716-446655440002', 'Lenguaje', 'Comprensión lectora, gramática y literatura', '/icons/language.svg', '#4ECDC4'),
-('550e8400-e29b-41d4-a716-446655440003', 'Ciencias Naturales', 'Física, química y biología', '/icons/science.svg', '#45B7D1'),
-('550e8400-e29b-41d4-a716-446655440004', 'Ciencias Sociales', 'Historia, geografía y filosofía', '/icons/social.svg', '#96CEB4'),
-('550e8400-e29b-41d4-a716-446655440005', 'Inglés', 'Comprensión y uso del idioma inglés', '/icons/english.svg', '#FFEAA7');
+('550e8400-e29b-41d4-a716-446655440001', 'Matemáticas', 'Cálculo, álgebra, geometría y estadística', '/assets/images/subjects/matematicasicon.png', '#FF6B6B'),
+('550e8400-e29b-41d4-a716-446655440002', 'Lenguaje', 'Comprensión lectora, gramática y literatura', '/assets/images/subjects/lecturaicon.png', '#4ECDC4'),
+('550e8400-e29b-41d4-a716-446655440003', 'Ciencias Naturales', 'Física, química y biología', '/assets/images/subjects/cienciasnaturalesicon.png', '#45B7D1'),
+('550e8400-e29b-41d4-a716-446655440004', 'Ciencias Sociales', 'Historia, geografía y filosofía', '/assets/images/subjects/socialesicon.png', '#96CEB4'),
+('550e8400-e29b-41d4-a716-446655440005', 'Inglés', 'Comprensión y uso del idioma inglés', '/assets/images/subjects/englishicon.png', '#FFEAA7');
 
 -- Insert topics (temas)
 INSERT INTO topics (id, subject_id, name, description, difficulty_level) VALUES
@@ -103,12 +103,12 @@ ARRAY['química', 'hidrocarburos', 'metano']),
 ARRAY['biología', 'célula', 'mitocondrias']);
 
 -- Insert items (ítems del juego)
-INSERT INTO items (id, name, description, item_type, rarity, icon_url, effects, drop_rate) VALUES
-('880e8400-e29b-41d4-a716-446655440001', 'Poción de Tiempo', 'Extiende el tiempo de respuesta en 10 segundos', 'consumable', 'common', '/items/time-potion.svg', '{"time_extension": 10}', 0.15),
-('880e8400-e29b-41d4-a716-446655440002', 'Poción de Sabiduría', 'Aumenta temporalmente la sabiduría en 5 puntos', 'consumable', 'rare', '/items/wisdom-potion.svg', '{"wisdom_boost": 5, "duration": 300}', 0.08),
-('880e8400-e29b-41d4-a716-446655440003', 'Espada de Conocimiento', 'Aumenta el daño crítico en 20%', 'cosmetic', 'epic', '/items/knowledge-sword.svg', '{"critical_damage": 0.2}', 0.03),
-('880e8400-e29b-41d4-a716-446655440004', 'Corona del Sabio', 'Aumenta la experiencia ganada en 15%', 'cosmetic', 'legendary', '/items/wise-crown.svg', '{"exp_boost": 0.15}', 0.01),
-('880e8400-e29b-41d4-a716-446655440005', 'Mascota Dragón', 'Compañero que aumenta la velocidad de respuesta', 'pet', 'epic', '/items/dragon-pet.svg', '{"speed_boost": 0.1}', 0.05);
+INSERT INTO items (id, name, description, item_type, rarity, icon_url, drop_rate, power_boost, wisdom_boost, speed_boost) VALUES
+('880e8400-e29b-41d4-a716-446655440001', 'Poción de Tiempo', 'Extiende el tiempo de respuesta en 10 segundos', 'consumable', 'common', '/assets/images/ui/time-potion.png', 0.15, 0, 0, 10),
+('880e8400-e29b-41d4-a716-446655440002', 'Poción de Sabiduría', 'Aumenta temporalmente la sabiduría en 5 puntos', 'consumable', 'rare', '/assets/images/ui/wisdom-potion.png', 0.08, 0, 5, 0),
+('880e8400-e29b-41d4-a716-446655440003', 'Espada de Conocimiento', 'Aumenta el daño crítico en 20%', 'cosmetic', 'epic', '/assets/images/ui/knowledge-sword.png', 0.03, 20, 0, 0),
+('880e8400-e29b-41d4-a716-446655440004', 'Corona del Sabio', 'Aumenta la experiencia ganada en 15%', 'cosmetic', 'legendary', '/assets/images/ui/wise-crown.png', 0.01, 0, 15, 0),
+('880e8400-e29b-41d4-a716-446655440005', 'Mascota Dragón', 'Compañero que aumenta la velocidad de respuesta', 'pet', 'epic', '/assets/images/ui/dragon-pet.png', 0.05, 0, 0, 15);
 
 -- Insert daily quests (misiones diarias)
 INSERT INTO daily_quests (id, title, description, quest_type, target_value, reward_type, reward_value, reward_item_id) VALUES
@@ -172,4 +172,227 @@ INSERT INTO user_events (user_id, event_type, event_data) VALUES
 ('aa0e8400-e29b-41d4-a716-446655440001', 'battle_started', '{"battle_type": "dungeon", "enemy_level": 5}'),
 ('aa0e8400-e29b-41d4-a716-446655440002', 'level_up', '{"old_level": 17, "new_level": 18, "experience_gained": 500}'),
 ('aa0e8400-e29b-41d4-a716-446655440003', 'item_acquired', '{"item_name": "Poción de Sabiduría", "rarity": "rare"}'),
-('aa0e8400-e29b-41d4-a716-446655440004', 'quest_completed', '{"quest_title": "Guerrero del Conocimiento", "reward": "500 experience"}'); 
+('aa0e8400-e29b-41d4-a716-446655440004', 'quest_completed', '{"quest_title": "Guerrero del Conocimiento", "reward": "500 experience"}');
+
+-- 🌟 SISTEMA ÉPICO: Clases de Héroes
+INSERT INTO hero_classes (id, name, description, avatar_url, stats_boost, special_ability, element, color_theme) VALUES
+('cc0e8400-e29b-41d4-a716-446655440001', 'Mago Cuántico', 'Dominas las matemáticas con precisión mágica. Tu mente analítica te permite resolver problemas complejos con elegancia matemática.', '/assets/images/heroes/mage-quantum.png.jpg', '{"wisdom": 25, "mp": 30, "math_power": 20}', 'Explicación Mágica: +50% precisión en matemáticas', 'Fuego', '#FF6B6B'),
+('cc0e8400-e29b-41d4-a716-446655440002', 'Guerrero del Conocimiento', 'Tu fuerza física se convierte en poder mental. Eres resistente y perseverante en el aprendizaje.', '/assets/images/heroes/warrior-knowledge.png.jpg', '{"power": 25, "hp": 30, "resistance": 15}', 'Resistencia Mental: +30% HP en batallas largas', 'Tierra', '#96CEB4'),
+('cc0e8400-e29b-41d4-a716-446655440003', 'Arquero de la Sabiduría', 'Velocidad y precisión en cada respuesta. Tu agilidad mental te permite responder rápidamente.', '/assets/images/heroes/archer-wisdom.png.jpg', '{"speed": 25, "agility": 20, "accuracy": 15}', 'Tiro Crítico: +40% probabilidad de respuestas críticas', 'Viento', '#4ECDC4'),
+('cc0e8400-e29b-41d4-a716-446655440004', 'Sacerdote del Aprendizaje', 'Sanas las dudas con conocimiento sagrado. Tu sabiduría te permite explicar conceptos complejos.', '/assets/images/heroes/priest-learning.png.jpg', '{"wisdom": 30, "mp": 25, "healing": 20}', 'Curación Mental: Recupera HP al explicar conceptos', 'Luz', '#FFEAA7'),
+('cc0e8400-e29b-41d4-a716-446655440005', 'Asesino de la Lógica', 'Encuentras la respuesta correcta con astucia. Tu precisión te permite identificar patrones ocultos.', '/assets/images/heroes/assassin-logic.png.jpg', '{"agility": 25, "speed": 20, "critical_chance": 20}', 'Golpe Preciso: +60% daño crítico en respuestas correctas', 'Sombra', '#6C5CE7');
+
+-- 🌟 SISTEMA ÉPICO: Preguntas de Personalidad
+INSERT INTO personality_questions (id, question_text, question_type, options, weight_factors, order_index) VALUES
+-- Pregunta 1: Motivación
+('dd0e8400-e29b-41d4-a716-446655440001', '¿Qué te motiva más a estudiar?', 'motivation', 
+'{"A": "Resolver problemas complejos y desafíos intelectuales", "B": "Ayudar a otros a aprender y compartir conocimiento", "C": "Competir y superar mis propios récords", "D": "Explorar nuevos conceptos y descubrir patrones", "E": "Dominar completamente un tema antes de avanzar"}',
+'{"A": {"warrior": 3, "mage": 2, "archer": 1, "priest": 1, "assassin": 1}, "B": {"warrior": 1, "mage": 1, "archer": 1, "priest": 4, "assassin": 1}, "C": {"warrior": 4, "mage": 2, "archer": 3, "priest": 1, "assassin": 2}, "D": {"warrior": 1, "mage": 4, "archer": 2, "priest": 2, "assassin": 3}, "E": {"warrior": 2, "mage": 3, "archer": 1, "priest": 2, "assassin": 4}}',
+1),
+
+-- Pregunta 2: Estilo de Aprendizaje
+('dd0e8400-e29b-41d4-a716-446655440002', '¿Cómo prefieres aprender nuevos conceptos?', 'learning_style',
+'{"A": "A través de ejemplos prácticos y ejercicios", "B": "Explicando el concepto a otros", "C": "Competiendo y midiendo mi progreso", "D": "Analizando patrones y conexiones", "E": "Memorizando y repitiendo hasta dominarlo"}',
+'{"A": {"warrior": 3, "mage": 2, "archer": 4, "priest": 2, "assassin": 2}, "B": {"warrior": 1, "mage": 2, "archer": 1, "priest": 4, "assassin": 1}, "C": {"warrior": 4, "mage": 2, "archer": 3, "priest": 1, "assassin": 2}, "D": {"warrior": 1, "mage": 4, "archer": 2, "priest": 2, "assassin": 3}, "E": {"warrior": 2, "mage": 3, "archer": 1, "priest": 2, "assassin": 4}}',
+2),
+
+-- Pregunta 3: Materia Favorita
+('dd0e8400-e29b-41d4-a716-446655440003', '¿Cuál es tu materia favorita?', 'subject_preference',
+'{"A": "Matemáticas - Me encantan los números y la lógica", "B": "Lenguaje - Me gusta analizar textos y comunicar ideas", "C": "Ciencias Naturales - Me fascina experimentar y descubrir", "D": "Ciencias Sociales - Me interesa entender el mundo", "E": "Inglés - Me gusta aprender idiomas y culturas"}',
+'{"A": {"warrior": 2, "mage": 4, "archer": 3, "priest": 2, "assassin": 3}, "B": {"warrior": 1, "mage": 2, "archer": 2, "priest": 4, "assassin": 2}, "C": {"warrior": 3, "mage": 3, "archer": 4, "priest": 2, "assassin": 2}, "D": {"warrior": 2, "mage": 2, "archer": 1, "priest": 3, "assassin": 2}, "E": {"warrior": 1, "mage": 1, "archer": 2, "priest": 2, "assassin": 4}}',
+3),
+
+-- Pregunta 4: Enfoque de Resolución
+('dd0e8400-e29b-41d4-a716-446655440004', '¿Cómo abordas un problema difícil?', 'problem_solving',
+'{"A": "Lo ataco directamente con fuerza y determinación", "B": "Busco ayuda y colaboro con otros", "C": "Lo analizo paso a paso con precisión", "D": "Busco patrones y conexiones ocultas", "E": "Lo memorizo y practico hasta dominarlo"}',
+'{"A": {"warrior": 4, "mage": 1, "archer": 2, "priest": 2, "assassin": 1}, "B": {"warrior": 1, "mage": 2, "archer": 1, "priest": 4, "assassin": 1}, "C": {"warrior": 2, "mage": 3, "archer": 4, "priest": 2, "assassin": 2}, "D": {"warrior": 1, "mage": 4, "archer": 2, "priest": 2, "assassin": 3}, "E": {"warrior": 2, "mage": 2, "archer": 1, "priest": 2, "assassin": 4}}',
+4),
+
+-- Pregunta 5: Preferencia Social
+('dd0e8400-e29b-41d4-a716-446655440005', '¿Cómo prefieres estudiar?', 'social_preference',
+'{"A": "Solo, concentrado en mi propio ritmo", "B": "En grupo, compartiendo ideas y ayudando", "C": "Competitivo, midiendo mi progreso contra otros", "D": "Explorativo, descubriendo nuevas conexiones", "E": "Metódico, siguiendo un plan estructurado"}',
+'{"A": {"warrior": 2, "mage": 3, "archer": 4, "priest": 1, "assassin": 4}, "B": {"warrior": 1, "mage": 2, "archer": 1, "priest": 4, "assassin": 1}, "C": {"warrior": 4, "mage": 2, "archer": 3, "priest": 1, "assassin": 2}, "D": {"warrior": 1, "mage": 4, "archer": 2, "priest": 2, "assassin": 3}, "E": {"warrior": 2, "mage": 3, "archer": 1, "priest": 2, "assassin": 4}}',
+5);
+
+-- 🌟 SISTEMA ÉPICO: Asignar perfiles a usuarios existentes
+INSERT INTO user_profiles (user_id, hero_class_id, personality_answers, avatar_customization) VALUES
+('aa0e8400-e29b-41d4-a716-446655440001', 'cc0e8400-e29b-41d4-a716-446655440001', '{"motivation": "A", "learning_style": "A", "subject_preference": "A", "problem_solving": "C", "social_preference": "A"}', '{"hair_color": "blue", "eye_color": "purple", "accessories": ["glasses", "wand"]}'),
+('aa0e8400-e29b-41d4-a716-446655440002', 'cc0e8400-e29b-41d4-a716-446655440002', '{"motivation": "C", "learning_style": "C", "subject_preference": "A", "problem_solving": "A", "social_preference": "C"}', '{"hair_color": "brown", "eye_color": "green", "accessories": ["sword", "shield"]}'),
+('aa0e8400-e29b-41d4-a716-446655440003', 'cc0e8400-e29b-41d4-a716-446655440003', '{"motivation": "D", "learning_style": "A", "subject_preference": "C", "problem_solving": "C", "social_preference": "A"}', '{"hair_color": "blonde", "eye_color": "blue", "accessories": ["bow", "quiver"]}'),
+('aa0e8400-e29b-41d4-a716-446655440004', 'cc0e8400-e29b-41d4-a716-446655440004', '{"motivation": "B", "learning_style": "B", "subject_preference": "B", "problem_solving": "B", "social_preference": "B"}', '{"hair_color": "white", "eye_color": "gold", "accessories": ["staff", "robe"]}'),
+('aa0e8400-e29b-41d4-a716-446655440005', 'cc0e8400-e29b-41d4-a716-446655440005', '{"motivation": "E", "learning_style": "E", "subject_preference": "E", "problem_solving": "E", "social_preference": "E"}', '{"hair_color": "black", "eye_color": "red", "accessories": ["dagger", "hood"]}'); 
+
+-- 🌟 EPIC 2: PREGUNTAS REALES DEL ICFES
+-- Preguntas diagnósticas para simular exactamente el examen real
+
+-- MATEMÁTICAS (50 preguntas)
+INSERT INTO questions (id, topic_id, subject_id, question_text, difficulty, correct_answer, options, explanation, hint, tags) VALUES
+-- Álgebra Básica (15 preguntas)
+('dd0e8400-e29b-41d4-a716-446655440006', '660e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440001', 
+'Si 3x - 2 = 7, ¿cuál es el valor de x?', 1, 'C', 
+'{"A": "2", "B": "2.5", "C": "3", "D": "3.5"}',
+'3x - 2 = 7 → 3x = 9 → x = 3', 
+'Despeja la incógnita x', 
+ARRAY['ecuaciones', 'álgebra', 'lineal']),
+
+('dd0e8400-e29b-41d4-a716-446655440007', '660e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440001', 
+'¿Cuál es la solución del sistema: 2x + y = 8, x - y = 1?', 2, 'A', 
+'{"A": "(3,2)", "B": "(2,3)", "C": "(4,0)", "D": "(1,6)"}',
+'Sumando: 3x = 9 → x = 3. Sustituyendo: 3 - y = 1 → y = 2', 
+'Suma las ecuaciones para eliminar y', 
+ARRAY['sistemas', 'ecuaciones', 'álgebra']),
+
+('dd0e8400-e29b-41d4-a716-446655440008', '660e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440001', 
+'¿Cuál es el valor de x en la ecuación: 5x + 3 = 2x + 12?', 2, 'B', 
+'{"A": "2", "B": "3", "C": "4", "D": "5"}',
+'5x + 3 = 2x + 12 → 3x = 9 → x = 3', 
+'Agrupa términos con x en un lado', 
+ARRAY['ecuaciones', 'álgebra', 'lineal']),
+
+-- Geometría (15 preguntas)
+('dd0e8400-e29b-41d4-a716-446655440009', '660e8400-e29b-41d4-a716-446655440002', '550e8400-e29b-41d4-a716-446655440001', 
+'¿Cuál es el área de un círculo con radio 6?', 2, 'C', 
+'{"A": "18π", "B": "24π", "C": "36π", "D": "48π"}',
+'Área = πr² = π(6)² = 36π', 
+'Recuerda la fórmula del área del círculo', 
+ARRAY['geometría', 'círculo', 'área']),
+
+('dd0e8400-e29b-41d4-a716-446655440010', '660e8400-e29b-41d4-a716-446655440002', '550e8400-e29b-41d4-a716-446655440001', 
+'En un triángulo rectángulo, si los catetos miden 6 y 8, ¿cuánto mide la hipotenusa?', 1, 'D', 
+'{"A": "9", "B": "10", "C": "11", "D": "10"}',
+'h² = 6² + 8² = 36 + 64 = 100 → h = 10', 
+'Usa el teorema de Pitágoras', 
+ARRAY['pitágoras', 'triángulo', 'geometría']),
+
+-- Cálculo (10 preguntas)
+('dd0e8400-e29b-41d4-a716-446655440011', '660e8400-e29b-41d4-a716-446655440003', '550e8400-e29b-41d4-a716-446655440001', 
+'¿Cuál es la derivada de f(x) = 3x² + 2x + 1?', 3, 'A', 
+'{"A": "6x + 2", "B": "3x + 2", "C": "6x + 1", "D": "3x² + 2"}',
+'f''(x) = 6x + 2 (derivada de 3x² es 6x, de 2x es 2, de constante es 0)', 
+'Recuerda las reglas de derivación', 
+ARRAY['derivadas', 'cálculo', 'polinomios']),
+
+-- Probabilidad (10 preguntas)
+('dd0e8400-e29b-41d4-a716-446655440012', '660e8400-e29b-41d4-a716-446655440004', '550e8400-e29b-41d4-a716-446655440001', 
+'¿Cuál es la probabilidad de obtener un número par al lanzar un dado?', 1, 'C', 
+'{"A": "1/3", "B": "1/2", "C": "1/2", "D": "2/3"}',
+'P(par) = 3/6 = 1/2 (números pares: 2,4,6)', 
+'¿Cuántos números pares hay en un dado?', 
+ARRAY['probabilidad', 'dado', 'eventos']);
+
+-- LENGUAJE (40 preguntas)
+INSERT INTO questions (id, topic_id, subject_id, question_text, difficulty, correct_answer, options, explanation, hint, tags) VALUES
+-- Comprensión Lectora (20 preguntas)
+('dd0e8400-e29b-41d4-a716-446655440013', '660e8400-e29b-41d4-a716-446655440005', '550e8400-e29b-41d4-a716-446655440002', 
+'¿Cuál es la función principal de un adverbio?', 2, 'B', 
+'{"A": "Nombrar objetos", "B": "Modificar verbos", "C": "Conectar oraciones", "D": "Expresar acción"}',
+'Los adverbios modifican verbos, adjetivos u otros adverbios', 
+'Piensa en palabras como "rápidamente", "muy", "aquí"', 
+ARRAY['gramática', 'adverbios', 'sintaxis']),
+
+('dd0e8400-e29b-41d4-a716-446655440014', '660e8400-e29b-41d4-a716-446655440005', '550e8400-e29b-41d4-a716-446655440002', 
+'¿Qué tipo de texto es una novela?', 1, 'A', 
+'{"A": "Narrativo", "B": "Expositivo", "C": "Argumentativo", "D": "Descriptivo"}',
+'Una novela es un texto narrativo que cuenta una historia', 
+'¿Qué hace una novela?', 
+ARRAY['literatura', 'géneros', 'texto']),
+
+-- Gramática (10 preguntas)
+('dd0e8400-e29b-41d4-a716-446655440015', '660e8400-e29b-41d4-a716-446655440006', '550e8400-e29b-41d4-a716-446655440002', 
+'¿Cuál es la función de un pronombre?', 2, 'C', 
+'{"A": "Expresar acción", "B": "Calificar sustantivos", "C": "Reemplazar sustantivos", "D": "Conectar ideas"}',
+'Los pronombres reemplazan o sustituyen a los sustantivos', 
+'Piensa en palabras como "él", "ella", "nosotros"', 
+ARRAY['gramática', 'pronombres', 'sintaxis']),
+
+-- Literatura (10 preguntas)
+('dd0e8400-e29b-41d4-a716-446655440016', '660e8400-e29b-41d4-a716-446655440007', '550e8400-e29b-41d4-a716-446655440002', 
+'¿Qué es una metáfora?', 2, 'A', 
+'{"A": "Comparación implícita", "B": "Comparación explícita", "C": "Repetición de sonidos", "D": "Exageración"}',
+'La metáfora es una comparación implícita sin usar "como" o "tal como"', 
+'Es una figura literaria de comparación', 
+ARRAY['literatura', 'figuras', 'metáfora']);
+
+-- CIENCIAS (45 preguntas)
+INSERT INTO questions (id, topic_id, subject_id, question_text, difficulty, correct_answer, options, explanation, hint, tags) VALUES
+-- Física (15 preguntas)
+('dd0e8400-e29b-41d4-a716-446655440017', '660e8400-e29b-41d4-a716-446655440008', '550e8400-e29b-41d4-a716-446655440003', 
+'¿Cuál es la fórmula de la energía cinética?', 2, 'B', 
+'{"A": "E = mgh", "B": "E = ½mv²", "C": "E = Fd", "D": "E = Pt"}',
+'La energía cinética es E = ½mv², donde m es masa y v es velocidad', 
+'Es la energía del movimiento', 
+ARRAY['física', 'energía', 'cinética']),
+
+('dd0e8400-e29b-41d4-a716-446655440018', '660e8400-e29b-41d4-a716-446655440008', '550e8400-e29b-41d4-a716-446655440003', 
+'¿Qué es la aceleración?', 1, 'C', 
+'{"A": "Distancia recorrida", "B": "Velocidad constante", "C": "Cambio de velocidad", "D": "Fuerza aplicada"}',
+'La aceleración es el cambio de velocidad en el tiempo', 
+'¿Qué mide la aceleración?', 
+ARRAY['física', 'movimiento', 'aceleración']),
+
+-- Química (15 preguntas)
+('dd0e8400-e29b-41d4-a716-446655440019', '660e8400-e29b-41d4-a716-446655440009', '550e8400-e29b-41d4-a716-446655440003', 
+'¿Cuál es la fórmula del agua?', 1, 'A', 
+'{"A": "H₂O", "B": "CO₂", "C": "O₂", "D": "H₂"}',
+'El agua es H₂O: dos átomos de hidrógeno y uno de oxígeno', 
+'Es la molécula más abundante en la Tierra', 
+ARRAY['química', 'moléculas', 'agua']),
+
+-- Biología (15 preguntas)
+('dd0e8400-e29b-41d4-a716-446655440020', '660e8400-e29b-41d4-a716-446655440010', '550e8400-e29b-41d4-a716-446655440003', 
+'¿Cuál es la función del núcleo celular?', 2, 'B', 
+'{"A": "Producción de energía", "B": "Control genético", "C": "Digestión celular", "D": "Síntesis de proteínas"}',
+'El núcleo contiene el ADN y controla las actividades celulares', 
+'Es el "cerebro" de la célula', 
+ARRAY['biología', 'célula', 'núcleo']);
+
+-- SOCIALES (45 preguntas)
+INSERT INTO questions (id, topic_id, subject_id, question_text, difficulty, correct_answer, options, explanation, hint, tags) VALUES
+-- Historia (15 preguntas)
+('dd0e8400-e29b-41d4-a716-446655440021', '660e8400-e29b-41d4-a716-446655440005', '550e8400-e29b-41d4-a716-446655440004', 
+'¿En qué año comenzó la Primera Guerra Mundial?', 2, 'C', 
+'{"A": "1912", "B": "1913", "C": "1914", "D": "1915"}',
+'La Primera Guerra Mundial comenzó en 1914 con el asesinato del archiduque Francisco Fernando', 
+'Fue un conflicto global del siglo XX', 
+ARRAY['historia', 'guerra', 'siglo XX']),
+
+-- Geografía (15 preguntas)
+('dd0e8400-e29b-41d4-a716-446655440022', '660e8400-e29b-41d4-a716-446655440005', '550e8400-e29b-41d4-a716-446655440004', 
+'¿Cuál es la capital de Brasil?', 1, 'B', 
+'{"A": "Río de Janeiro", "B": "Brasilia", "C": "São Paulo", "D": "Salvador"}',
+'Brasilia es la capital de Brasil desde 1960', 
+'Es una ciudad planificada del siglo XX', 
+ARRAY['geografía', 'capitales', 'Brasil']),
+
+-- Filosofía (15 preguntas)
+('dd0e8400-e29b-41d4-a716-446655440023', '660e8400-e29b-41d4-a716-446655440005', '550e8400-e29b-41d4-a716-446655440004', 
+'¿Quién escribió "El Príncipe"?', 2, 'A', 
+'{"A": "Maquiavelo", "B": "Platón", "C": "Aristóteles", "D": "Rousseau"}',
+'Niccolò Maquiavelo escribió "El Príncipe" en el siglo XVI', 
+'Es un tratado de política renacentista', 
+ARRAY['filosofía', 'política', 'renacimiento']);
+
+-- INGLÉS (35 preguntas)
+INSERT INTO questions (id, topic_id, subject_id, question_text, difficulty, correct_answer, options, explanation, hint, tags) VALUES
+-- Comprensión (20 preguntas)
+('dd0e8400-e29b-41d4-a716-446655440024', '660e8400-e29b-41d4-a716-446655440005', '550e8400-e29b-41d4-a716-446655440005', 
+'What is the past tense of "go"?', 1, 'B', 
+'{"A": "goed", "B": "went", "C": "gone", "D": "goes"}',
+'The past tense of "go" is "went" (irregular verb)', 
+'Es un verbo irregular', 
+ARRAY['inglés', 'verbos', 'pasado']),
+
+('dd0e8400-e29b-41d4-a716-446655440025', '660e8400-e29b-41d4-a716-446655440005', '550e8400-e29b-41d4-a716-446655440005', 
+'Which word is a synonym of "happy"?', 1, 'C', 
+'{"A": "sad", "B": "angry", "C": "joyful", "D": "tired"}',
+'"Joyful" is a synonym of "happy"', 
+'Busca una palabra con significado similar', 
+ARRAY['inglés', 'sinónimos', 'vocabulario']),
+
+-- Gramática (15 preguntas)
+('dd0e8400-e29b-41d4-a716-446655440026', '660e8400-e29b-41d4-a716-446655440006', '550e8400-e29b-41d4-a716-446655440005', 
+'What is the plural of "child"?', 1, 'B', 
+'{"A": "childs", "B": "children", "C": "childes", "D": "childen"}',
+'The plural of "child" is "children" (irregular plural)', 
+'Es un sustantivo irregular', 
+ARRAY['inglés', 'plurales', 'gramática']); 

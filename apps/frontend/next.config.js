@@ -1,32 +1,74 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  images: {
-    domains: ['localhost'],
-    formats: ['image/webp', 'image/avif'],
-  },
-  webpack: (config, { isServer }) => {
-    // Optimize for gaming performance
-    config.optimization.splitChunks = {
-      chunks: 'all',
-      cacheGroups: {
-        vendor: {
-          test: /[\\/]node_modules[\\/]/,
-          name: 'vendors',
-          chunks: 'all',
+  experimental: {
+    // Enable Turbo for faster builds
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
         },
-        game: {
-          test: /[\\/]components[\\/]game[\\/]/,
-          name: 'game',
-          chunks: 'all',
+      },
+    },
+    // Optimize memory usage
+    optimizePackageImports: ['@radix-ui/react-icons', 'lucide-react'],
+    // Enable SWC minification
+    swcMinify: true,
+    // Memory optimization
+    memoryBasedWatching: true,
+    // Reduce file system watching
+    webpackBuildWorker: false,
+  },
+  output: 'standalone',
+  images: {
+    domains: ['localhost', '127.0.0.1'],
+    unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '4000',
+        pathname: '/mathimg/**',
+      },
+      {
+        protocol: 'http',
+        hostname: '127.0.0.1',
+        port: '4000',
+        pathname: '/mathimg/**',
+      },
+    ],
+  },
+  webpack: (config, { dev, isServer }) => {
+    // Memory optimization
+    config.optimization = {
+      ...config.optimization,
+      splitChunks: {
+        chunks: 'all',
+        cacheGroups: {
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
+            chunks: 'all',
+          },
         },
       },
     };
 
-    // Handle WebGL and 3D assets
-    config.module.rules.push({
-      test: /\.(glb|gltf)$/,
-      type: 'asset/resource',
-    });
+    // Reduce memory usage in development
+    if (dev) {
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+        ignored: ['**/node_modules', '**/.next', '**/.git'],
+      };
+    }
+
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      net: false,
+      tls: false,
+    };
 
     return config;
   },
@@ -43,18 +85,14 @@ const nextConfig = {
             key: 'X-Content-Type-Options',
             value: 'nosniff',
           },
-          {
-            key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin',
-          },
         ],
       },
     ];
   },
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-    NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL,
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000',
+    NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:4002',
   },
-};
+}
 
-module.exports = nextConfig; 
+module.exports = nextConfig 

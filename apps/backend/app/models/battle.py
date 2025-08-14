@@ -10,7 +10,7 @@ class Battle(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    battle_type = Column(String(50), nullable=False)  # 'dungeon', 'tower', 'pvp'
+    battle_type = Column(String(50), nullable=False)  # 'dungeon', 'tower', 'pvp', 'boss'
     enemy_name = Column(String(100))
     enemy_level = Column(Integer)
     enemy_hp = Column(Integer)
@@ -27,6 +27,13 @@ class Battle(Base):
     status = Column(String(20), default="in_progress")  # 'in_progress', 'completed', 'failed'
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True))
+    
+    # Campos para bosses temáticos
+    is_boss_battle = Column(Boolean, default=False)
+    unit_number = Column(Integer)  # Unidad asociada al boss
+    boss_narrative = Column(Text)  # Narrativa del boss
+    epic_rewards = Column(JSON, default=[])  # Recompensas épicas
+    certificate_generated = Column(Boolean, default=False)  # Certificado de dominio
     
     # Relationships
     user = relationship("User", back_populates="battles")
@@ -48,4 +55,20 @@ class BattleAnswer(Base):
     
     # Relationships
     battle = relationship("Battle", back_populates="battle_answers")
-    question = relationship("Question", back_populates="battle_answers") 
+    question = relationship("Question")
+
+class Certificate(Base):
+    __tablename__ = "certificates"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    unit_number = Column(Integer, nullable=False)
+    subject_id = Column(UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=False)
+    battle_id = Column(UUID(as_uuid=True), ForeignKey("battles.id"), nullable=False)
+    certificate_data = Column(JSON, nullable=False)  # Datos del certificado
+    generated_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    user = relationship("User")
+    subject = relationship("Subject")
+    battle = relationship("Battle") 

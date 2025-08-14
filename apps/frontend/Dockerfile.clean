@@ -1,0 +1,27 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install only essential dependencies
+RUN apk add --no-cache python3 make g++
+
+# Set basic memory limits only
+ENV NODE_OPTIONS="--max-old-space-size=8192"
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install dependencies
+RUN npm ci --legacy-peer-deps --no-optional
+
+# Copy source code
+COPY . .
+
+# Expose port
+EXPOSE 4001
+
+# Start with simple command
+CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", "4001"]
+

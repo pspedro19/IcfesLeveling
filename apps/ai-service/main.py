@@ -70,6 +70,34 @@ class StudyPlanResponse(BaseModel):
     recommendations: list
     estimated_improvement: float
 
+class YMLPlanRequest(BaseModel):
+    user_id: str
+    subject: str
+    test_results: Dict[str, Any]  # Resultados del test diagnóstico
+    weak_topics: list
+    strong_topics: list
+
+class YMLPlanResponse(BaseModel):
+    plan_id: str
+    subject: str
+    units: list
+    total_units: int
+    estimated_duration: str
+    difficulty_level: str
+
+class PersonalityTestRequest(BaseModel):
+    user_id: str
+    answers: Dict[str, str]  # Respuestas del test
+
+class PersonalityTestResponse(BaseModel):
+    hero_class: str
+    description: str
+    avatar_url: str
+    stats_boost: Dict[str, int]
+    special_ability: str
+    element: str
+    cutscene_data: Dict[str, Any]
+
 class AIService:
     def __init__(self):
         self.openai_client = None
@@ -315,8 +343,309 @@ class AIService:
             }
             return StudyPlanResponse(**fallback)
 
+class YMLGenerator:
+    def __init__(self):
+        self.max_units = 8
+        self.subjects = ['matematicas', 'lenguaje', 'ciencias', 'sociales', 'ingles']
+        self.openai_client = None
+        self.setup_openai()
+    
+    def setup_openai(self):
+        """Setup OpenAI client"""
+        api_key = os.getenv("OPENAI_API_KEY")
+        if api_key:
+            self.openai_client = openai.OpenAI(api_key=api_key)
+            logger.info("OpenAI client initialized for YML generation")
+        else:
+            logger.warning("OpenAI API key not found for YML generation")
+    
+    async def generate_yml_plan(self, request: YMLPlanRequest) -> YMLPlanResponse:
+        """Generate YML study plan based on test results"""
+        cache_key = self.generate_cache_key(f"yml_plan:{request.user_id}:{request.subject}")
+        
+        # Check cache first
+        cached = await self.get_cached_response(cache_key)
+        if cached:
+            logger.info("Using cached YML plan")
+            return YMLPlanResponse(**cached)
+        
+        if not self.openai_client:
+            # Mock YML plan for development
+            mock_units = [
+                {
+                    "unit_number": 1,
+                    "unit_name": "Fundamentos Básicos",
+                    "unit_description": "Conceptos fundamentales del tema",
+                    "content": {
+                        "videos": ["video1.mp4", "video2.mp4"],
+                        "exercises": ["ejercicio1", "ejercicio2"],
+                        "resources": ["pdf1.pdf", "pdf2.pdf"]
+                    }
+                }
+            ] * min(8, len(request.weak_topics) + 2)
+            
+            mock_response = {
+                "plan_id": f"plan_{request.user_id}_{request.subject}",
+                "subject": request.subject,
+                "units": mock_units,
+                "total_units": len(mock_units),
+                "estimated_duration": "4 semanas",
+                "difficulty_level": "intermedio"
+            }
+            await self.cache_response(cache_key, mock_response)
+            return YMLPlanResponse(**mock_response)
+        
+        try:
+            prompt = f"""
+            Genera un plan de estudio YML para {request.subject} basado en:
+            
+            Temas débiles: {', '.join(request.weak_topics)}
+            Temas fuertes: {', '.join(request.strong_topics)}
+            Resultados del test: {request.test_results}
+            
+            Crea exactamente 8 unidades máximo con:
+            1. Nombre de unidad
+            2. Descripción clara
+            3. Contenido: videos, ejercicios, recursos
+            4. Dificultad progresiva
+            5. Enfoque en temas débiles
+            
+            Responde en formato JSON:
+            {{
+                "plan_id": "plan_id",
+                "subject": "{request.subject}",
+                "units": [
+                    {{
+                        "unit_number": 1,
+                        "unit_name": "Nombre Unidad",
+                        "unit_description": "Descripción",
+                        "content": {{
+                            "videos": ["video1.mp4"],
+                            "exercises": ["ejercicio1"],
+                            "resources": ["recurso1.pdf"]
+                        }}
+                    }}
+                ],
+                "total_units": 8,
+                "estimated_duration": "4 semanas",
+                "difficulty_level": "intermedio"
+            }}
+            """
+            
+            response = self.openai_client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=1000,
+                temperature=0.7
+            )
+            
+            content = response.choices[0].message.content
+            try:
+                import re
+                json_match = re.search(r'\{.*\}', content, re.DOTALL)
+                if json_match:
+                    ai_response = json.loads(json_match.group())
+                else:
+                    raise ValueError("No JSON found in response")
+            except:
+                # Fallback
+                ai_response = {
+                    "plan_id": f"plan_{request.user_id}_{request.subject}",
+                    "subject": request.subject,
+                    "units": [
+                        {
+                            "unit_number": i,
+                            "unit_name": f"Unidad {i}",
+                            "unit_description": f"Descripción de unidad {i}",
+                            "content": {
+                                "videos": [f"video{i}.mp4"],
+                                "exercises": [f"ejercicio{i}"],
+                                "resources": [f"recurso{i}.pdf"]
+                            }
+                        } for i in range(1, 9)
+                    ],
+                    "total_units": 8,
+                    "estimated_duration": "4 semanas",
+                    "difficulty_level": "intermedio"
+                }
+            
+            await self.cache_response(cache_key, ai_response)
+            return YMLPlanResponse(**ai_response)
+            
+        except Exception as e:
+            logger.error("OpenAI API error in YML generation", error=str(e))
+            fallback = {
+                "plan_id": f"plan_{request.user_id}_{request.subject}",
+                "subject": request.subject,
+                "units": [
+                    {
+                        "unit_number": i,
+                        "unit_name": f"Unidad {i}",
+                        "unit_description": f"Descripción de unidad {i}",
+                        "content": {
+                            "videos": [f"video{i}.mp4"],
+                            "exercises": [f"ejercicio{i}"],
+                            "resources": [f"recurso{i}.pdf"]
+                        }
+                    } for i in range(1, 9)
+                ],
+                "total_units": 8,
+                "estimated_duration": "4 semanas",
+                "difficulty_level": "intermedio"
+            }
+            return YMLPlanResponse(**fallback)
+
+    async def analyze_personality(self, answers: Dict[str, str]) -> PersonalityTestResponse:
+        """Analyze personality answers and assign hero class"""
+        try:
+            # Mapeo de respuestas a clases épicas
+            class_weights = {
+                "warrior": 0,
+                "mage": 0,
+                "archer": 0,
+                "priest": 0,
+                "assassin": 0
+            }
+            
+            # Calcular pesos basado en respuestas
+            for question_type, answer in answers.items():
+                if question_type == "motivation":
+                    if answer == "A": class_weights["warrior"] += 3; class_weights["mage"] += 2
+                    elif answer == "B": class_weights["priest"] += 4
+                    elif answer == "C": class_weights["warrior"] += 4; class_weights["archer"] += 3
+                    elif answer == "D": class_weights["mage"] += 4; class_weights["assassin"] += 3
+                    elif answer == "E": class_weights["assassin"] += 4; class_weights["mage"] += 3
+                
+                elif question_type == "learning_style":
+                    if answer == "A": class_weights["archer"] += 4; class_weights["warrior"] += 3
+                    elif answer == "B": class_weights["priest"] += 4
+                    elif answer == "C": class_weights["warrior"] += 4; class_weights["archer"] += 3
+                    elif answer == "D": class_weights["mage"] += 4; class_weights["assassin"] += 3
+                    elif answer == "E": class_weights["assassin"] += 4; class_weights["mage"] += 3
+                
+                elif question_type == "subject_preference":
+                    if answer == "A": class_weights["mage"] += 4; class_weights["archer"] += 3
+                    elif answer == "B": class_weights["priest"] += 4
+                    elif answer == "C": class_weights["archer"] += 4; class_weights["warrior"] += 3
+                    elif answer == "D": class_weights["priest"] += 3
+                    elif answer == "E": class_weights["assassin"] += 4
+                
+                elif question_type == "problem_solving":
+                    if answer == "A": class_weights["warrior"] += 4
+                    elif answer == "B": class_weights["priest"] += 4
+                    elif answer == "C": class_weights["archer"] += 4; class_weights["mage"] += 3
+                    elif answer == "D": class_weights["mage"] += 4; class_weights["assassin"] += 3
+                    elif answer == "E": class_weights["assassin"] += 4
+                
+                elif question_type == "social_preference":
+                    if answer == "A": class_weights["mage"] += 3; class_weights["assassin"] += 4
+                    elif answer == "B": class_weights["priest"] += 4
+                    elif answer == "C": class_weights["warrior"] += 4; class_weights["archer"] += 3
+                    elif answer == "D": class_weights["mage"] += 4; class_weights["assassin"] += 3
+                    elif answer == "E": class_weights["assassin"] += 4
+            
+            # Determinar clase con mayor peso
+            max_weight = max(class_weights.values())
+            assigned_class = [k for k, v in class_weights.items() if v == max_weight][0]
+            
+            # Mapear a datos de clase épica
+            hero_classes = {
+                "warrior": {
+                    "hero_class": "Guerrero del Conocimiento",
+                    "description": "Tu fuerza física se convierte en poder mental. Eres resistente y perseverante en el aprendizaje.",
+                    "avatar_url": "/avatars/warrior-knowledge.png",
+                    "stats_boost": {"power": 25, "hp": 30, "resistance": 15},
+                    "special_ability": "Resistencia Mental: +30% HP en batallas largas",
+                    "element": "Tierra",
+                    "cutscene_data": {
+                        "title": "¡Guerrero del Conocimiento!",
+                        "subtitle": "Tu fuerza mental es legendaria",
+                        "animation": "warrior_awakening",
+                        "particles": ["earth", "strength"],
+                        "sound_effect": "warrior_roar"
+                    }
+                },
+                "mage": {
+                    "hero_class": "Mago Cuántico",
+                    "description": "Dominas las matemáticas con precisión mágica. Tu mente analítica te permite resolver problemas complejos.",
+                    "avatar_url": "/avatars/mage-quantum.png",
+                    "stats_boost": {"wisdom": 25, "mp": 30, "math_power": 20},
+                    "special_ability": "Explicación Mágica: +50% precisión en matemáticas",
+                    "element": "Fuego",
+                    "cutscene_data": {
+                        "title": "¡Mago Cuántico!",
+                        "subtitle": "Las matemáticas son tu magia",
+                        "animation": "mage_spellcasting",
+                        "particles": ["fire", "magic"],
+                        "sound_effect": "spell_cast"
+                    }
+                },
+                "archer": {
+                    "hero_class": "Arquero de la Sabiduría",
+                    "description": "Velocidad y precisión en cada respuesta. Tu agilidad mental te permite responder rápidamente.",
+                    "avatar_url": "/avatars/archer-wisdom.png",
+                    "stats_boost": {"speed": 25, "agility": 20, "accuracy": 15},
+                    "special_ability": "Tiro Crítico: +40% probabilidad de respuestas críticas",
+                    "element": "Viento",
+                    "cutscene_data": {
+                        "title": "¡Arquero de la Sabiduría!",
+                        "subtitle": "Tu precisión es mortal",
+                        "animation": "archer_aiming",
+                        "particles": ["wind", "speed"],
+                        "sound_effect": "bow_release"
+                    }
+                },
+                "priest": {
+                    "hero_class": "Sacerdote del Aprendizaje",
+                    "description": "Sanas las dudas con conocimiento sagrado. Tu sabiduría te permite explicar conceptos complejos.",
+                    "avatar_url": "/avatars/priest-learning.png",
+                    "stats_boost": {"wisdom": 30, "mp": 25, "healing": 20},
+                    "special_ability": "Curación Mental: Recupera HP al explicar conceptos",
+                    "element": "Luz",
+                    "cutscene_data": {
+                        "title": "¡Sacerdote del Aprendizaje!",
+                        "subtitle": "Tu sabiduría sana las dudas",
+                        "animation": "priest_healing",
+                        "particles": ["light", "healing"],
+                        "sound_effect": "healing_spell"
+                    }
+                },
+                "assassin": {
+                    "hero_class": "Asesino de la Lógica",
+                    "description": "Encuentras la respuesta correcta con astucia. Tu precisión te permite identificar patrones ocultos.",
+                    "avatar_url": "/avatars/assassin-logic.png",
+                    "stats_boost": {"agility": 25, "speed": 20, "critical_chance": 20},
+                    "special_ability": "Golpe Preciso: +60% daño crítico en respuestas correctas",
+                    "element": "Sombra",
+                    "cutscene_data": {
+                        "title": "¡Asesino de la Lógica!",
+                        "subtitle": "Tu astucia es tu arma",
+                        "animation": "assassin_stealth",
+                        "particles": ["shadow", "stealth"],
+                        "sound_effect": "stealth_move"
+                    }
+                }
+            }
+            
+            class_data = hero_classes[assigned_class]
+            
+            return PersonalityTestResponse(
+                hero_class=class_data["hero_class"],
+                description=class_data["description"],
+                avatar_url=class_data["avatar_url"],
+                stats_boost=class_data["stats_boost"],
+                special_ability=class_data["special_ability"],
+                element=class_data["element"],
+                cutscene_data=class_data["cutscene_data"]
+            )
+            
+        except Exception as e:
+            logger.error(f"Error analyzing personality: {e}")
+            raise HTTPException(status_code=500, detail="Error analyzing personality")
+
 # Initialize AI service
 ai_service = AIService()
+yml_generator = YMLGenerator()
 
 @app.get("/health")
 async def health_check():
@@ -342,6 +671,22 @@ async def generate_study_plan(request: StudyPlanRequest):
     except Exception as e:
         logger.error("Failed to generate study plan", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to generate study plan")
+
+@app.post("/yml-plan", response_model=YMLPlanResponse)
+async def generate_yml_plan(request: YMLPlanRequest):
+    """Generate YML study plan based on test results"""
+    return await yml_generator.generate_yml_plan(request)
+
+@app.post("/personality-test", response_model=PersonalityTestResponse)
+async def analyze_personality(request: PersonalityTestRequest):
+    """Analyze personality and assign hero class"""
+    try:
+        # Lógica de IA para asignar clase basada en respuestas
+        hero_class = await ai_service.analyze_personality(request.answers)
+        return hero_class
+    except Exception as e:
+        logger.error(f"Error analyzing personality: {e}")
+        raise HTTPException(status_code=500, detail="Error analyzing personality")
 
 if __name__ == "__main__":
     import uvicorn

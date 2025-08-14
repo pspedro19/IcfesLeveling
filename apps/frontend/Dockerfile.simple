@@ -1,0 +1,32 @@
+# 🚀 DOCKERFILE SIMPLE Y EFECTIVO
+# Resuelve el problema de memoria del frontend
+
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Instalar solo dependencias esenciales
+RUN apk add --no-cache python3 make g++
+
+# Configurar variables de entorno para optimización
+ENV NODE_ENV=development
+ENV NODE_OPTIONS="--max-old-space-size=2048"
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV WATCHPACK_POLLING=true
+ENV CHOKIDAR_USEPOLLING=true
+
+# Copiar solo archivos de dependencias
+COPY package.json package-lock.json* ./
+
+# Instalar dependencias
+RUN npm ci --legacy-peer-deps --no-optional
+
+# Copiar código fuente
+COPY . .
+
+# Exponer puerto
+EXPOSE 4001
+
+# Comando de inicio simple
+CMD ["npm", "run", "dev"]
+
