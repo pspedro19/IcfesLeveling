@@ -25,14 +25,18 @@ class ErrorHandler {
     // Handle unhandled promise rejections
     if (typeof window !== 'undefined') {
       window.addEventListener('unhandledrejection', (event) => {
-        console.error('Unhandled promise rejection:', event.reason);
+        if (window.console && window.console.log) {
+          window.console.log('Unhandled promise rejection:', event.reason);
+        }
         this.handleError(event.reason);
         event.preventDefault();
       });
       
       // Handle global errors
       window.addEventListener('error', (event) => {
-        console.error('Global error:', event.error);
+        if (window.console && window.console.log) {
+          window.console.log('Global error:', event.error);
+        }
         this.handleError(event.error);
         event.preventDefault();
       });
@@ -43,8 +47,8 @@ class ErrorHandler {
     const appError = this.parseError(error);
     
     // Log to console in development
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Error Handler:', appError);
+    if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && window.console) {
+      window.console.log('Error Handler:', appError);
     }
     
     // Show user notification based on error type
@@ -102,12 +106,15 @@ class ErrorHandler {
   private showErrorNotification(error: AppError) {
     // Note: This method should be called from a React component context
     // For now, we'll just log the error. In a real app, you'd use a global notification system
-    console.error('Error notification:', {
-      type: error.status === 403 ? 'warning' : 'error',
-      title: this.getErrorTitle(error),
-      message: error.message,
-      iconName: error.code === 'NETWORK_ERROR' ? 'WifiOff' : error.status === 403 ? 'ShieldAlert' : 'AlertCircle'
-    });
+    // Use native console to avoid circular references
+    if (typeof window !== 'undefined' && window.console && window.console.log) {
+      window.console.log('Error notification:', {
+        type: error.status === 403 ? 'warning' : 'error',
+        title: this.getErrorTitle(error),
+        message: error.message,
+        iconName: error.code === 'NETWORK_ERROR' ? 'WifiOff' : error.status === 403 ? 'ShieldAlert' : 'AlertCircle'
+      });
+    }
   }
   
   private getErrorTitle(error: AppError): string {

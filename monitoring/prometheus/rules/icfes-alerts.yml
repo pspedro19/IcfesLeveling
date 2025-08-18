@@ -1,0 +1,189 @@
+# ICFES Leveling Production Alert Rules
+groups:
+  - name: icfes-critical
+    rules:
+      # Service Availability
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "{{ $labels.job }} has been down for more than 1 minute"
+
+      # High Error Rate
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate on {{ $labels.job }}"
+          description: "Error rate is {{ $value }} errors per second"
+
+      # High Response Time
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, http_request_duration_seconds_bucket) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time on {{ $labels.job }}"
+          description: "95th percentile response time is {{ $value }}s"
+
+      # Database Connection Issues
+      - alert: DatabaseConnectionHigh
+        expr: pg_stat_activity_count > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High number of database connections"
+          description: "PostgreSQL has {{ $value }} active connections"
+
+      # Memory Usage
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.9
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }}"
+
+      # Disk Usage
+      - alert: HighDiskUsage
+        expr: (node_filesystem_size_bytes - node_filesystem_free_bytes) / node_filesystem_size_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High disk usage on {{ $labels.mountpoint }}"
+          description: "Disk usage is {{ $value | humanizePercentage }}"
+
+      # CPU Usage
+      - alert: HighCPUUsage
+        expr: 100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}%"
+
+  - name: icfes-application
+    rules:
+      # Authentication Failures
+      - alert: HighAuthFailureRate
+        expr: rate(icfes_auth_failures_total[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High authentication failure rate"
+          description: "{{ $value }} authentication failures per second"
+
+      # AI Service Issues
+      - alert: AIServiceErrors
+        expr: rate(icfes_ai_errors_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "AI service experiencing errors"
+          description: "{{ $value }} AI service errors per second"
+
+      # WebSocket Connection Issues
+      - alert: WebSocketConnectionDrop
+        expr: decrease(icfes_websocket_connections[5m]) > 50
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Sudden drop in WebSocket connections"
+          description: "{{ $value }} WebSocket connections dropped"
+
+      # Queue Backup
+      - alert: QueueBackup
+        expr: icfes_queue_size > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Queue backup detected"
+          description: "Queue size is {{ $value }} items"
+
+      # Database Query Performance
+      - alert: SlowQueries
+        expr: rate(pg_stat_statements_mean_time[5m]) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow database queries detected"
+          description: "Average query time is {{ $value }}ms"
+
+  - name: icfes-security
+    rules:
+      # Too Many Failed Login Attempts
+      - alert: BruteForceAttack
+        expr: rate(icfes_failed_logins_total[1m]) > 10
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Possible brute force attack"
+          description: "{{ $value }} failed login attempts per minute"
+
+      # Unusual Traffic Patterns
+      - alert: UnusualTraffic
+        expr: rate(http_requests_total[5m]) > 1000
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Unusual traffic pattern detected"
+          description: "{{ $value }} requests per second"
+
+      # SSL Certificate Expiry
+      - alert: SSLCertificateExpiry
+        expr: probe_ssl_earliest_cert_expiry - time() < 7 * 24 * 3600
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "SSL certificate expiring soon"
+          description: "SSL certificate expires in {{ $value | humanizeDuration }}"
+
+  - name: icfes-business
+    rules:
+      # Low User Activity
+      - alert: LowUserActivity
+        expr: rate(icfes_user_sessions_total[1h]) < 10
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low user activity detected"
+          description: "Only {{ $value }} user sessions per hour"
+
+      # Test Completion Rate Drop
+      - alert: TestCompletionRateDrop
+        expr: rate(icfes_tests_completed_total[1h]) / rate(icfes_tests_started_total[1h]) < 0.7
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Test completion rate dropped"
+          description: "Completion rate is {{ $value | humanizePercentage }}"
+
+      # Revenue Impact
+      - alert: PaymentProcessingIssues
+        expr: rate(icfes_payment_failures_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Payment processing issues detected"
+          description: "{{ $value }} payment failures per second"

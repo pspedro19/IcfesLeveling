@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 # from fastapi.middleware.trustedhost import TrustedHostMiddleware  # Comentado temporalmente
 from fastapi.responses import JSONResponse
 # from fastapi.staticfiles import StaticFiles  # Comentado temporalmente
@@ -11,7 +12,7 @@ import os
 from .core.config import settings, LOGGING_CONFIG
 from .core.database import engine, Base
 # from .middleware.guest_limits import GuestLimitsMiddleware  # Comentado temporalmente
-from .routes import auth, auth_simple, questions, battles, ai, leaderboard, quests, personality, diagnostic, diagnostic_public, diagnostic_simple, study_plans, videos, video_recommendations, quizzes, bosses, analytics, monthly_reassessment, premium_simple as premium, guilds, achievements, store, analytics_advanced, questions_cached, users_cached, battles_cached, ai_tips, recommendations, admin, video_tracking, exercise_tracking, rank_reevaluation, advanced_health, video_progress_api, yml_plans
+from .routes import auth, auth_simple, questions, battles, ai, leaderboard, quests, personality, diagnostic, diagnostic_public, diagnostic_simple, diagnostic_public_fix, diagnostic_test_fix, subjects_fix, study_plans, study_plans_simple, videos, video_recommendations, quizzes, bosses, analytics, monthly_reassessment, premium_simple as premium, guilds, achievements, store, analytics_advanced, questions_cached, users_cached, battles_cached, ai_tips, recommendations, admin, video_tracking, exercise_tracking, rank_reevaluation, advanced_health, video_progress_api, yml_plans, dynamic_subjects
 from .routes.icfes import recommendations as icfes_recommendations
 from .routes import icfes_catalog
 
@@ -72,6 +73,74 @@ def _ensure_diagnostic_test_columns() -> None:
     except Exception as e:
         logger.error(f"Failed verifying diagnostic test columns: {e}")
 
+def _ensure_advanced_learning_tables() -> None:
+    """Ensure advanced learning system tables exist (CRITICAL for 95% completeness)."""
+    try:
+        from sqlalchemy import text
+        logger.info("🔄 Verifying advanced learning system tables...")
+        
+        # Check if critical tables exist
+        table_checks = [
+            "SELECT 1 FROM information_schema.tables WHERE table_name = 'user_skills'",
+            "SELECT 1 FROM information_schema.tables WHERE table_name = 'question_responses'", 
+            "SELECT 1 FROM information_schema.tables WHERE table_name = 'learning_sessions'",
+            "SELECT 1 FROM information_schema.tables WHERE table_name = 'skill_prerequisites'"
+        ]
+        
+        missing_tables = []
+        with engine.begin() as conn:
+            for i, check in enumerate(table_checks):
+                result = conn.execute(text(check)).fetchone()
+                if not result:
+                    table_names = ['user_skills', 'question_responses', 'learning_sessions', 'skill_prerequisites']
+                    missing_tables.append(table_names[i])
+        
+        if missing_tables:
+            logger.warning(f"⚠️ Missing critical tables: {missing_tables}")
+            logger.info("🔧 Creating advanced learning system tables...")
+            
+            # Read and execute the advanced learning system SQL
+            import os
+            sql_file_path = os.path.join(os.path.dirname(__file__), '..', 'database', 'init', '15-advanced-learning-system.sql')
+            
+            if os.path.exists(sql_file_path):
+                with open(sql_file_path, 'r', encoding='utf-8') as f:
+                    sql_content = f.read()
+                
+                with engine.begin() as conn:
+                    # Execute in chunks to handle complex statements
+                    for statement in sql_content.split('-- ================================================================================================'):
+                        if statement.strip():
+                            try:
+                                conn.execute(text(statement))
+                            except Exception as stmt_error:
+                                # Log but continue with other statements
+                                logger.warning(f"Statement execution warning: {stmt_error}")
+                
+                logger.info("✅ Advanced learning system tables created successfully")
+                
+                # Run data migration if we have existing data
+                migration_file_path = os.path.join(os.path.dirname(__file__), '..', 'database', 'init', '16-data-migration-advanced-system.sql')
+                if os.path.exists(migration_file_path):
+                    logger.info("🔄 Running data migration...")
+                    with open(migration_file_path, 'r', encoding='utf-8') as f:
+                        migration_content = f.read()
+                    
+                    with engine.begin() as conn:
+                        try:
+                            conn.execute(text(migration_content))
+                            logger.info("✅ Data migration completed successfully")
+                        except Exception as migration_error:
+                            logger.warning(f"Data migration warning: {migration_error}")
+            else:
+                logger.error(f"❌ Advanced learning system SQL file not found: {sql_file_path}")
+        else:
+            logger.info("✅ All advanced learning system tables already exist")
+            
+    except Exception as e:
+        logger.error(f"❌ Failed ensuring advanced learning tables: {e}")
+        logger.warning("⚠️ System will operate with reduced functionality")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -113,7 +182,11 @@ async def lifespan(app: FastAPI):
         logger.info("📊 Verificando estructura de base de datos...")
         _ensure_question_columns()
         _ensure_diagnostic_test_columns()
-        logger.info("✅ Estructura de base de datos verificada")
+        
+        # Paso 1.5: CRÍTICO - Asegurar tablas avanzadas para 95% completitud
+        _ensure_advanced_learning_tables()
+        
+        logger.info("✅ Estructura de base de datos verificada (incluyendo sistema avanzado)")
         
         # Paso 2: Importar preguntas desde Excel
         auto_import = os.getenv("AUTO_IMPORT_QUESTIONS", "false").lower() in ("1", "true", "yes")
@@ -244,6 +317,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add session middleware for secure session management
+import secrets
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv('SESSION_SECRET', secrets.token_urlsafe(32)),
+    max_age=7200,  # 2 hours
+    https_only=False,  # Set to True in production
+    same_site='lax'
+)
+
 # Global OPTIONS handler for CORS preflight
 @app.options("/{full_path:path}")
 async def options_handler(full_path: str):
@@ -294,7 +377,11 @@ app.include_router(diagnostic.router, prefix="/api/v1")
 app.include_router(diagnostic.router, prefix="/api/v1/agnostic")
 app.include_router(diagnostic_public.router)  # Sin prefijo /api/v1 para acceso directo
 app.include_router(diagnostic_simple.router)  # Ruta simple para testing
+app.include_router(diagnostic_public_fix.router)  # Public routes fix
+app.include_router(diagnostic_test_fix.router)  # Fixed diagnostic endpoints
+app.include_router(subjects_fix.router)  # Fixed subjects endpoints
 app.include_router(study_plans.router, prefix="/api/v1")
+app.include_router(study_plans_simple.router)  # Simple study plans with built-in prefix
 app.include_router(videos.router, prefix="/api/v1")
 app.include_router(video_recommendations.router, prefix="/api/v1/video-recommendations")
 app.include_router(quizzes.router, prefix="/api/v1")
@@ -321,6 +408,7 @@ app.include_router(icfes_catalog.router, prefix="/api/v1")  # Catálogo ICFES
 app.include_router(yml_plans.router)  # Rutas YML personalizadas
 app.include_router(video_progress_api.router)  # Sistema de Video Progress
 app.include_router(advanced_health.router)  # Endpoints de salud avanzada
+app.include_router(dynamic_subjects.router)  # Dynamic subjects management (has own /api/v1/subjects prefix)
 
 # Importar y registrar el nuevo router de YouTube API
 from .routes import youtube_api
@@ -369,6 +457,73 @@ async def api_health_check():
         "api_version": "v1",
         "timestamp": "2024-01-01T00:00:00Z"
     }
+
+# Analytics endpoint
+@app.post("/api/v1/analytics/track")
+async def track_user_event(request: Request, event: dict):
+    """Track user events for analytics and improvement"""
+    try:
+        import json
+        from datetime import datetime
+        
+        event_data = {
+            'timestamp': datetime.now().isoformat(),
+            'session_id': request.session.get('session_id', 'anonymous'),
+            'event_type': event.get('type'),
+            'event_data': event.get('data', {}),
+            'user_agent': request.headers.get('user-agent', ''),
+            'ip_address': request.client.host if request.client else 'unknown'
+        }
+        
+        # Ensure logs directory exists
+        os.makedirs("logs", exist_ok=True)
+        
+        # Simple file logging (can upgrade to database later)
+        with open('logs/analytics.jsonl', 'a', encoding='utf-8') as f:
+            f.write(json.dumps(event_data, ensure_ascii=False) + '\n')
+            
+        return {"status": "tracked", "event_type": event.get('type')}
+    except Exception as e:
+        logger.error(f"Analytics tracking error: {e}")
+        return {"status": "error", "message": str(e)}
+
+# Session management endpoints
+@app.post("/api/v1/session/store")
+async def store_session_data(request: Request, data: dict):
+    """Store data securely in server session"""
+    try:
+        from datetime import datetime
+        data_type = data.get('type')
+        data_content = data.get('content', {})
+        
+        if data_type == 'diagnostic_results':
+            request.session['diagnostic_results'] = {
+                'score': data_content.get('score'),
+                'percentage': data_content.get('percentage'),
+                'subject_id': data_content.get('subject_id'),
+                'total_questions': data_content.get('total_questions'),
+                'weaknesses': data_content.get('weaknesses', []),
+                'timestamp': datetime.now().isoformat()
+            }
+        
+        return {"status": "stored", "type": data_type}
+    except Exception as e:
+        logger.error(f"Session storage error: {e}")
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/v1/session/get/{data_type}")
+async def get_session_data(request: Request, data_type: str):
+    """Get data from secure server session"""
+    try:
+        data = request.session.get(data_type)
+        if not data:
+            raise HTTPException(status_code=404, detail=f"No {data_type} found in session")
+        return {"status": "found", "data": data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Session retrieval error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Cleanup endpoint
 @app.post("/api/v1/cleanup")

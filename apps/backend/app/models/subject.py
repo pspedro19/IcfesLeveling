@@ -22,6 +22,8 @@ class Subject(Base):
     questions = relationship("Question", back_populates="subject", cascade="all, delete-orphan")
     diagnostic_tests = relationship("DiagnosticTest", back_populates="subject")
     study_plans = relationship("StudyPlan", back_populates="subject")
+    config = relationship("SubjectConfig", back_populates="subject", uselist=False)
+    aliases = relationship("SubjectAlias", back_populates="subject", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Subject(id={self.id}, name='{self.name}')>" 

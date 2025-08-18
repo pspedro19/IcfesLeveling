@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose build:*)",
+      "Bash(docker:*)",
+      "Bash(powershell:*)",
+      "Bash(wsl:*)",
+      "Bash(curl:*)",
+      "Bash(python:*)",
+      "Bash(cp:*)",
+      "Bash(grep:*)",
+      "Bash(mkdir:*)",
+      "Bash(find:*)",
+      "Bash(bash:*)",
+      "Bash(winpty docker exec -it icfes_postgres psql -U postgres -d icfes_db -c \"SELECT COUNT(*) as total FROM questions WHERE subject_id = (SELECT id FROM subjects WHERE name = ''Matemáticas'');\")",
+      "Bash(dos2unix:*)",
+      "Bash(sed:*)",
+      "Bash(winpty docker exec -it icfes_postgres psql -U postgres -d icfes_db -c \"SELECT COUNT(*) as total_questions, subject_id FROM questions GROUP BY subject_id;\")",
+      "Bash(winpty docker exec -it icfes_backend ls /)",
+      "Bash(winpty docker-compose ps)",
+      "Bash(winpty docker exec:*)",
+      "Bash(start \"C:\\Users\\NATALY\\Documents\\Icfes\\IcfesLeveling\\test_youtube_rendering.html\")",
+      "Bash(start test_iframe_direct.html)",
+      "Bash(rm:*)",
+      "Bash(true)",
+      "Bash(winpty docker restart icfes_backend)",
+      "Bash(npm install:*)",
+      "Bash(pip install:*)"
+    ],
+    "deny": [],
+    "ask": [],
+    "additionalDirectories": [
+      "C:\\c\\Users\\NATALY\\Documents\\Icfes\\IcfesLeveling\\apps",
+      "C:\\Users\\NATALY\\Documents"
+    ]
+  }
+}

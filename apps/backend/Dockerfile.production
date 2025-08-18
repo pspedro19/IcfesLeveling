@@ -1,0 +1,74 @@
+# Production Dockerfile for Backend API
+# Multi-stage build for optimized production image
+
+# Build stage
+FROM python:3.11-slim as builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set work directory
+WORKDIR /app
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# Production stage
+FROM python:3.11-slim
+
+# Create non-root user
+RUN groupadd -r icfes && useradd -r -g icfes icfes
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Copy Python packages from builder
+COPY --from=builder /root/.local /home/icfes/.local
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH=/home/icfes/.local/bin:$PATH \
+    PYTHONPATH=/app
+
+# Set work directory
+WORKDIR /app
+
+# Create required directories
+RUN mkdir -p /var/log/icfes /app/uploads /app/temp && \
+    chown -R icfes:icfes /var/log/icfes /app
+
+# Copy application code
+COPY --chown=icfes:icfes . /app/
+
+# Switch to non-root user
+USER icfes
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:4000/health || exit 1
+
+# Expose port
+EXPOSE 4000
+
+# Production command with Gunicorn
+CMD ["gunicorn", "app.main:app", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--workers", "4", \
+     "--bind", "0.0.0.0:4000", \
+     "--timeout", "30", \
+     "--keep-alive", "2", \
+     "--max-requests", "1000", \
+     "--max-requests-jitter", "100", \
+     "--preload", \
+     "--access-logfile", "/var/log/icfes/access.log", \
+     "--error-logfile", "/var/log/icfes/error.log", \
+     "--log-level", "warning"]

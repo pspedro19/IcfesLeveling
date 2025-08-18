@@ -1,5 +1,6 @@
 from .user import User
 from .subject import Subject
+from .subject_config import SubjectConfig, SubjectAlias, AssetConfiguration
 from .question import Topic, Question
 from .battle import Battle, BattleAnswer
 from .item import Item, UserItem
@@ -18,7 +19,10 @@ from .quiz import Quiz, QuizAnswer
 
 __all__ = [
     "User",
-    "Subject", 
+    "Subject",
+    "SubjectConfig",
+    "SubjectAlias", 
+    "AssetConfiguration",
     "Topic",
     "Question",
     "Battle",

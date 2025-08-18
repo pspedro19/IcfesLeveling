@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  typescript: {
+    // Enable strict TypeScript checking for production
+    ignoreBuildErrors: false,
+  },
   experimental: {
     // Enable Turbo for faster builds
     turbo: {

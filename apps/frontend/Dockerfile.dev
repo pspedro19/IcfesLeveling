@@ -45,9 +45,5 @@ ENV NODE_ENV=development
 # Expose port
 EXPOSE 4001
 
-# Copy ultra-optimized startup script
-COPY start-ultra-optimized.sh ./
-RUN chmod +x start-ultra-optimized.sh
-
-# Start the application with ULTRA optimization
-CMD ["./start-ultra-optimized.sh"]
+# Start the application in development mode
+CMD ["npm", "run", "dev"]

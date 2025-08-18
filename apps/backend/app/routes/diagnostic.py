@@ -150,14 +150,22 @@ async def get_diagnostic_questions(
                     }
                     options_images = {k: v for k, v in maybe.items() if v}
 
-                options = q.options
-                if isinstance(options, dict):
-                    # If dict values are empty strings (only image), keep them empty to let FE display image
-                    options = list(options.values())
+                # Build options list from individual fields or from options JSON
+                if q.options and isinstance(q.options, dict):
+                    options = list(q.options.values())
+                elif q.opcion_a_texto or q.opcion_b_texto or q.opcion_c_texto or q.opcion_d_texto:
+                    options = [
+                        q.opcion_a_texto or "Opción A",
+                        q.opcion_b_texto or "Opción B", 
+                        q.opcion_c_texto or "Opción C",
+                        q.opcion_d_texto or "Opción D"
+                    ]
+                else:
+                    options = ["Opción A", "Opción B", "Opción C", "Opción D"]
 
                 result.append({
                     "id": str(q.id),
-                    "question_text": q.question_text or getattr(q, 'pregunta_texto', None),
+                    "question_text": q.pregunta_texto or q.question_text or "Pregunta sin texto",
                     "options": options,
                     "subject": subject.name,
                     "topic": q.topic.name if q.topic else "General",

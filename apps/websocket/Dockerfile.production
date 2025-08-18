@@ -1,0 +1,68 @@
+# Production Dockerfile for WebSocket Service
+# Lightweight and secure build for real-time communication
+
+# Build stage
+FROM python:3.11-slim as builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# Production stage
+FROM python:3.11-slim
+
+# Create non-root user
+RUN groupadd -r websocket && useradd -r -g websocket websocket
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Copy Python packages from builder
+COPY --from=builder /root/.local /home/websocket/.local
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH=/home/websocket/.local/bin:$PATH \
+    PYTHONPATH=/app
+
+WORKDIR /app
+
+# Create required directories
+RUN mkdir -p /var/log/icfes && \
+    chown -R websocket:websocket /var/log/icfes /app
+
+# Copy application code
+COPY --chown=websocket:websocket . /app/
+
+# Switch to non-root user
+USER websocket
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:4002/health || exit 1
+
+# Expose port
+EXPOSE 4002
+
+# Production command
+CMD ["uvicorn", "main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "4002", \
+     "--workers", "2", \
+     "--log-level", "warning", \
+     "--access-log", \
+     "--proxy-headers", \
+     "--forwarded-allow-ips", "*"]

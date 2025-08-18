@@ -39,6 +39,86 @@ export default function VideoPlayerPage() {
   const [selectedVideo, setSelectedVideo] = useState<VideoContent | null>(null);
   const [videoProgress, setVideoProgress] = useState<VideoProgress[]>([]);
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+  const [topicFromUrl, setTopicFromUrl] = useState<string | null>(null);
+  const [unitFromUrl, setUnitFromUrl] = useState<string | null>(null);
+
+  // Leer parámetros de la URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const topic = urlParams.get('topic');
+    const unit = urlParams.get('unit');
+    
+    if (topic) {
+      setTopicFromUrl(decodeURIComponent(topic));
+    }
+    if (unit) {
+      setUnitFromUrl(unit);
+    }
+    
+    // Auto-cargar videos del backend si hay parámetros
+    if (topic) {
+      loadVideosFromBackend(decodeURIComponent(topic));
+    }
+  }, []);
+
+  const loadVideosFromBackend = async (topicName: string) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        console.warn('No hay token de acceso, usando videos de ejemplo');
+        if (videosBySubject["Matemáticas"].length > 0) {
+          setSelectedVideo(videosBySubject["Matemáticas"][0]);
+          setShowVideoPlayer(true);
+        }
+        return;
+      }
+
+      // Intentar obtener videos desde el endpoint de recomendaciones
+      const response = await fetch(`/api/v1/youtube/recommendations/personalized?subject=Matemáticas&weak_topics=${encodeURIComponent(topicName)}&limit=5`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data.recommendations.length > 0) {
+          const firstVideo = data.data.recommendations[0];
+          const videoContent: VideoContent = {
+            id: firstVideo.id || '1',
+            youtubeUrl: firstVideo.youtube_url || firstVideo.url,
+            title: firstVideo.title || firstVideo.video_title || `Video sobre ${topicName}`,
+            description: firstVideo.description || `Contenido educativo sobre ${topicName}`,
+            subject: "Matemáticas",
+            duration: firstVideo.duration_seconds || 600,
+            difficulty: firstVideo.difficulty_level?.toString() || "medio",
+            topics: [topicName]
+          };
+          
+          setSelectedVideo(videoContent);
+          setShowVideoPlayer(true);
+          console.log('✅ Video cargado desde backend:', videoContent.title);
+          return;
+        }
+      }
+      
+      // Fallback a videos de ejemplo
+      console.warn('Usando videos de ejemplo como fallback');
+      if (videosBySubject["Matemáticas"].length > 0) {
+        setSelectedVideo(videosBySubject["Matemáticas"][0]);
+        setShowVideoPlayer(true);
+      }
+      
+    } catch (error) {
+      console.error('Error cargando videos del backend:', error);
+      // Fallback a videos de ejemplo
+      if (videosBySubject["Matemáticas"].length > 0) {
+        setSelectedVideo(videosBySubject["Matemáticas"][0]);
+        setShowVideoPlayer(true);
+      }
+    }
+  };
 
   // Videos de ejemplo por materia
   const videosBySubject = {
@@ -152,6 +232,31 @@ export default function VideoPlayerPage() {
         <p className="text-gray-600">
           Explora videos educativos organizados por materia y mejora tu aprendizaje
         </p>
+        
+        {/* Información del plan de estudio */}
+        {topicFromUrl && (
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center gap-3">
+              <BookOpen className="w-5 h-5 text-blue-600" />
+              <div>
+                <h3 className="font-semibold text-blue-800">
+                  📚 Plan de Estudio Personalizado
+                </h3>
+                <p className="text-sm text-blue-700">
+                  Tema: <span className="font-medium">{topicFromUrl}</span>
+                  {unitFromUrl && (
+                    <span className="ml-3">
+                      • Unidad: <span className="font-medium">{unitFromUrl}</span>
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  ✨ Video seleccionado basado en tu diagnóstico y debilidades identificadas
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {showVideoPlayer && selectedVideo ? (

@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Copy package files first for better caching
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci --only=production --legacy-peer-deps && npm cache clean --force
 
 # Build stage
 FROM node:18-alpine AS builder
@@ -12,27 +12,20 @@ WORKDIR /app
 
 # Copy package files
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # Copy source code (only what's needed)
 COPY public/ ./public/
 COPY app/ ./app/
-COPY components/ ./components/
-COPY lib/ ./lib/
-COPY hooks/ ./hooks/
-COPY stores/ ./stores/
-COPY types/ ./types/
-COPY utils/ ./utils/
-COPY workers/ ./workers/
-COPY globals.css ./
-COPY layout.tsx ./
-COPY page.tsx ./
 COPY next.config.js ./
 COPY tailwind.config.js ./
 COPY tsconfig.json ./
+COPY postcss.config.js ./
+COPY middleware.ts ./
+COPY style-dictionary.config.js ./
 
-# Build the application
-RUN npm run build
+# Build the application (skip style-dictionary for now)
+RUN npx next build
 
 # Production stage
 FROM node:18-alpine AS runner

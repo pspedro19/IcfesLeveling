@@ -86,14 +86,19 @@ services:
       - DEBUG=true
       - ALLOWED_ORIGINS=http://localhost:4001,http://127.0.0.1:4001,http://localhost:4000,http://127.0.0.1:4000,http://localhost:4002,http://127.0.0.1:4002
       - AUTO_IMPORT_QUESTIONS=true
-      - QUESTIONS_EXCEL_PATH=/app/ICFES2.xlsx
+      - QUESTIONS_EXCEL_PATH=/seed_data/questions.xlsx
       - IMPORT_CLEAR_EXISTING=true
-      - ICFES_CATALOG_CSV_PATH=/app/01_icfes_topics_catalog.csv
+      - ICFES_CATALOG_CSV_PATH=/seed_data/topics_catalog.csv
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=gameplay_db
+      - DB_USER=gameplay
+      - DB_PASSWORD=gameplay123
     volumes:
       - ./apps/backend:/app
       - ./logs:/app/logs
-      - "./ICFES2 (1).xlsx:/app/ICFES2.xlsx"
-      - ./01_icfes_topics_catalog.csv:/app/01_icfes_topics_catalog.csv
+      - ./database/seed_data:/app/seed_data
+      - ./database/seed_data/load_all_data.py:/app/seed_data/load_all_data.py:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -194,7 +199,9 @@ services:
       - NEXT_TELEMETRY_DISABLED=1
       - NEXT_SHARP_PATH=/app/node_modules/sharp
     volumes:
+      - ./apps/frontend:/app
       - frontend_cache:/app/.next/cache
+      - /app/node_modules
     depends_on:
       - backend
       - websocket

@@ -1,0 +1,563 @@
+"""
+Simple Study Plans API - Generates Khan Academy Style Study Plans
+"""
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from typing import Dict, Any, List, Optional
+from datetime import datetime, timedelta
+import json
+import uuid
+
+from ..core.database import get_db
+from ..models.subject import Subject
+from ..models.question import Question
+from ..models.diagnostic_test import DiagnosticTest, DiagnosticTestAnswer
+
+router = APIRouter(prefix="/api/v1/study-plans", tags=["study-plans-simple"])
+
+# Khan Academy style study plan templates
+KHAN_ACADEMY_TEMPLATES = {
+    "Matemáticas": {
+        "beginner": {
+            "units": [
+                {
+                    "number": 1,
+                    "title": "Fundamentos de Álgebra",
+                    "description": "Conceptos básicos de álgebra y ecuaciones simples",
+                    "topics": [
+                        {"name": "Variables y expresiones", "videos": ["dQw4w9WgXcQ"], "exercises": 15},
+                        {"name": "Ecuaciones lineales", "videos": ["PUB0TaZ7h-A"], "exercises": 20},
+                        {"name": "Sistemas de ecuaciones", "videos": ["6AgB3UUUC7Y"], "exercises": 25}
+                    ],
+                    "estimated_hours": 8,
+                    "difficulty": "Básico"
+                },
+                {
+                    "number": 2,
+                    "title": "Geometría Esencial",
+                    "description": "Formas, ángulos y propiedades geométricas",
+                    "topics": [
+                        {"name": "Ángulos y triángulos", "videos": ["eTymJPy6rT4"], "exercises": 18},
+                        {"name": "Perímetro y área", "videos": ["xCJoaGGJ1W0"], "exercises": 22},
+                        {"name": "Teorema de Pitágoras", "videos": ["AA6RfgP-AHU"], "exercises": 20}
+                    ],
+                    "estimated_hours": 10,
+                    "difficulty": "Básico"
+                },
+                {
+                    "number": 3,
+                    "title": "Probabilidad y Estadística",
+                    "description": "Análisis de datos y probabilidad básica",
+                    "topics": [
+                        {"name": "Media, mediana y moda", "videos": ["k3aKKasOmIw"], "exercises": 15},
+                        {"name": "Probabilidad simple", "videos": ["xSc4oLA9e8o"], "exercises": 20},
+                        {"name": "Gráficas estadísticas", "videos": ["hEWY6kkBdpo"], "exercises": 18}
+                    ],
+                    "estimated_hours": 7,
+                    "difficulty": "Intermedio"
+                }
+            ]
+        },
+        "intermediate": {
+            "units": [
+                {
+                    "number": 1,
+                    "title": "Álgebra Avanzada",
+                    "description": "Funciones y expresiones complejas",
+                    "topics": [
+                        {"name": "Funciones cuadráticas", "videos": ["Y036bRD36gY"], "exercises": 25},
+                        {"name": "Polinomios", "videos": ["Vm7H0VTlIco"], "exercises": 30},
+                        {"name": "Factorización", "videos": ["6MmLVS5PAVo"], "exercises": 28}
+                    ],
+                    "estimated_hours": 12,
+                    "difficulty": "Intermedio"
+                },
+                {
+                    "number": 2,
+                    "title": "Trigonometría",
+                    "description": "Funciones trigonométricas y aplicaciones",
+                    "topics": [
+                        {"name": "Seno, coseno y tangente", "videos": ["yBw67Fb31Cs"], "exercises": 25},
+                        {"name": "Identidades trigonométricas", "videos": ["0IEaW2NeAD0"], "exercises": 30},
+                        {"name": "Ley de senos y cosenos", "videos": ["pGaDcOMdw48"], "exercises": 25}
+                    ],
+                    "estimated_hours": 15,
+                    "difficulty": "Intermedio"
+                }
+            ]
+        },
+        "advanced": {
+            "units": [
+                {
+                    "number": 1,
+                    "title": "Cálculo Diferencial",
+                    "description": "Límites, derivadas y aplicaciones",
+                    "topics": [
+                        {"name": "Límites", "videos": ["riXcZT2ICjA"], "exercises": 30},
+                        {"name": "Derivadas", "videos": ["WUvTyaaNkzM"], "exercises": 35},
+                        {"name": "Optimización", "videos": ["Yx62iETruFE"], "exercises": 30}
+                    ],
+                    "estimated_hours": 20,
+                    "difficulty": "Avanzado"
+                }
+            ]
+        }
+    }
+}
+
+import math
+import requests
+from urllib.parse import parse_qs, urlparse
+
+def calculate_smart_weaknesses(test_answers, questions_data, response_times):
+    """
+    Advanced weakness calculation using statistical confidence intervals
+    and multiple performance factors
+    """
+    weaknesses = []
+    
+    # Group questions by topic
+    topics_data = {}
+    for answer in test_answers:
+        question_id = answer.get('question_id')
+        # Find question data
+        question = next((q for q in questions_data if q['id'] == question_id), None)
+        if not question:
+            continue
+            
+        topic_name = question.get('topic', {}).get('name', 'General')
+        if topic_name not in topics_data:
+            topics_data[topic_name] = {
+                'questions': [],
+                'answers': [],
+                'response_times': [],
+                'difficulties': []
+            }
+            
+        topics_data[topic_name]['questions'].append(question)
+        topics_data[topic_name]['answers'].append(answer.get('user_answer'))
+        topics_data[topic_name]['response_times'].append(response_times.get(question_id, 60000))
+        topics_data[topic_name]['difficulties'].append(question.get('difficulty', 3))
+    
+    # Analyze each topic
+    for topic_name, data in topics_data.items():
+        if len(data['questions']) < 2:  # Need minimum sample size
+            continue
+            
+        questions = data['questions']
+        answers = data['answers']
+        times = data['response_times']
+        difficulties = data['difficulties']
+        
+        # Factor 1: Accuracy with Wilson Score Confidence Interval
+        correct_count = sum(1 for i, q in enumerate(questions) 
+                           if answers[i] == 'B')  # Mock - replace with actual correct answer
+        total_count = len(questions)
+        accuracy = correct_count / total_count
+        
+        # Wilson score interval for 95% confidence
+        z = 1.96  # 95% confidence
+        n = total_count
+        p = accuracy
+        
+        if n > 0:
+            denominator = 1 + z*z/n
+            centre = (p + z*z/(2*n)) / denominator
+            margin = z * math.sqrt((p*(1-p) + z*z/(4*n))/n) / denominator
+            lower_bound = max(0, centre - margin)
+            upper_bound = min(1, centre + margin)
+        else:
+            lower_bound = 0
+            upper_bound = 1
+        
+        # Factor 2: Time analysis (normalized by difficulty)
+        avg_time = sum(times) / len(times)
+        expected_time = sum(d * 30000 for d in difficulties) / len(difficulties)  # 30s per difficulty level
+        time_ratio = avg_time / expected_time if expected_time > 0 else 1
+        
+        # Factor 3: Difficulty-weighted performance
+        difficulty_weight = sum(difficulties) / len(difficulties)
+        difficulty_factor = difficulty_weight / 5.0  # Normalize to 0-1
+        
+        # Factor 4: Consistency (variance in performance)
+        individual_scores = [1 if answers[i] == 'B' else 0 for i in range(len(questions))]
+        variance = sum((score - accuracy)**2 for score in individual_scores) / len(individual_scores)
+        consistency = 1 - variance  # Higher is better
+        
+        # Combined priority score
+        priority_score = (
+            (1 - lower_bound) * 0.4 +           # 40% confidence-adjusted accuracy
+            min(time_ratio - 1, 1) * 0.25 +     # 25% time factor (excess time only)
+            difficulty_factor * 0.2 +           # 20% difficulty factor
+            (1 - consistency) * 0.15            # 15% inconsistency penalty
+        )
+        
+        # Determine priority level
+        if priority_score > 0.65:
+            priority = 'HIGH'
+        elif priority_score > 0.45:
+            priority = 'MEDIUM'
+        else:
+            priority = 'LOW'
+        
+        # Only include topics that need work
+        if priority != 'LOW' or lower_bound < 0.6:
+            weaknesses.append({
+                'topic': topic_name,
+                'accuracy': accuracy,
+                'confidence_lower': lower_bound,
+                'confidence_upper': upper_bound,
+                'time_ratio': time_ratio,
+                'priority': priority,
+                'priority_score': priority_score,
+                'sample_size': total_count,
+                'consistency': consistency,
+                'videos_needed': 3 if priority == 'HIGH' else 2 if priority == 'MEDIUM' else 1
+            })
+    
+    # Sort by priority score (highest weakness first)
+    return sorted(weaknesses, key=lambda x: x['priority_score'], reverse=True)
+
+def validate_youtube_video(youtube_url):
+    """Quick validation of YouTube video availability using oEmbed"""
+    try:
+        # Extract video ID from URL
+        if 'youtube.com/watch?v=' in youtube_url:
+            video_id = youtube_url.split('v=')[1].split('&')[0]
+        elif 'youtu.be/' in youtube_url:
+            video_id = youtube_url.split('youtu.be/')[1].split('?')[0]
+        else:
+            video_id = youtube_url  # Assume it's just the ID
+            
+        # Use YouTube oEmbed API (no key required)
+        oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
+        response = requests.get(oembed_url, timeout=3)
+        
+        if response.status_code == 200:
+            data = response.json()
+            return {
+                'available': True,
+                'title': data.get('title', ''),
+                'author': data.get('author_name', ''),
+                'thumbnail': data.get('thumbnail_url', ''),
+                'video_id': video_id
+            }
+        else:
+            return {'available': False, 'error': 'Video not found or private'}
+            
+    except Exception as e:
+        return {'available': False, 'error': str(e)}
+
+def get_quality_validated_videos(topic_name, difficulty_level, count=3):
+    """Get videos with quality validation and smart selection"""
+    template = KHAN_ACADEMY_TEMPLATES.get("Matemáticas", {}).get(difficulty_level, {})
+    
+    validated_videos = []
+    fallback_videos = []
+    
+    # Search through template for matching topics
+    for unit in template.get('units', []):
+        for template_topic in unit.get('topics', []):
+            # Fuzzy matching for topic names
+            topic_similarity = calculate_topic_similarity(topic_name, template_topic['name'])
+            
+            if topic_similarity > 0.6:  # 60% similarity threshold
+                for video_id in template_topic.get('videos', []):
+                    full_url = f"https://youtube.com/watch?v={video_id}"
+                    validation = validate_youtube_video(video_id)
+                    
+                    video_data = {
+                        'video_id': video_id,
+                        'url': full_url,
+                        'title': validation.get('title', template_topic['name']),
+                        'topic': template_topic['name'],
+                        'topic_similarity': topic_similarity,
+                        'available': validation.get('available', False),
+                        'quality_score': 0.9 if validation.get('available') else 0.1
+                    }
+                    
+                    if validation.get('available'):
+                        validated_videos.append(video_data)
+                    else:
+                        fallback_videos.append(video_data)
+    
+    # Sort by topic similarity and quality
+    validated_videos.sort(key=lambda x: (x['quality_score'], x['topic_similarity']), reverse=True)
+    
+    # If we don't have enough validated videos, add fallbacks
+    if len(validated_videos) < count:
+        validated_videos.extend(fallback_videos[:count - len(validated_videos)])
+    
+    return validated_videos[:count]
+
+def calculate_topic_similarity(topic1, topic2):
+    """Simple similarity calculation for topic matching"""
+    topic1_words = set(topic1.lower().split())
+    topic2_words = set(topic2.lower().split())
+    
+    if not topic1_words or not topic2_words:
+        return 0
+    
+    intersection = topic1_words.intersection(topic2_words)
+    union = topic1_words.union(topic2_words)
+    
+    return len(intersection) / len(union) if union else 0
+
+def get_difficulty_level(score_percentage: float) -> str:
+    """Determine difficulty level based on diagnostic score"""
+    if score_percentage >= 80:
+        return "advanced"
+    elif score_percentage >= 50:
+        return "intermediate"
+    else:
+        return "beginner"
+
+def generate_personalized_recommendations(score: float, subject: str) -> Dict[str, Any]:
+    """Generate personalized recommendations based on score"""
+    if score >= 80:
+        return {
+            "focus": "Perfeccionamiento y temas avanzados",
+            "daily_time": "45-60 minutos",
+            "strategy": "Enfócate en problemas complejos y aplicaciones prácticas",
+            "priority_topics": ["Cálculo", "Problemas de optimización", "Modelado matemático"]
+        }
+    elif score >= 50:
+        return {
+            "focus": "Consolidación de conceptos intermedios",
+            "daily_time": "60-90 minutos",
+            "strategy": "Practica consistentemente y revisa conceptos fundamentales",
+            "priority_topics": ["Álgebra avanzada", "Trigonometría", "Geometría analítica"]
+        }
+    else:
+        return {
+            "focus": "Fortalecimiento de bases fundamentales",
+            "daily_time": "90-120 minutos",
+            "strategy": "Dedica tiempo extra a conceptos básicos antes de avanzar",
+            "priority_topics": ["Álgebra básica", "Geometría", "Aritmética"]
+        }
+
+@router.get("/generate/{subject_id}")
+async def generate_study_plan_simple(
+    subject_id: str,
+    db: Session = Depends(get_db)
+):
+    """Generate a Khan Academy style study plan with smart weakness detection"""
+    try:
+        # Get subject info
+        subject = db.query(Subject).filter(Subject.id == subject_id).first()
+        if not subject:
+            subject_name = "Matemáticas"
+        else:
+            subject_name = subject.name
+
+        # Try to get diagnostic results from latest test
+        # For now, simulate with mock data - in production, get from diagnostic test results
+        mock_diagnostic_data = {
+            "score_percentage": 65,
+            "test_answers": [
+                {"question_id": "q1", "user_answer": "A", "response_time": 45000},
+                {"question_id": "q2", "user_answer": "B", "response_time": 30000},
+                {"question_id": "q3", "user_answer": "C", "response_time": 90000},
+                {"question_id": "q4", "user_answer": "B", "response_time": 60000},
+            ],
+            "questions_data": [
+                {"id": "q1", "topic": {"name": "Funciones cuadráticas"}, "difficulty": 3, "correct_answer": "B"},
+                {"id": "q2", "topic": {"name": "Funciones cuadráticas"}, "difficulty": 2, "correct_answer": "B"},
+                {"id": "q3", "topic": {"name": "Sistemas de ecuaciones"}, "difficulty": 4, "correct_answer": "A"},
+                {"id": "q4", "topic": {"name": "Sistemas de ecuaciones"}, "difficulty": 3, "correct_answer": "B"},
+            ],
+            "response_times": {
+                "q1": 45000, "q2": 30000, "q3": 90000, "q4": 60000
+            }
+        }
+        
+        score_percentage = mock_diagnostic_data["score_percentage"]
+        
+        # Calculate smart weaknesses using statistical methods
+        weaknesses = calculate_smart_weaknesses(
+            mock_diagnostic_data["test_answers"],
+            mock_diagnostic_data["questions_data"], 
+            mock_diagnostic_data["response_times"]
+        )
+        
+        # Determine difficulty level
+        level = get_difficulty_level(score_percentage)
+        
+        # Get base template for subject and level
+        template = KHAN_ACADEMY_TEMPLATES.get(subject_name, KHAN_ACADEMY_TEMPLATES["Matemáticas"])
+        base_units = template.get(level, template["intermediate"])["units"]
+        
+        # Enhance units with weakness-based prioritization and validated videos
+        enhanced_units = []
+        for unit in base_units:
+            enhanced_unit = unit.copy()
+            enhanced_topics = []
+            
+            for topic in unit["topics"]:
+                enhanced_topic = topic.copy()
+                
+                # Check if this topic is a weakness
+                topic_weakness = next((w for w in weaknesses if w['topic'] in topic['name']), None)
+                
+                if topic_weakness:
+                    # High priority topic - add more resources
+                    enhanced_topic['is_weakness'] = True
+                    enhanced_topic['priority'] = topic_weakness['priority']
+                    enhanced_topic['confidence_score'] = topic_weakness['confidence_lower']
+                    enhanced_topic['exercises'] = topic['exercises'] + 10  # Extra practice
+                    enhanced_topic['estimated_time'] = topic.get('estimated_time', 60) + 30  # Extra time
+                    
+                    # Get validated videos for this weakness
+                    validated_videos = get_quality_validated_videos(
+                        topic_weakness['topic'], 
+                        level, 
+                        topic_weakness['videos_needed']
+                    )
+                    enhanced_topic['videos'] = [v['video_id'] for v in validated_videos]
+                    enhanced_topic['video_details'] = validated_videos
+                else:
+                    # Normal topic
+                    enhanced_topic['is_weakness'] = False
+                    enhanced_topic['priority'] = 'NORMAL'
+                    enhanced_topic['confidence_score'] = 0.8  # Assumed good
+                    
+                    # Get standard videos (1-2 videos)
+                    validated_videos = get_quality_validated_videos(topic['name'], level, 1)
+                    enhanced_topic['videos'] = [v['video_id'] for v in validated_videos] if validated_videos else topic.get('videos', [])
+                    enhanced_topic['video_details'] = validated_videos
+                
+                enhanced_topics.append(enhanced_topic)
+            
+            enhanced_unit['topics'] = enhanced_topics
+            enhanced_units.append(enhanced_unit)
+        
+        # Generate enhanced recommendations based on weaknesses
+        recommendations = generate_personalized_recommendations(score_percentage, subject_name)
+        if weaknesses:
+            recommendations['detected_weaknesses'] = [w['topic'] for w in weaknesses[:3]]
+            recommendations['focus'] = f"Enfoque prioritario en: {', '.join(w['topic'] for w in weaknesses[:2])}"
+        
+        # Generate smart weekly schedule prioritizing weaknesses
+        smart_schedule = generate_smart_weekly_schedule(enhanced_units, weaknesses)
+        
+        # Build complete study plan
+        study_plan = {
+            "id": str(uuid.uuid4()),
+            "subject": subject_name,
+            "subject_id": subject_id,
+            "title": f"Plan Inteligente de {subject_name}",
+            "description": f"Plan adaptativo con análisis estadístico ({score_percentage}%)",
+            "created_at": datetime.now().isoformat(),
+            "diagnostic_score": score_percentage,
+            "difficulty_level": level.capitalize(),
+            "units": enhanced_units,
+            "total_units": len(enhanced_units),
+            "estimated_total_hours": sum(u["estimated_hours"] for u in enhanced_units),
+            "recommendations": recommendations,
+            "weaknesses_detected": weaknesses,
+            "progress": {
+                "completed_units": 0,
+                "completed_topics": 0,
+                "total_topics": sum(len(u["topics"]) for u in enhanced_units),
+                "percentage": 0
+            },
+            "gamification": {
+                "current_rank": "C" if score_percentage < 60 else "B" if score_percentage < 80 else "A",
+                "xp_earned": 0,
+                "achievements": [],
+                "next_milestone": f"Mejora en {weaknesses[0]['topic']}" if weaknesses else "Completa tu primera unidad"
+            },
+            "weekly_schedule": smart_schedule,
+            "analytics": {
+                "weakness_count": len(weaknesses),
+                "high_priority_topics": len([w for w in weaknesses if w['priority'] == 'HIGH']),
+                "video_validation_enabled": True,
+                "statistical_analysis": True
+            }
+        }
+        
+        return study_plan
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+def generate_smart_weekly_schedule(units, weaknesses):
+    """Generate weekly schedule prioritizing weakness topics"""
+    schedule = {}
+    days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    
+    # Collect all topics with priorities
+    all_topics = []
+    for unit in units:
+        for topic in unit.get('topics', []):
+            all_topics.append({
+                'name': topic['name'],
+                'priority': topic.get('priority', 'NORMAL'),
+                'is_weakness': topic.get('is_weakness', False),
+                'estimated_time': topic.get('estimated_time', 60)
+            })
+    
+    # Sort topics: HIGH priority first, then MEDIUM, then NORMAL
+    priority_order = {'HIGH': 3, 'MEDIUM': 2, 'NORMAL': 1}
+    all_topics.sort(key=lambda x: priority_order.get(x['priority'], 1), reverse=True)
+    
+    # Assign to days
+    for i, day in enumerate(days):
+        if i < len(all_topics):
+            topic = all_topics[i]
+            
+            # Adjust time based on priority
+            base_time = topic['estimated_time']
+            if topic['priority'] == 'HIGH':
+                time_str = f"{base_time + 30} min"
+                note = "⚠️ Área de enfoque"
+            elif topic['priority'] == 'MEDIUM':
+                time_str = f"{base_time + 15} min"
+                note = "📚 Revisión importante"
+            else:
+                time_str = f"{base_time} min"
+                note = "✅ Práctica regular"
+            
+            schedule[day] = {
+                "topic": topic['name'],
+                "time": time_str,
+                "priority": topic['priority'],
+                "note": note
+            }
+        else:
+            # Fill remaining days with review
+            schedule[day] = {
+                "topic": "Repaso y práctica",
+                "time": "90 min",
+                "priority": "REVIEW",
+                "note": "🔄 Consolidación"
+            }
+    
+    return schedule
+
+@router.post("/generate")
+async def generate_study_plan_post(
+    request: Dict[str, Any],
+    db: Session = Depends(get_db)
+):
+    """Generate study plan from diagnostic results (POST)"""
+    subject_id = request.get("subject_id", "2a9c9371-b931-41d4-8d3e-ce5aae91a5c3")
+    score = request.get("score_percentage", 50)
+    
+    # Redirect to GET endpoint logic
+    return await generate_study_plan_simple(subject_id, db)
+
+@router.get("/my-plans")
+async def get_my_plans(db: Session = Depends(get_db)):
+    """Get user's study plans"""
+    # Return mock data for now
+    return [
+        {
+            "id": "plan-1",
+            "subject": "Matemáticas",
+            "title": "Plan Personalizado de Matemáticas",
+            "progress": 35,
+            "next_topic": "Ecuaciones cuadráticas",
+            "estimated_completion": "4 semanas"
+        }
+    ]

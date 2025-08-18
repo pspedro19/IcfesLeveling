@@ -25,11 +25,13 @@ class DiagnosticTestQuestion(BaseModel):
 
 class DiagnosticTestAnswer(BaseModel):
     question_id: str = Field(..., min_length=1)
-    user_answer: str = Field(..., pattern='^[A-Ea-e]$')  # Acepta minúsculas también
+    user_answer: str = Field(..., pattern='^[A-Ea-e]?$')  # Acepta minúsculas, mayúsculas y vacío
     response_time_ms: int = Field(..., ge=0, le=2147483647)
     
     @validator('user_answer')
     def uppercase_answer(cls, v):
+        if not v:  # Si está vacío, mantenerlo vacío
+            return ''
         return v.upper()  # Normalizar a mayúsculas
     
     class Config:
@@ -37,6 +39,7 @@ class DiagnosticTestAnswer(BaseModel):
 
 class DiagnosticTestSubmit(BaseModel):
     answers: List[DiagnosticTestAnswer]
+    time_spent_seconds: Optional[int] = None  # Permitir este campo del frontend
     
     @validator('answers')
     def validate_answers(cls, v):
@@ -47,7 +50,7 @@ class DiagnosticTestSubmit(BaseModel):
         return v
     
     class Config:
-        extra = 'forbid'  # IMPORTANTE: Rechaza test_id en el body
+        extra = 'forbid'  # Rechaza otros campos extra
 
 class DiagnosticTestAnalysis(BaseModel):
     subject: str

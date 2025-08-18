@@ -2,11 +2,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies including pandas/openpyxl for Excel files
 RUN apt-get update && apt-get install -y \
     gcc \
     python3-dev \
     libpq-dev \
+    postgresql-client \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -14,13 +15,21 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install pandas and openpyxl for data loading
+RUN pip install pandas openpyxl psycopg2-binary
+
 # Copy application code
 COPY . .
 
-# Create non-root user
+# Copy startup scripts
+COPY startup_with_data.py /app/startup_with_data.py
+COPY startup_with_csv_loader.py /app/startup_with_csv_loader.py
+RUN chmod +x /app/startup_with_data.py
+RUN chmod +x /app/startup_with_csv_loader.py
+
+# Create non-root user (but don't switch yet for startup)
 RUN adduser --disabled-password --gecos '' appuser
 RUN chown -R appuser:appuser /app
-USER appuser
 
 # Expose port
 EXPOSE 4000
@@ -29,6 +38,6 @@ EXPOSE 4000
 HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import requests; requests.get('http://localhost:4000/health').raise_for_status()" || exit 1
 
-# Run the application
+# Run the application with CSV loader startup script
 ENV PYTHONUNBUFFERED=1
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "4000"] 
+CMD ["python", "/app/startup_with_csv_loader.py"] 

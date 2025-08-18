@@ -24,8 +24,21 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
   
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo);
-    errorHandler.handleError(error);
+    // Use native console to avoid circular references
+    if (typeof window !== 'undefined' && window.console && window.console.log) {
+      window.console.log('Error caught by boundary:', error, errorInfo);
+    }
+    // Only call error handler if it exists and is a function
+    if (errorHandler && typeof errorHandler.handleError === 'function') {
+      try {
+        errorHandler.handleError(error);
+      } catch (handlerError) {
+        // Silently fail if error handler has issues
+        if (window.console && window.console.log) {
+          window.console.log('Error handler failed:', handlerError);
+        }
+      }
+    }
   }
   
   render() {

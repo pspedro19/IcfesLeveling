@@ -1,0 +1,501 @@
+/* =====================================================
+   🎨 SISTEMA DE DISEÑO HÍBRIDO ICFES LEVELING
+   Best of Breed: Coursera + Khan Academy + Modern
+   ===================================================== */
+
+/* ===== VARIABLES CSS HÍBRIDAS ===== */
+:root {
+  /* Colors - Khan Academy Base */
+  --khan-primary: #1865f2;
+  --khan-secondary: #00a60e;
+  --brand-accent: #8B5CF6;
+  
+  /* Coursera Gradients */
+  --coursera-primary: linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #1e40af 100%);
+  --coursera-success: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+  --coursera-premium: linear-gradient(135deg, #7c3aed 0%, #db2777 50%, #be185d 100%);
+  
+  /* Semantic Colors */
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --color-info: #3B82F6;
+  
+  /* Gamification */
+  --xp-color: #FCD34D;
+  --rank-s: #DC2626;
+  --rank-a: #F59E0B;
+  --rank-b: #3B82F6;
+  --achievement: #10B981;
+  
+  /* Educational Context */
+  --beginner: #22C55E;
+  --intermediate: #F59E0B;
+  --advanced: #EF4444;
+  --mastery: #8B5CF6;
+  
+  /* Backgrounds - Glassmorphism */
+  --bg-primary: rgba(0, 0, 0, 0.9);
+  --bg-secondary: rgba(0, 0, 0, 0.3);
+  --bg-card: rgba(255, 255, 255, 0.05);
+  --bg-glass: rgba(255, 255, 255, 0.1);
+  --bg-glass-strong: rgba(255, 255, 255, 0.15);
+  
+  /* Shadows & Glows */
+  --shadow-glow-primary: 0 0 20px rgba(139, 92, 246, 0.4);
+  --shadow-glow-success: 0 0 20px rgba(34, 197, 94, 0.4);
+  --shadow-glow-xp: 0 0 20px rgba(252, 211, 77, 0.4);
+  --shadow-glow-rank-s: 0 0 30px rgba(220, 38, 38, 0.5);
+  
+  /* Spacing */
+  --space-unit: 1rem; /* 16px base */
+  --card-padding: 1.5rem;
+  --section-margin: 3rem;
+  
+  /* Typography */
+  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Poppins', 'Inter', sans-serif;
+  --font-educational: 'Source Sans Pro', 'Inter', sans-serif;
+  
+  /* Animations */
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+  --duration-slow: 400ms;
+  --easing-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --easing-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* ===== FOUNDATIONAL CLASSES ===== */
+
+/* Khan Academy inspired base */
+.khan-style {
+  font-family: var(--font-educational);
+  color: #ffffff;
+  background: linear-gradient(135deg, #1865f2 0%, #00a60e 50%, #1565c0 100%);
+}
+
+/* Coursera inspired premium feel */
+.coursera-style {
+  font-family: var(--font-primary);
+  background: var(--coursera-premium);
+  color: #ffffff;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* Hybrid Background */
+.hybrid-bg {
+  background: linear-gradient(135deg, 
+    rgba(15, 23, 42, 0.95) 0%,
+    rgba(88, 28, 135, 0.85) 35%,
+    rgba(15, 23, 42, 0.95) 100%
+  );
+  min-height: 100vh;
+}
+
+/* ===== GLASSMORPHISM SYSTEM ===== */
+.glass-card {
+  background: var(--bg-glass);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 1rem;
+  transition: all var(--duration-base) var(--easing-smooth);
+}
+
+.glass-card:hover {
+  background: var(--bg-glass-strong);
+  border-color: rgba(139, 92, 246, 0.4);
+  transform: translateY(-2px);
+}
+
+.glass-card-strong {
+  background: var(--bg-glass-strong);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.glass-header {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+/* ===== BOTONES HÍBRIDOS ===== */
+.btn-hybrid {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: all var(--duration-base) var(--easing-smooth);
+  cursor: pointer;
+  border: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-khan {
+  background: var(--khan-primary);
+  color: white;
+  box-shadow: 0 4px 12px rgba(24, 101, 242, 0.3);
+}
+
+.btn-khan:hover {
+  background: #1557d6;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(24, 101, 242, 0.4);
+}
+
+.btn-coursera {
+  background: var(--coursera-premium);
+  color: white;
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.3);
+}
+
+.btn-coursera:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(124, 58, 237, 0.4);
+}
+
+.btn-hybrid-primary {
+  background: linear-gradient(135deg, var(--khan-primary) 0%, var(--brand-accent) 100%);
+  color: white;
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.3);
+}
+
+.btn-hybrid-primary:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: var(--shadow-glow-primary);
+}
+
+/* ===== PROGRESS SYSTEM ===== */
+.progress-hybrid {
+  width: 100%;
+  height: 0.75rem;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 9999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-bar-khan {
+  height: 100%;
+  background: linear-gradient(90deg, var(--khan-primary) 0%, var(--khan-secondary) 100%);
+  border-radius: 9999px;
+  transition: width var(--duration-slow) var(--easing-smooth);
+  position: relative;
+}
+
+.progress-bar-coursera {
+  height: 100%;
+  background: var(--coursera-premium);
+  border-radius: 9999px;
+  transition: width var(--duration-slow) var(--easing-smooth);
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+}
+
+.progress-bar-hybrid {
+  height: 100%;
+  background: linear-gradient(90deg, 
+    var(--khan-primary) 0%, 
+    var(--brand-accent) 50%, 
+    #db2777 100%
+  );
+  border-radius: 9999px;
+  transition: width var(--duration-slow) var(--easing-smooth);
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar-hybrid::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(255, 255, 255, 0.3) 50%, 
+    transparent 100%
+  );
+  animation: progress-shine 2s infinite;
+}
+
+/* ===== BADGES EDUCATIVOS ===== */
+.badge-difficulty {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid;
+}
+
+.badge-beginner {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22C55E;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.badge-intermediate {
+  background: rgba(245, 158, 11, 0.15);
+  color: #F59E0B;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.badge-advanced {
+  background: rgba(239, 68, 68, 0.15);
+  color: #EF4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* ===== GAMIFICATION ELEMENTS ===== */
+.xp-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, 
+    rgba(252, 211, 77, 0.2) 0%, 
+    rgba(245, 158, 11, 0.2) 100%
+  );
+  border: 1px solid rgba(252, 211, 77, 0.3);
+  border-radius: 0.75rem;
+  color: var(--xp-color);
+  font-weight: 700;
+  backdrop-filter: blur(8px);
+}
+
+.rank-display {
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.rank-s { color: var(--rank-s); }
+.rank-a { color: var(--rank-a); }
+.rank-b { color: var(--rank-b); }
+
+.achievement-notification {
+  animation: achievement-appear 0.6s var(--easing-bounce);
+}
+
+/* ===== UNIT CARDS (Hybrid Layout) ===== */
+.unit-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 1.5rem;
+  padding: var(--card-padding);
+  transition: all var(--duration-base) var(--easing-smooth);
+  position: relative;
+  overflow: hidden;
+}
+
+.unit-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, 
+    var(--khan-primary) 0%, 
+    var(--brand-accent) 50%, 
+    #db2777 100%
+  );
+}
+
+.unit-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  border-color: rgba(139, 92, 246, 0.4);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+
+.unit-card.locked {
+  opacity: 0.6;
+  filter: grayscale(0.3);
+}
+
+.unit-card.locked:hover {
+  transform: none;
+}
+
+/* ===== TOPIC ITEMS (Khan Academy Style) ===== */
+.topic-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 0.75rem;
+  transition: all var(--duration-base) var(--easing-smooth);
+  margin-bottom: 0.75rem;
+}
+
+.topic-item:hover {
+  background: rgba(0, 0, 0, 0.3);
+  transform: translateX(4px);
+}
+
+.topic-number {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.875rem;
+  margin-right: 1rem;
+}
+
+.topic-number.completed {
+  background: var(--color-success);
+  color: white;
+}
+
+.topic-number.current {
+  background: var(--khan-primary);
+  color: white;
+}
+
+.topic-number.locked {
+  background: #6B7280;
+  color: white;
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes progress-shine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes achievement-appear {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) rotate(-10deg);
+  }
+  50% {
+    transform: scale(1.1) rotate(5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes pulse-xp {
+  0%, 100% { 
+    box-shadow: 0 0 0 0 rgba(252, 211, 77, 0.7);
+    transform: scale(1);
+  }
+  50% { 
+    box-shadow: 0 0 20px 10px rgba(252, 211, 77, 0.3);
+    transform: scale(1.05);
+  }
+}
+
+/* ===== UTILITY CLASSES ===== */
+.animate-float { animation: float-gentle 3s ease-in-out infinite; }
+.animate-pulse-xp { animation: pulse-xp 2s ease-in-out infinite; }
+.animate-achievement { animation: achievement-appear 0.6s var(--easing-bounce); }
+
+.text-gradient-khan {
+  background: linear-gradient(135deg, var(--khan-primary) 0%, var(--khan-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-coursera {
+  background: var(--coursera-premium);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-hybrid {
+  background: linear-gradient(135deg, 
+    var(--khan-primary) 0%, 
+    var(--brand-accent) 50%, 
+    #db2777 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+  .unit-card {
+    padding: 1rem;
+  }
+  
+  .topic-item {
+    padding: 0.75rem;
+  }
+  
+  .btn-hybrid {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+  }
+  
+  .glass-header {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --card-padding: 1rem;
+    --section-margin: 2rem;
+  }
+  
+  .hybrid-bg {
+    padding: 1rem;
+  }
+}
+
+/* ===== ACCESSIBILITY ===== */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .animate-float,
+  .animate-pulse-xp,
+  .animate-achievement {
+    animation: none;
+  }
+}
+
+/* Focus styles for accessibility */
+.btn-hybrid:focus,
+.topic-item:focus,
+.unit-card:focus {
+  outline: 2px solid var(--brand-accent);
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .glass-card {
+    border-width: 2px;
+    background: rgba(0, 0, 0, 0.8);
+  }
+  
+  .unit-card {
+    border-width: 2px;
+  }
+}

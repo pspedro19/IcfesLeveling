@@ -55,16 +55,31 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     
-    # Development mode: allow requests without token
+    # Development mode: allow requests without token for testing
+    # TODO: Remove this before production deployment
     if settings.ENVIRONMENT == "development" and not token:
-        # Return a mock user for development
+        # Return a mock admin user for development testing
         mock_user = User(
             id=uuid.uuid4(),
-            email="dev@example.com",
-            username="dev_user",
+            email="admin@icfes-leveling.dev",
+            username="admin_user", 
             hashed_password="",
             is_active=True,
-            created_at=datetime.utcnow()
+            display_name="Admin User",
+            level=99,
+            experience=50000,
+            rank="S",
+            hp=100,
+            mp=50,
+            power=10,
+            wisdom=10,
+            speed=10,
+            orbs=1000,
+            crystals=0,
+            streak_days=0,
+            premium_plan="admin",
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
         )
         # Set a consistent ID for development to avoid database lookups
         mock_user.id = uuid.UUID("00000000-0000-0000-0000-000000000001")

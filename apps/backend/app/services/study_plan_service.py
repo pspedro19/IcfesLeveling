@@ -402,11 +402,17 @@ class StudyPlanService:
             logger.warning(f"Error obteniendo plantillas de BD para {subject_id}: {e}")
         
         # Fallback a planes hardcodeados si no hay plantillas en BD
+        # Get the actual subject to use its correct UUID
+        subject = self.db.query(Subject).filter(Subject.id == subject_id).first()
+        if not subject:
+            logger.error(f"Subject not found: {subject_id}")
+            return {"units": [], "estimated_duration": "0 horas", "difficulty": "unknown"}
+        
         base_plans = {
-            "550e8400-e29b-41d4-a716-446655440001": {  # Matemáticas
-                "subject": "Matemáticas",
-                "title": "Mazmorra de Matemáticas: Fundamentos",
-                "description": "Conquista los conceptos fundamentales de las matemáticas ICFES",
+            subject.id: {  # Use actual subject ID
+                "subject": subject.name,
+                "title": f"Mazmorra de {subject.name}: Fundamentos",
+                "description": f"Conquista los conceptos fundamentales de {subject.name} ICFES",
                 "units": [
                     {
                         "unit_number": 1,

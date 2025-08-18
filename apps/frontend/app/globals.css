@@ -462,6 +462,9 @@
    🎮 ESTILOS GAMIFICADOS ADICIONALES
    =============================================== */
 
+/* SISTEMA HÍBRIDO UX - Importar estilos */
+@import './styles/hybrid-ux.css';
+
 .boss-question { animation: boss-pulse 2s ease-in-out infinite; border-color: theme('colors.game.rankS') !important; box-shadow: 0 0 50px rgba(220,38,38,0.3), inset 0 0 30px rgba(220,38,38,0.1) !important; }
 @keyframes boss-pulse { 0%,100%{ border-width:2px; filter:hue-rotate(0deg) } 50%{ border-width:4px; filter:hue-rotate(20deg) } }
 

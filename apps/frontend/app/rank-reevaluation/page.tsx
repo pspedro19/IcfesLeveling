@@ -204,7 +204,7 @@ export default function RankReevaluationPage() {
           subjects_status: {
             "math": {
               eligible: true,
-              subject_id: "550e8400-e29b-41d4-a716-446655440001",
+              subject_id: "2a9c9371-b931-41d4-8d3e-ce5aae91a5c3",
               subject_name: "Matemáticas",
               requirements_met: true,
               plan_completion: { percentage: 92, completed_units: 4, total_units: 4 },
@@ -215,7 +215,7 @@ export default function RankReevaluationPage() {
             },
             "language": {
               eligible: true,
-              subject_id: "550e8400-e29b-41d4-a716-446655440002",
+              subject_id: "57212df3-3db7-4638-bb45-38fc4ad6f268",
               subject_name: "Lenguaje",
               requirements_met: true,
               plan_completion: { percentage: 89, completed_units: 4, total_units: 4 },
@@ -226,7 +226,7 @@ export default function RankReevaluationPage() {
             },
             "science": {
               eligible: false,
-              subject_id: "550e8400-e29b-41d4-a716-446655440003",
+              subject_id: "b865fa3d-f3f1-4bb8-93e8-f9f55de8e696",
               subject_name: "Ciencias Naturales",
               requirements_met: false,
               plan_completion: { percentage: 65, completed_units: 2, total_units: 4 },
