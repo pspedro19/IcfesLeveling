@@ -1,13 +1,37 @@
 'use client';
 
-import { useState } from 'react';
-import { useDynamicSubjects } from '../../components/DynamicSubjectIcon';
+import { useState, useEffect } from 'react';
 import DynamicSubjectIcon from '../../components/DynamicSubjectIcon';
 import DiagnosticTestFlow from './test-flow';
 
 export default function DiagnosticTest() {
-  const { subjects, loading, error } = useDynamicSubjects();
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<any>(null);
+
+  useEffect(() => {
+    // Fetch subjects from API
+    fetch('http://localhost:4000/api/v1/subjects/dynamic')
+      .then(res => res.json())
+      .then(data => {
+        setSubjects(data || []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Error fetching subjects:', err);
+        // Use fallback subjects if API fails
+        setSubjects([
+          { id: '1', name: 'Matemáticas', description: 'Álgebra, geometría, cálculo y estadística', icon_url: '🔢' },
+          { id: '2', name: 'Lectura Crítica', description: 'Comprensión y análisis de textos', icon_url: '📚' },
+          { id: '3', name: 'Ciencias Naturales', description: 'Física, química y biología', icon_url: '🔬' },
+          { id: '4', name: 'Ciencias Sociales', description: 'Historia, geografía y ciudadanía', icon_url: '🌍' },
+          { id: '5', name: 'Inglés', description: 'Comprensión del idioma inglés', icon_url: '🌐' }
+        ]);
+        setError('Usando materias de respaldo');
+        setLoading(false);
+      });
+  }, []);
 
   const startDiagnostic = (subject: any) => {
     setSelectedSubject(subject);

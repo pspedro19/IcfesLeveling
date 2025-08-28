@@ -12,7 +12,7 @@ import os
 from .core.config import settings, LOGGING_CONFIG
 from .core.database import engine, Base
 # from .middleware.guest_limits import GuestLimitsMiddleware  # Comentado temporalmente
-from .routes import auth, auth_simple, questions, battles, ai, leaderboard, quests, personality, diagnostic, diagnostic_public, diagnostic_simple, diagnostic_public_fix, diagnostic_test_fix, subjects_fix, study_plans, study_plans_simple, videos, video_recommendations, quizzes, bosses, analytics, monthly_reassessment, premium_simple as premium, guilds, achievements, store, analytics_advanced, questions_cached, users_cached, battles_cached, ai_tips, recommendations, admin, video_tracking, exercise_tracking, rank_reevaluation, advanced_health, video_progress_api, yml_plans, dynamic_subjects
+from .routes import auth, auth_simple, questions, battles, ai, leaderboard, quests, personality, diagnostic, diagnostic_public, diagnostic_simple, diagnostic_public_fix, diagnostic_test_fix, subjects_fix, study_plans, study_plans_simple, videos, video_recommendations, quizzes, bosses, analytics, monthly_reassessment, premium_simple as premium, guilds, achievements, store, analytics_advanced, questions_cached, users_cached, battles_cached, ai_tips, recommendations, admin, video_tracking, exercise_tracking, rank_reevaluation, advanced_health, video_progress_api, yml_plans, dynamic_subjects, dynamic_study_plan
 from .routes.icfes import recommendations as icfes_recommendations
 from .routes import icfes_catalog
 
@@ -409,6 +409,7 @@ app.include_router(yml_plans.router)  # Rutas YML personalizadas
 app.include_router(video_progress_api.router)  # Sistema de Video Progress
 app.include_router(advanced_health.router)  # Endpoints de salud avanzada
 app.include_router(dynamic_subjects.router)  # Dynamic subjects management (has own /api/v1/subjects prefix)
+app.include_router(dynamic_study_plan.router)  # Dynamic study plans with YouTube videos
 
 # Importar y registrar el nuevo router de YouTube API
 from .routes import youtube_api
