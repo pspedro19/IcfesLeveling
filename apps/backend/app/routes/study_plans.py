@@ -105,6 +105,136 @@ async def generate_study_plan(
         logger.error(f"Error generating study plan: {e}")
         raise HTTPException(status_code=500, detail="Error generando plan de estudio")
 
+@router.post("/generate-ai-comprehensive", response_model=StudyPlanDetail)
+async def generate_ai_comprehensive_study_plan(
+    payload: AdaptiveGeneratePayload,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Generate a complete AI-powered comprehensive study plan with all advanced features
+    """
+    try:
+        subject = db.query(Subject).filter(Subject.id == payload.subject_id).first()
+        if not subject:
+            raise HTTPException(status_code=404, detail="Materia no encontrada")
+
+        # Use the new AI-powered comprehensive service
+        integration_service = StudyPlanIntegrationService(db)
+        comprehensive_plan = await integration_service.generate_ai_powered_comprehensive_plan(
+            user_id=str(current_user.id),
+            subject_id=payload.subject_id,
+            preferences={
+                "use_diagnostic": payload.use_diagnostic,
+                "allow_rescheduling": True,
+                "max_daily_hours": 2
+            }
+        )
+
+        # Save the generated plan to the database
+        try:
+            study_plan_service = StudyPlanService(db)
+            
+            # Create StudyPlan model instance
+            study_plan = StudyPlan(
+                user_id=current_user.id,
+                subject_id=payload.subject_id,
+                plan_name=comprehensive_plan["title"],
+                plan_data=comprehensive_plan,
+                total_units=len(comprehensive_plan["units"]),
+                completed_units=0,
+                progress_percentage=0.00,
+                is_active=True
+            )
+            
+            db.add(study_plan)
+            db.commit()
+            db.refresh(study_plan)
+            
+            # Update the plan ID with the database ID
+            comprehensive_plan["id"] = str(study_plan.id)
+            
+            # Invalidate cache
+            background_tasks.add_task(lambda: study_plan_service._invalidate_user_cache(str(current_user.id)))
+            
+        except Exception as e:
+            logger.error(f"Error saving AI comprehensive study plan: {e}")
+            # Continue without saving if there's an error
+
+        # Convert to StudyPlanDetail format
+        from ..schemas.study_plan import StudyUnit, StudyTopic, UnitRecommendations
+        
+        converted_units = []
+        for unit in comprehensive_plan["units"]:
+            # Convert topics to StudyTopic schema
+            study_topics = []
+            for topic in unit.get("topics", []):
+                study_topics.append(StudyTopic(
+                    name=topic.get("name", "Tema"),
+                    difficulty=topic.get("difficulty", 1),
+                    questions=topic.get("questions", 5),
+                    tags=topic.get("tags", [])
+                ))
+            
+            # Create UnitRecommendations from AI recommendations
+            unit_recommendations = UnitRecommendations(
+                priority=unit.get("ai_recommendations", {}).get("priority", "medium"),
+                weak_areas=unit.get("ai_recommendations", {}).get("potential_challenges", []),
+                focus_topics=unit.get("prioritized_topics", [])[:3],
+                study_time=f"{unit.get('personalized_hours', 2)} horas"
+            )
+            
+            # Create StudyUnit
+            study_unit = StudyUnit(
+                unit_number=unit.get("unit_number", 1),
+                name=unit.get("name", "Unidad"),
+                description=unit.get("description", "Descripción de la unidad"),
+                topics=study_topics,
+                recommendations=unit_recommendations,
+                unlocked=unit.get("unlocked", True),
+                progress=0.0,
+                ai_recommended=unit.get("ai_recommended", True)
+            )
+            converted_units.append(study_unit)
+        
+        return StudyPlanDetail(
+            id=comprehensive_plan.get("id", "generated"),
+            plan_name=comprehensive_plan["title"],
+            subject=comprehensive_plan["subject"],
+            title=comprehensive_plan["title"],
+            description=comprehensive_plan["description"],
+            units=converted_units,
+            total_units=len(comprehensive_plan["units"]),
+            completed_units=0,
+            progress_percentage=0.0,
+            estimated_time=comprehensive_plan.get("estimated_completion_time", "8-12 semanas"),
+            difficulty_curve=comprehensive_plan.get("difficulty_curve", "adaptive"),
+            icfes_weight=comprehensive_plan.get("icfes_weight", 0.25),
+            exam_sections=comprehensive_plan.get("exam_sections", []),
+            personalized_recommendations={
+                **comprehensive_plan.get("personalized_recommendations", {}),
+                "ai_powered": True,
+                "learning_style": comprehensive_plan.get("ai_powered_features", {})
+                    .get("learning_style_detection", {}).get("primary_learning_style", "visual"),
+                "personalization_confidence": comprehensive_plan.get("personalization_confidence", 0.8),
+                "expected_outcomes": comprehensive_plan.get("expected_outcomes", {}),
+                "ai_features_enabled": list(comprehensive_plan.get("system_capabilities", {}).keys())
+            },
+            progress_details={
+                "overall_progress": 0.0,
+                "completed_units": 0,
+                "unit_details": [],
+                "ai_insights": comprehensive_plan.get("ai_powered_features", {}),
+                "adaptive_system_active": True
+            },
+            last_updated=datetime.now().isoformat()
+        )
+        
+    except Exception as e:
+        logger.error(f"Error generating AI comprehensive plan: {e}")
+        raise HTTPException(status_code=500, detail=f"Error generando plan AI completo: {str(e)}")
+
 @router.post("/generate-adaptive", response_model=StudyPlanDetail)
 async def generate_study_plan_adaptive(
     payload: AdaptiveGeneratePayload,

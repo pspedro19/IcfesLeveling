@@ -1,0 +1,271 @@
+# Alertmanager configuration for ICFES Leveling Platform - Production
+
+# Global configuration
+global:
+  # SMTP configuration for email alerts
+  smtp_smarthost: '${SMTP_HOST}:${SMTP_PORT}'
+  smtp_from: 'alerts@icfes-leveling.com'
+  smtp_auth_username: '${SMTP_USER}'
+  smtp_auth_password: '${SMTP_PASSWORD}'
+  smtp_require_tls: true
+  
+  # Slack configuration
+  slack_api_url: '${SLACK_WEBHOOK_URL}'
+  
+  # Default notification timeout
+  resolve_timeout: 5m
+
+# Template files
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Route tree for alert routing
+route:
+  # Default settings for all alerts
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: 'default-notifications'
+  
+  # Child routes for specific alert types
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      group_interval: 2m
+      repeat_interval: 30m
+      continue: true
+    
+    # Warning alerts - standard notification
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 2m
+      group_interval: 10m
+      repeat_interval: 2h
+    
+    # Database alerts
+    - match:
+        service: database
+      receiver: 'database-alerts'
+      group_by: ['alertname', 'instance']
+    
+    # Security alerts
+    - match:
+        category: security
+      receiver: 'security-alerts'
+      group_wait: 0s
+      repeat_interval: 15m
+    
+    # Performance alerts
+    - match:
+        category: performance
+      receiver: 'performance-alerts'
+      group_wait: 5m
+      repeat_interval: 1h
+    
+    # Maintenance notifications
+    - match:
+        category: maintenance
+      receiver: 'maintenance-notifications'
+      group_wait: 10m
+      repeat_interval: 24h
+
+# Alert inhibition rules
+inhibit_rules:
+  # Inhibit warning alerts if critical alert is firing
+  - source_match:
+      severity: critical
+    target_match:
+      severity: warning
+    equal: ['alertname', 'instance']
+  
+  # Inhibit node alerts if node is down
+  - source_match:
+      alertname: InstanceDown
+    target_match_re:
+      alertname: '(NodeCPUHigh|NodeMemoryHigh|NodeDiskSpaceHigh)'
+    equal: ['instance']
+
+# Notification receivers
+receivers:
+  # Default notification channel
+  - name: 'default-notifications'
+    email_configs:
+      - to: 'ops@icfes-leveling.com'
+        subject: '[ICFES Alert] {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          **Alert:** {{ .Annotations.summary }}
+          **Description:** {{ .Annotations.description }}
+          **Severity:** {{ .Labels.severity }}
+          **Instance:** {{ .Labels.instance }}
+          **Started:** {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+          {{ if .EndsAt }}**Ended:** {{ .EndsAt.Format "2006-01-02 15:04:05 MST" }}{{ end }}
+          
+          {{ end }}
+    
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#icfes-alerts'
+        username: 'Alertmanager'
+        icon_emoji: ':warning:'
+        title: 'ICFES Platform Alert'
+        text: |
+          {{ range .Alerts }}
+          *{{ .Annotations.summary }}*
+          {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }} | Instance: {{ .Labels.instance }}
+          {{ end }}
+
+  # Critical alerts - multiple channels
+  - name: 'critical-alerts'
+    email_configs:
+      - to: 'critical@icfes-leveling.com, cto@icfes-leveling.com'
+        subject: '[CRITICAL] {{ .GroupLabels.alertname }} - ICFES Platform'
+        body: |
+          🚨 CRITICAL ALERT 🚨
+          
+          {{ range .Alerts }}
+          **Alert:** {{ .Annotations.summary }}
+          **Description:** {{ .Annotations.description }}
+          **Severity:** {{ .Labels.severity }}
+          **Service:** {{ .Labels.service }}
+          **Instance:** {{ .Labels.instance }}
+          **Started:** {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+          
+          **Runbook:** {{ .Annotations.runbook_url }}
+          **Dashboard:** {{ .Annotations.dashboard_url }}
+          {{ end }}
+        headers:
+          Priority: 'urgent'
+    
+    slack_configs:
+      - api_url: '${SLACK_CRITICAL_WEBHOOK_URL}'
+        channel: '#icfes-critical'
+        username: 'Critical Alerts'
+        icon_emoji: ':rotating_light:'
+        title: '🚨 CRITICAL ALERT - ICFES Platform'
+        color: 'danger'
+        text: |
+          {{ range .Alerts }}
+          *{{ .Annotations.summary }}*
+          {{ .Annotations.description }}
+          
+          Severity: {{ .Labels.severity }}
+          Service: {{ .Labels.service }}
+          Instance: {{ .Labels.instance }}
+          
+          <{{ .Annotations.runbook_url }}|Runbook> | <{{ .Annotations.dashboard_url }}|Dashboard>
+          {{ end }}
+    
+    # PagerDuty integration for critical alerts
+    pagerduty_configs:
+      - routing_key: '${PAGERDUTY_INTEGRATION_KEY}'
+        description: '{{ .GroupLabels.alertname }} - ICFES Platform'
+        severity: 'critical'
+        details:
+          summary: '{{ .CommonAnnotations.summary }}'
+          description: '{{ .CommonAnnotations.description }}'
+          runbook_url: '{{ .CommonAnnotations.runbook_url }}'
+
+  # Warning alerts
+  - name: 'warning-alerts'
+    email_configs:
+      - to: 'warnings@icfes-leveling.com'
+        subject: '[WARNING] {{ .GroupLabels.alertname }} - ICFES Platform'
+        body: |
+          ⚠️ WARNING ALERT ⚠️
+          
+          {{ range .Alerts }}
+          **Alert:** {{ .Annotations.summary }}
+          **Description:** {{ .Annotations.description }}
+          **Service:** {{ .Labels.service }}
+          **Instance:** {{ .Labels.instance }}
+          **Started:** {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+          {{ end }}
+    
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#icfes-warnings'
+        username: 'Warning Alerts'
+        icon_emoji: ':warning:'
+        title: '⚠️ Warning - ICFES Platform'
+        color: 'warning'
+
+  # Database specific alerts
+  - name: 'database-alerts'
+    email_configs:
+      - to: 'dba@icfes-leveling.com, ops@icfes-leveling.com'
+        subject: '[DATABASE] {{ .GroupLabels.alertname }} - ICFES Platform'
+        body: |
+          💾 DATABASE ALERT 💾
+          
+          {{ range .Alerts }}
+          **Alert:** {{ .Annotations.summary }}
+          **Description:** {{ .Annotations.description }}
+          **Database:** {{ .Labels.database }}
+          **Instance:** {{ .Labels.instance }}
+          **Query:** {{ .Annotations.query }}
+          {{ end }}
+    
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#icfes-database'
+        username: 'Database Alerts'
+        icon_emoji: ':floppy_disk:'
+
+  # Security alerts
+  - name: 'security-alerts'
+    email_configs:
+      - to: 'security@icfes-leveling.com, cto@icfes-leveling.com'
+        subject: '[SECURITY] {{ .GroupLabels.alertname }} - ICFES Platform'
+        body: |
+          🔒 SECURITY ALERT 🔒
+          
+          {{ range .Alerts }}
+          **Alert:** {{ .Annotations.summary }}
+          **Description:** {{ .Annotations.description }}
+          **Source IP:** {{ .Labels.source_ip }}
+          **Action:** {{ .Labels.action }}
+          **Severity:** {{ .Labels.severity }}
+          **Time:** {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+          {{ end }}
+        headers:
+          Priority: 'urgent'
+          X-Security-Alert: 'true'
+    
+    slack_configs:
+      - api_url: '${SLACK_SECURITY_WEBHOOK_URL}'
+        channel: '#icfes-security'
+        username: 'Security Alerts'
+        icon_emoji: ':lock:'
+        color: 'danger'
+        title: '🔒 SECURITY ALERT - ICFES Platform'
+
+  # Performance alerts
+  - name: 'performance-alerts'
+    email_configs:
+      - to: 'performance@icfes-leveling.com'
+        subject: '[PERFORMANCE] {{ .GroupLabels.alertname }} - ICFES Platform'
+    
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#icfes-performance'
+        username: 'Performance Alerts'
+        icon_emoji: ':chart_with_upwards_trend:'
+
+  # Maintenance notifications
+  - name: 'maintenance-notifications'
+    email_configs:
+      - to: 'ops@icfes-leveling.com'
+        subject: '[MAINTENANCE] {{ .GroupLabels.alertname }} - ICFES Platform'
+    
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#icfes-maintenance'
+        username: 'Maintenance Bot'
+        icon_emoji: ':wrench:'

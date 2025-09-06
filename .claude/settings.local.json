@@ -26,7 +26,8 @@
       "Bash(true)",
       "Bash(winpty docker restart icfes_backend)",
       "Bash(npm install:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": [],

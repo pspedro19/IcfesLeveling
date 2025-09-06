@@ -5,6 +5,14 @@ from datetime import datetime
 
 from .icfes_catalog_service import ICFESCatalogService
 from .diagnostic_service import DiagnosticService
+from .ai_study_plan_service import AIStudyPlanService
+from .adaptive_learning_service import AdaptiveLearningService
+from .spaced_repetition_service import SpacedRepetitionService
+from .progress_gamification_service import ProgressGamificationService
+from .learning_styles_service import LearningStylesService
+from .scheduling_service import SchedulingService
+from .notification_reminder_service import NotificationReminderService
+from .enhanced_video_service import EnhancedVideoService
 from ..models.user import User
 from ..models.subject import Subject
 
@@ -17,6 +25,16 @@ class StudyPlanIntegrationService:
         self.db = db
         self.catalog_service = ICFESCatalogService(db)
         self.diagnostic_service = DiagnosticService(db)
+        
+        # Initialize all AI-powered services
+        self.ai_study_plan_service = AIStudyPlanService(db)
+        self.adaptive_learning_service = AdaptiveLearningService(db)
+        self.spaced_repetition_service = SpacedRepetitionService(db)
+        self.progress_gamification_service = ProgressGamificationService(db)
+        self.learning_styles_service = LearningStylesService(db)
+        self.scheduling_service = SchedulingService(db)
+        self.notification_service = NotificationReminderService(db)
+        self.video_service = EnhancedVideoService(db)
     
     def generate_comprehensive_study_plan(
         self, 
@@ -192,6 +210,183 @@ class StudyPlanIntegrationService:
             personalized_units.append(personalized_unit)
         
         return personalized_units
+    
+    async def generate_ai_powered_comprehensive_plan(
+        self,
+        user_id: str,
+        subject_id: str,
+        preferences: Dict[str, Any] = None,
+        target_date: Optional[datetime] = None
+    ) -> Dict[str, Any]:
+        """
+        Generate a complete AI-powered study plan with all advanced features
+        """
+        try:
+            user = self.db.query(User).filter(User.id == user_id).first()
+            subject = self.db.query(Subject).filter(Subject.id == subject_id).first()
+            
+            if not user or not subject:
+                raise ValueError("Usuario o materia no encontrados")
+            
+            logger.info(f"🚀 Iniciando generación AI completa para {user.username} - {subject.name}")
+            
+            # 1. Detect learning style
+            learning_style_data = await self.learning_styles_service.detect_learning_style(user_id)
+            
+            # 2. Get diagnostic results
+            diagnostic_results = self._get_user_diagnostic_results(user_id, subject_id)
+            
+            # 3. Generate AI-powered personalized plan
+            ai_study_plan = await self.ai_study_plan_service.generate_intelligent_study_plan(
+                user_id=user_id,
+                subject_id=subject_id,
+                target_date=target_date,
+                learning_preferences=learning_style_data
+            )
+            
+            # 4. Create adaptive learning system
+            adaptive_system = await self.adaptive_learning_service.evaluate_learning_progress(
+                user_id, ai_study_plan["id"]
+            )
+            
+            # 5. Setup spaced repetition
+            spaced_repetition_system = await self.spaced_repetition_service.create_spaced_repetition_schedule(
+                user_id, ai_study_plan["id"]
+            )
+            
+            # 6. Create intelligent scheduling
+            intelligent_schedule = await self.scheduling_service.create_intelligent_schedule(
+                user_id, ai_study_plan["id"], preferences, target_date
+            )
+            
+            # 7. Setup gamification and progress tracking
+            gamification_system = await self.progress_gamification_service.track_comprehensive_progress(
+                user_id, ai_study_plan["id"]
+            )
+            
+            # 8. Create personalized video recommendations
+            video_recommendations = await self.video_service.get_personalized_video_recommendations(
+                user_id, subject.name, user.level
+            )
+            
+            # 9. Setup notification system
+            notification_system = await self.notification_service.create_intelligent_reminder_system(
+                user_id, ai_study_plan["id"], preferences
+            )
+            
+            # 10. Create personalized study approach
+            study_approach = await self.learning_styles_service.create_personalized_study_approach(
+                user_id, subject_id, ai_study_plan["learning_objectives"]
+            )
+            
+            # Combine everything into comprehensive plan
+            comprehensive_plan = {
+                **ai_study_plan,
+                "ai_powered_features": {
+                    "learning_style_detection": learning_style_data,
+                    "adaptive_learning_system": adaptive_system,
+                    "spaced_repetition_system": spaced_repetition_system,
+                    "intelligent_scheduling": intelligent_schedule,
+                    "gamification_system": gamification_system,
+                    "video_recommendations": video_recommendations,
+                    "notification_system": notification_system,
+                    "personalized_study_approach": study_approach
+                },
+                "system_capabilities": {
+                    "real_time_adaptation": True,
+                    "performance_based_adjustments": True,
+                    "learning_style_optimization": True,
+                    "spaced_repetition_optimization": True,
+                    "intelligent_reminders": True,
+                    "gamification_elements": True,
+                    "video_learning_integration": True,
+                    "progress_prediction": True
+                },
+                "personalization_confidence": await self._calculate_overall_personalization_confidence([
+                    learning_style_data, diagnostic_results, adaptive_system
+                ]),
+                "expected_outcomes": await self._predict_comprehensive_outcomes(
+                    user_id, comprehensive_plan
+                )
+            }
+            
+            logger.info(f"✅ Plan AI completo generado exitosamente - {len(comprehensive_plan.get('units', []))} unidades")
+            return comprehensive_plan
+            
+        except Exception as e:
+            logger.error(f"❌ Error generando plan AI completo: {e}")
+            raise
+    
+    async def _calculate_overall_personalization_confidence(
+        self, data_sources: List[Dict[str, Any]]
+    ) -> float:
+        """Calculate overall confidence in personalization based on available data"""
+        
+        confidence_scores = []
+        
+        for source in data_sources:
+            if source and isinstance(source, dict):
+                # Extract confidence from each data source
+                if "confidence_score" in source:
+                    confidence_scores.append(source["confidence_score"])
+                elif "reliability_indicators" in source:
+                    confidence_scores.append(source["reliability_indicators"].get("overall", 0.5))
+                elif "success_probability" in source:
+                    confidence_scores.append(source["success_probability"])
+                else:
+                    confidence_scores.append(0.7)  # Default moderate confidence
+        
+        if not confidence_scores:
+            return 0.5  # Default confidence when no data available
+        
+        # Weighted average with more weight on first sources (learning style, diagnostic)
+        weights = [0.4, 0.3, 0.3][:len(confidence_scores)]
+        if len(weights) < len(confidence_scores):
+            weights.extend([0.1] * (len(confidence_scores) - len(weights)))
+        
+        weighted_sum = sum(score * weight for score, weight in zip(confidence_scores, weights))
+        total_weight = sum(weights[:len(confidence_scores)])
+        
+        return round(weighted_sum / total_weight, 2)
+    
+    async def _predict_comprehensive_outcomes(
+        self, user_id: str, comprehensive_plan: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Predict comprehensive learning outcomes"""
+        
+        ai_features = comprehensive_plan.get("ai_powered_features", {})
+        
+        # Extract prediction data from various systems
+        learning_style_conf = ai_features.get("learning_style_detection", {}).get("confidence_score", 0.5)
+        gamification_success = ai_features.get("gamification_system", {}).get("predictions", {}).get("success_probability", 0.7)
+        adaptive_health = ai_features.get("adaptive_learning_system", {}).get("overall_health_score", 0.7)
+        
+        # Calculate various outcome predictions
+        completion_probability = (learning_style_conf * 0.3 + gamification_success * 0.4 + adaptive_health * 0.3)
+        
+        # Estimate time to completion based on user patterns and plan complexity
+        total_units = len(comprehensive_plan.get("units", []))
+        estimated_weeks = max(4, total_units * 1.2)  # Minimum 4 weeks, 1.2 weeks per unit average
+        
+        # Calculate improvement prediction
+        current_level = comprehensive_plan.get("user_profile", {}).get("current_level", 1)
+        improvement_potential = min(3, max(1, 5 - current_level))  # Can improve up to 3 levels
+        
+        return {
+            "completion_probability": round(completion_probability, 2),
+            "estimated_completion_weeks": int(estimated_weeks),
+            "expected_skill_improvement": improvement_potential,
+            "retention_rate_prediction": round(0.75 + (learning_style_conf * 0.2), 2),
+            "engagement_sustainability": round(gamification_success, 2),
+            "adaptive_efficiency": round(adaptive_health, 2),
+            "overall_success_score": round(
+                (completion_probability + gamification_success + adaptive_health) / 3, 2
+            ),
+            "confidence_interval": {
+                "low": round(max(0.1, completion_probability - 0.15), 2),
+                "high": round(min(1.0, completion_probability + 0.15), 2)
+            }
+        }
     
     def _generate_personalized_recommendations(
         self, 

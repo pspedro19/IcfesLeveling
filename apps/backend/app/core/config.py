@@ -17,7 +17,12 @@ class Settings(BaseSettings):
     # OpenAI
     OPENAI_API_KEY: Optional[str] = None
     
-    # CORS - Updated to include all necessary origins with correct ports
+    # WOMPI Payment Gateway (Colombia)
+    WOMPI_PUBLIC_KEY: str = os.getenv("WOMPI_PUBLIC_KEY", "pub_test_XXXXXXXXX")
+    WOMPI_PRIVATE_KEY: str = os.getenv("WOMPI_PRIVATE_KEY", "prv_test_XXXXXXXXX")
+    WOMPI_EVENT_SECRET: str = os.getenv("WOMPI_EVENT_SECRET", "test_events_XXXXXXXXX")
+    
+    # CORS - Updated to include Wompi domains
     CORS_ORIGINS: list = [
         "http://localhost:4001",  # Frontend principal
         "http://127.0.0.1:4001",
@@ -26,7 +31,9 @@ class Settings(BaseSettings):
         "http://localhost:4002",  # WebSocket expuesto
         "http://127.0.0.1:4002",
         "http://localhost:8002",  # AI Service
-        "http://127.0.0.1:8002"
+        "http://127.0.0.1:8002",
+        "https://checkout.wompi.co",  # Wompi production checkout
+        "https://checkout-test.wompi.co",  # Wompi test checkout
     ]
     
     # App
@@ -34,6 +41,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
     ENVIRONMENT: str = "development"
+    FRONTEND_URL: str = "http://localhost:4001"
     
     # Security
     SECRET_KEY: str = "your-super-secret-key-change-in-production"
@@ -112,4 +120,4 @@ LOGGING_CONFIG = {
             "propagate": False
         }
     }
-} 
+}
