@@ -5,20 +5,7 @@ from sqlalchemy.sql import func
 from ..core.database import Base
 import uuid
 
-class Topic(Base):
-    __tablename__ = "topics"
-    
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    subject_id = Column(UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=False)
-    name = Column(String(200), nullable=False)
-    description = Column(Text)
-    difficulty_level = Column(Integer, default=1)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
-    # Relationships
-    subject = relationship("Subject", back_populates="topics")
-    questions = relationship("Question", back_populates="topic", cascade="all,delete-orphan")
-    diagnostic_answers = relationship("DiagnosticTestAnswer", back_populates="topic")
+# Topic class is defined in topic.py - removed duplicate definition here
 
 class Question(Base):
     __tablename__ = "questions"
@@ -66,31 +53,33 @@ class Question(Base):
     # average_response_time = Column(Integer, default=0)  # in milliseconds - Comentado: columna no existe en la tabla
     # last_used_at = Column(DateTime(timezone=True))  # Comentado: columna no existe en la tabla
     
-    # NUEVOS CAMPOS ICFES - Comentados: columnas no existen en la tabla
-    # Competencias y componentes
-    # competencia = Column(String(150))  # Comentado: columna no existe en la tabla
-    # componente = Column(String(50))  # Comentado: columna no existe en la tabla
-    # proceso_cognitivo = Column(String(30))  # Comentado: columna no existe en la tabla
-    # tipo_conocimiento = Column(String(30))  # Comentado: columna no existe en la tabla
+    # CAMPOS ICFES - Competencias y componentes  
+    competencia = Column(String(150), nullable=True)  # ICFES competency
+    componente = Column(String(100), nullable=True)  # ICFES component
+    proceso_cognitivo = Column(String(50), nullable=True)  # Cognitive process
+    tipo_conocimiento = Column(String(50), nullable=True)  # Knowledge type
     
     # Parámetros IRT para adaptatividad
-    # indice_discriminacion = Column(Float)  # Comentado: columna no existe en la tabla
-    # parametro_irt_a = Column(Float)  # Discriminación - Comentado: columna no existe en la tabla
-    # parametro_irt_b = Column(Float)  # Dificultad - Comentado: columna no existe en la tabla
-    # parametro_irt_c = Column(Float)  # Pseudo-adivinanza - Comentado: columna no existe en la tabla
+    indice_discriminacion = Column(Float)  # Discrimination index
+    parametro_irt_a = Column(Float)  # Discriminación - IRT parameter A
+    parametro_irt_b = Column(Float)  # Dificultad - IRT parameter B 
+    parametro_irt_c = Column(Float)  # Pseudo-adivinanza - IRT parameter C
     
-    # Información pedagógica
-    # afirmacion = Column(Text)  # Comentado: columna no existe en la tabla
-    # evidencia = Column(Text)  # Comentado: columna no existe en la tabla
-    # nivel_desempeno_esperado = Column(String(20))  # Comentado: columna no existe en la tabla
-    # tiempo_estimado = Column(Integer)  # segundos - Comentado: columna no existe en la tabla
+    # Información pedagógica ICFES
+    afirmacion = Column(Text, nullable=True)  # ICFES statement/affirmation
+    evidencia = Column(Text, nullable=True)  # ICFES evidence
+    nivel_desempeno_esperado = Column(String(30), nullable=True)  # Expected performance level
+    tiempo_estimado = Column(Integer, nullable=True)  # Estimated time in seconds
+    
+    # Gamification and XP system
+    puntos_xp = Column(Integer, default=10, nullable=True)  # XP points from Puntos_XP CSV field
     
     # Sistema de ayuda gradual
-    # pista_1 = Column(Text)  # Comentado: columna no existe en la tabla
-    # pista_2 = Column(Text)  # Comentado: columna no existe en la tabla
-    # pista_3 = Column(Text)  # Comentado: columna no existe en la tabla
-    # explicacion_respuesta = Column(Text)  # Comentado: columna no existe en la tabla
-    # error_comun = Column(Text)  # Comentado: columna no existe en la tabla
+    pista_1 = Column(Text, nullable=True)  # Primera pista (conceptual)
+    pista_2 = Column(Text, nullable=True)  # Segunda pista (procedimental)
+    pista_3 = Column(Text, nullable=True)  # Tercera pista (específica)
+    explicacion_respuesta = Column(Text, nullable=True)  # Explicación detallada de la respuesta
+    error_comun = Column(Text, nullable=True)  # Error común identificado
     
     # Análisis de distractores
     # distractor_a_concepto = Column(String(100))  # Comentado: columna no existe en la tabla
@@ -218,19 +207,81 @@ class Question(Base):
     def get_irt_probability(self, theta: float) -> float:
         """
         Calcula la probabilidad de respuesta correcta usando modelo 3PL de IRT
-        WHY: Permite adaptatividad real basada en teoría psicométrica
+        Implementa la fórmula: P(θ) = c + (1-c) / (1 + e^(-a(θ-b)))
+        
+        Args:
+            theta: Habilidad estimada del estudiante (logit scale)
+            
+        Returns:
+            Probabilidad de respuesta correcta (0-1)
         """
         import math
-        a = self.parametro_irt_a or 1.0
-        b = self.parametro_irt_b or 0.0
-        c = self.parametro_irt_c or 0.25
+        
+        # Usar parámetros reales de la base de datos
+        a = self.parametro_irt_a if self.parametro_irt_a is not None else 1.0
+        b = self.parametro_irt_b if self.parametro_irt_b is not None else 0.0
+        c = self.parametro_irt_c if self.parametro_irt_c is not None else 0.25
+        
+        # Validar que los parámetros estén en rangos válidos
+        a = max(0.1, min(10.0, a))  # Discriminación entre 0.1 y 10
+        b = max(-5.0, min(5.0, b))  # Dificultad entre -5 y 5
+        c = max(0.0, min(1.0, c))   # Pseudo-adivinanza entre 0 y 1
         
         # Modelo 3PL: P(θ) = c + (1-c)/(1+e^(-a(θ-b)))
         try:
-            exp_val = math.exp(-a * (theta - b))
-            return c + (1 - c) / (1 + exp_val)
-        except:
+            # Calcular el exponente con protección contra overflow
+            exponent = -a * (theta - b)
+            exponent = max(-50, min(50, exponent))  # Prevenir overflow
+            
+            exp_val = math.exp(exponent)
+            probability = c + (1 - c) / (1 + exp_val)
+            
+            # Asegurar que la probabilidad esté en el rango válido
+            return max(0.001, min(0.999, probability))
+            
+        except (OverflowError, ValueError, ZeroDivisionError) as e:
+            # En caso de error, retornar probabilidad neutra
             return 0.5
+    
+    def get_irt_information(self, theta: float) -> float:
+        """
+        Calcula la información de Fisher usando el criterio máximo: I(θ) = a²P(θ)Q(θ)
+        Donde Q(θ) = 1 - P(θ) para modelo 3PL
+        
+        Args:
+            theta: Habilidad estimada del estudiante (logit scale)
+            
+        Returns:
+            Información de Fisher para este ítem en theta dado
+        """
+        # Obtener probabilidad usando el modelo 3PL
+        p = self.get_irt_probability(theta)
+        q = 1 - p  # Q(θ) = 1 - P(θ)
+        
+        # Obtener parámetros IRT
+        a = self.parametro_irt_a if self.parametro_irt_a is not None else 1.0
+        c = self.parametro_irt_c if self.parametro_irt_c is not None else 0.25
+        
+        # Validar parámetros
+        a = max(0.1, min(10.0, a))
+        c = max(0.0, min(1.0, c))
+        
+        # Evitar división por cero
+        if p <= c + 1e-10 or q <= 1e-10:
+            return 1e-10
+        
+        try:
+            # Para modelo 3PL: I(θ) = a²(P-c)²Q / [P(1-c)²]
+            numerator = a**2 * (p - c)**2 * q
+            denominator = p * (1 - c)**2
+            
+            information = numerator / denominator
+            
+            # Asegurar que la información sea positiva y finita
+            return max(1e-10, min(100.0, information))
+            
+        except (OverflowError, ValueError, ZeroDivisionError):
+            return 1e-10
     
     def get_optimal_hint(self, error_type: str) -> str:
         """
@@ -243,4 +294,62 @@ class Question(Base):
             return self.pista_2
         elif error_type == 'computational' and self.pista_3:
             return self.pista_3
-        return self.pista_1 or "Revisa el concepto principal" 
+        return self.pista_1 or "Revisa el concepto principal"
+    
+    def get_progressive_hint(self, hint_level: int) -> str:
+        """
+        Retorna la pista correspondiente al nivel solicitado (1, 2, o 3)
+        """
+        if hint_level == 1:
+            return self.pista_1 or "Observa cuidadosamente los datos proporcionados"
+        elif hint_level == 2:
+            return self.pista_2 or "Considera el procedimiento paso a paso"
+        elif hint_level == 3:
+            return self.pista_3 or "Aplica la fórmula o concepto específico"
+        return "Nivel de pista no válido"
+    
+    def get_irt_information(self, theta: float) -> float:
+        """
+        Calcula la función de información de Fisher para esta pregunta en el nivel theta dado
+        
+        Args:
+            theta: Habilidad estimada del estudiante (logit scale)
+            
+        Returns:
+            Información de Fisher en theta
+        """
+        import math
+        
+        # Usar parámetros reales de la base de datos
+        a = self.parametro_irt_a if self.parametro_irt_a is not None else 1.0
+        b = self.parametro_irt_b if self.parametro_irt_b is not None else 0.0
+        c = self.parametro_irt_c if self.parametro_irt_c is not None else 0.25
+        
+        # Validar que los parámetros estén en rangos válidos
+        a = max(0.1, min(10.0, a))
+        b = max(-5.0, min(5.0, b))
+        c = max(0.0, min(1.0, c))
+        
+        try:
+            # Calcular probabilidad de respuesta correcta
+            p = self.get_irt_probability(theta)
+            q = 1 - p
+            
+            # Calcular derivada de P con respecto a theta
+            exponent = -a * (theta - b)
+            exponent = max(-50, min(50, exponent))
+            exp_val = math.exp(exponent)
+            
+            # dP/dθ = a(1-c)e^(-a(θ-b)) / (1+e^(-a(θ-b)))²
+            dp_dtheta = a * (1 - c) * exp_val / ((1 + exp_val) ** 2)
+            
+            # Función de información: I(θ) = [P'(θ)]² / [P(θ)(1-P(θ))]
+            if p > 0.001 and q > 0.001:
+                information = (dp_dtheta ** 2) / (p * q)
+            else:
+                information = 0.0
+                
+            return max(0.0, information)
+            
+        except (OverflowError, ValueError, ZeroDivisionError):
+            return 0.0 

@@ -21,7 +21,8 @@ interface Question {
   id: string;
   question_text: string;
   pregunta_texto?: string;
-  options?: string[] | Record<string, string>;
+  options?: Record<string, string>;
+  option_images?: Record<string, string>;
   opcion_a_texto?: string;
   opcion_b_texto?: string;
   opcion_c_texto?: string;
@@ -30,6 +31,15 @@ interface Question {
   hint?: string;
   topic?: string | { name: string; description?: string; subject_id?: string; };
   image_url?: string;
+  pregunta_imagen?: string;
+  opcion_a_imagen?: string;
+  opcion_b_imagen?: string;
+  opcion_c_imagen?: string;
+  opcion_d_imagen?: string;
+  correct_answer?: string;
+  subject_id?: string;
+  explicacion_respuesta?: string;
+  error_comun?: string;
 }
 
 interface TestAnswer {
@@ -63,9 +73,17 @@ export default function DiagnosticTestInterface({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showHint, setShowHint] = useState(false);
+  const [hintsUsed, setHintsUsed] = useState<{ [questionId: string]: number[] }>({});
+  const [currentHintLevel, setCurrentHintLevel] = useState<{ [questionId: string]: number }>({});
+  const [hintText, setHintText] = useState<string>('');
+  const [loadingHint, setLoadingHint] = useState(false);
   const [timeLeft, setTimeLeft] = useState(90 * 60); // 90 minutes
   const [testStartTime] = useState(Date.now());
   const [currentTestId, setCurrentTestId] = useState<string | null>(testId || null);
+  
+  // Explanation state
+  const [questionFeedback, setQuestionFeedback] = useState<{ [key: string]: any }>({});
+  const [showExplanation, setShowExplanation] = useState<{ [key: string]: boolean }>({});
 
   const loadQuestions = useCallback(async () => {
     setLoading(true);
@@ -73,36 +91,38 @@ export default function DiagnosticTestInterface({
     
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      const token = localStorage.getItem('access_token') || localStorage.getItem('token');
       
-      // Skip test session creation and go directly to loading questions
-      // This avoids the CORS/500 error on /api/v1/diagnostic/tests
-      const endpoint = `${API_URL}/api/v1/diagnostic/test-questions/${subjectId}?limit=20`;
+      // Use the new diagnostic-questions endpoint
+      const endpoint = `${API_URL}/api/v1/diagnostic-public/diagnostic-questions/${subjectId}?limit=20`;
       
       console.log('Loading questions from:', endpoint);
       const questionsResponse = await fetch(endpoint, {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
       
       if (questionsResponse.ok) {
         const data = await questionsResponse.json();
-        console.log(`Loaded ${data.length} questions successfully`);
+        console.log(`Loaded ${data.length} questions successfully:`, data);
         setQuestions(data);
         
         // Set a dummy test ID for tracking
         if (!currentTestId) {
-          setCurrentTestId(`test-${subjectId}-${Date.now()}`);
+          setCurrentTestId(`diagnostic-test-${subjectId}-${Date.now()}`);
         }
       } else {
-        throw new Error('No se pudieron cargar las preguntas');
+        const errorText = await questionsResponse.text();
+        console.error('API Error:', errorText);
+        throw new Error('No se pudieron cargar las preguntas desde la base de datos');
       }
     } catch (err) {
       console.error('Error loading questions:', err);
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(err instanceof Error ? err.message : 'Error desconocido al cargar preguntas');
     } finally {
       setLoading(false);
     }
-  }, [subjectId]);
+  }, [subjectId, currentTestId]);
 
   // Load questions on mount
   useEffect(() => {
@@ -138,7 +158,74 @@ export default function DiagnosticTestInterface({
     }
   }, [currentQuestionIndex, questions, questionStartTime]);
 
-  const handleAnswer = (answer: string) => {
+  // Request a progressive hint for the current question
+  const requestHint = async () => {
+    if (!currentTestId || !questions[currentQuestionIndex]) {
+      return;
+    }
+
+    const currentQuestion = questions[currentQuestionIndex];
+    const questionId = currentQuestion.id;
+    
+    // Determine the next hint level to request
+    const usedHints = hintsUsed[questionId] || [];
+    let nextLevel = 1;
+    
+    if (usedHints.includes(1) && usedHints.includes(2) && usedHints.includes(3)) {
+      // All hints already used
+      setHintText('Ya has usado todas las pistas disponibles para esta pregunta.');
+      setShowHint(true);
+      return;
+    }
+    
+    if (usedHints.includes(1)) nextLevel = 2;
+    if (usedHints.includes(2)) nextLevel = 3;
+    
+    setLoadingHint(true);
+    
+    try {
+      const response = await fetch(`/api/diagnostic-public/tests/${currentTestId}/questions/${questionId}/hint?hint_level=${nextLevel}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al solicitar la pista');
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Update hints used tracking
+        setHintsUsed(prev => ({
+          ...prev,
+          [questionId]: [...(prev[questionId] || []), nextLevel]
+        }));
+        
+        setCurrentHintLevel(prev => ({
+          ...prev,
+          [questionId]: nextLevel
+        }));
+        
+        setHintText(data.hint);
+        setShowHint(true);
+      } else {
+        setHintText('No se pudo obtener la pista para esta pregunta.');
+        setShowHint(true);
+      }
+      
+    } catch (error) {
+      console.error('Error requesting hint:', error);
+      setHintText('Error al solicitar la pista. Intenta de nuevo.');
+      setShowHint(true);
+    } finally {
+      setLoadingHint(false);
+    }
+  };
+
+  const handleAnswer = async (answer: string) => {
     const currentQuestion = questions[currentQuestionIndex];
     
     // Record answer
@@ -154,6 +241,44 @@ export default function DiagnosticTestInterface({
       ...prev,
       [currentQuestion.id]: responseTime
     }));
+
+    // Submit answer to database immediately
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const submitResponse = await fetch(`${API_URL}/api/v1/diagnostic-public/diagnostic-questions/submit-answer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          question_id: currentQuestion.id,
+          user_answer: answer,
+          response_time_ms: responseTime,
+          test_id: currentTestId
+        })
+      });
+      
+      if (submitResponse.ok) {
+        const result = await submitResponse.json();
+        console.log('Answer submitted successfully:', result);
+        
+        // Store the feedback for this question
+        setQuestionFeedback(prev => ({
+          ...prev,
+          [currentQuestion.id]: result
+        }));
+        
+        // Show explanation automatically after answering
+        setShowExplanation(prev => ({
+          ...prev,
+          [currentQuestion.id]: true
+        }));
+      } else {
+        console.error('Failed to submit answer:', await submitResponse.text());
+      }
+    } catch (err) {
+      console.error('Error submitting answer:', err);
+    }
   };
 
   const handleNext = () => {
@@ -182,7 +307,7 @@ export default function DiagnosticTestInterface({
     setError(null);
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
       const token = localStorage.getItem('access_token') || localStorage.getItem('token');
 
       // Prepare answers for submission
@@ -192,10 +317,9 @@ export default function DiagnosticTestInterface({
         response_time_ms: responseTimes[q.id] || 0
       }));
 
-      // Always calculate results locally since we're using test-questions endpoint
-      // This avoids the 500 error on submit
+      // Calculate results based on actual correct answers from database
         const correctCount = questions.filter(q => 
-        answers[q.id] === 'B' // Mock scoring for demo
+          answers[q.id] === (q.correct_answer || 'A').toUpperCase()
         ).length;
 
         const results = {
@@ -222,8 +346,8 @@ export default function DiagnosticTestInterface({
 
         sessionStorage.setItem('diagnostic_results', JSON.stringify(results));
       
-      // Navigate to results page
-        router.push('/diagnostic-test/results');
+      // Navigate to the new comprehensive results dashboard
+        router.push(`/diagnostic-results/${currentTestId}`);
     } catch (err) {
       console.error('Error submitting test:', err);
       setError('Error al enviar el test. Por favor intenta de nuevo.');
@@ -327,27 +451,18 @@ export default function DiagnosticTestInterface({
   }
   
   const questionText = currentQuestion.pregunta_texto || currentQuestion.question_text;
+  const questionImageUrl = currentQuestion.pregunta_imagen || currentQuestion.image_url;
   
-  // Convert options object to array if needed
-  let options = [];
-  if (currentQuestion.options) {
-    if (typeof currentQuestion.options === 'object' && !Array.isArray(currentQuestion.options)) {
-      // Convert object like {A: "text", B: "text"} to array
-      options = ['A', 'B', 'C', 'D'].map(key => 
-        currentQuestion.options[key] || `Opción ${key}`
-      );
-    } else if (Array.isArray(currentQuestion.options)) {
-      options = currentQuestion.options;
-    }
-  } else {
-    // Fallback to individual option fields
-    options = [
-      currentQuestion.opcion_a_texto || 'Opción A',
-      currentQuestion.opcion_b_texto || 'Opción B',
-      currentQuestion.opcion_c_texto || 'Opción C',
-      currentQuestion.opcion_d_texto || 'Opción D'
-    ];
-  }
+  // Get options from the properly formatted API response
+  const optionsData = currentQuestion.options || {};
+  const optionImages = currentQuestion.option_images || {};
+  
+  // Create options array with both text and images
+  const options = ['A', 'B', 'C', 'D'].map(key => ({
+    letter: key,
+    text: optionsData[key] || currentQuestion[`opcion_${key.toLowerCase()}_texto`] || `Opción ${key}`,
+    image: optionImages[key] || currentQuestion[`opcion_${key.toLowerCase()}_imagen`] || null
+  })).filter(option => option.text && option.text !== `Opción ${option.letter}`);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-black to-blue-900">
@@ -486,15 +601,23 @@ export default function DiagnosticTestInterface({
                 )}
               </div>
               
-              {currentQuestion.hint && (
+              <div className="flex gap-2">
                 <button
-                  onClick={() => setShowHint(!showHint)}
-                  className="px-4 py-2 bg-yellow-600/20 text-yellow-400 rounded-lg hover:bg-yellow-600/30 transition-colors flex items-center gap-2"
+                  onClick={requestHint}
+                  disabled={loadingHint}
+                  className="px-4 py-2 bg-yellow-600/20 text-yellow-400 rounded-lg hover:bg-yellow-600/30 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <AlertCircle className="w-4 h-4" />
-                  {showHint ? 'Ocultar' : 'Ver'} Pista
+                  {loadingHint ? 'Solicitando...' : 'Solicitar Pista'}
                 </button>
-              )}
+                
+                {/* Hint level indicator */}
+                {currentQuestion && hintsUsed[currentQuestion.id] && hintsUsed[currentQuestion.id].length > 0 && (
+                  <div className="px-3 py-2 bg-purple-600/20 text-purple-400 rounded-lg text-sm flex items-center gap-1">
+                    <span>Pistas usadas: {hintsUsed[currentQuestion.id].length}/3</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -514,43 +637,81 @@ export default function DiagnosticTestInterface({
                 </h3>
 
                 {/* Image if exists */}
-                {currentQuestion.image_url && (
-                  <img 
-                    src={currentQuestion.image_url} 
-                    alt="Imagen de la pregunta"
-                    className="max-w-full h-auto rounded-lg mb-6"
-                  />
+                {questionImageUrl && (
+                  <div className="mb-6">
+                    <img 
+                      src={questionImageUrl} 
+                      alt="Imagen de la pregunta"
+                      className="max-w-full h-auto rounded-lg shadow-lg"
+                      onError={(e) => {
+                        console.log('Failed to load question image:', questionImageUrl);
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  </div>
                 )}
 
-                {/* Hint */}
+                {/* Progressive Hints Display */}
                 <AnimatePresence>
-                  {showHint && currentQuestion.hint && (
+                  {showHint && hintText && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
                       className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4 mb-6"
                     >
-                      <p className="text-yellow-300 flex items-start gap-2">
-                        <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                        {currentQuestion.hint}
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0" />
+                          <span className="text-yellow-400 font-medium">
+                            Pista nivel {currentQuestion && currentHintLevel[currentQuestion.id] ? currentHintLevel[currentQuestion.id] : 1}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => setShowHint(false)}
+                          className="text-yellow-400/60 hover:text-yellow-400 transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <p className="text-yellow-300">
+                        {hintText}
                       </p>
+                      
+                      {/* Show hint progress */}
+                      {currentQuestion && hintsUsed[currentQuestion.id] && (
+                        <div className="flex items-center gap-1 mt-3 pt-3 border-t border-yellow-500/20">
+                          <span className="text-yellow-400/80 text-sm">Progreso:</span>
+                          {[1, 2, 3].map((level) => (
+                            <div
+                              key={level}
+                              className={`w-2 h-2 rounded-full ${
+                                hintsUsed[currentQuestion.id].includes(level)
+                                  ? 'bg-yellow-400'
+                                  : 'bg-yellow-400/20'
+                              }`}
+                            />
+                          ))}
+                          <span className="text-yellow-400/60 text-sm ml-2">
+                            {hintsUsed[currentQuestion.id].length}/3 pistas utilizadas
+                          </span>
+                        </div>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
 
                 {/* Options */}
                 <div className="space-y-3">
-                  {options.map((option, index) => {
-                    const optionLetter = String.fromCharCode(65 + index); // A, B, C, D
-                    const isSelected = answers[currentQuestion.id] === optionLetter;
+                  {options.map((option) => {
+                    const isSelected = answers[currentQuestion.id] === option.letter;
                     
                     return (
                       <motion.button
-                        key={index}
+                        key={option.letter}
                         whileHover={{ scale: 1.01, x: 5 }}
                         whileTap={{ scale: 0.99 }}
-                        onClick={() => handleAnswer(optionLetter)}
+                        onClick={() => handleAnswer(option.letter)}
                         className={`
                           w-full p-5 rounded-xl text-left transition-all duration-200
                           flex items-center gap-4 group
@@ -568,9 +729,28 @@ export default function DiagnosticTestInterface({
                             : 'bg-gray-800 text-gray-400 group-hover:bg-purple-800 group-hover:text-purple-300'
                           }
                         `}>
-                          {optionLetter}
+                          {option.letter}
                         </span>
-                        <span className="text-lg">{option}</span>
+                        
+                        <div className="flex-1">
+                          <span className="text-lg block">{option.text}</span>
+                          
+                          {/* Option Image */}
+                          {option.image && (
+                            <div className="mt-3">
+                              <img 
+                                src={option.image} 
+                                alt={`Imagen opción ${option.letter}`}
+                                className="max-w-xs h-auto rounded-lg shadow-md"
+                                onError={(e) => {
+                                  console.log(`Failed to load option ${option.letter} image:`, option.image);
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                        
                         {isSelected && (
                           <Check className="ml-auto w-6 h-6 text-purple-400" />
                         )}
@@ -578,6 +758,110 @@ export default function DiagnosticTestInterface({
                     );
                   })}
                 </div>
+
+                {/* Explanation Section */}
+                <AnimatePresence>
+                  {showExplanation[currentQuestion.id] && questionFeedback[currentQuestion.id] && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-6"
+                    >
+                      <div className={`
+                        p-6 rounded-xl border-2
+                        ${questionFeedback[currentQuestion.id]?.is_correct 
+                          ? 'bg-green-900/20 border-green-500/30' 
+                          : 'bg-red-900/20 border-red-500/30'
+                        }
+                      `}>
+                        {/* Feedback Header */}
+                        <div className="flex items-center gap-3 mb-4">
+                          {questionFeedback[currentQuestion.id]?.is_correct ? (
+                            <Check className="w-6 h-6 text-green-400" />
+                          ) : (
+                            <X className="w-6 h-6 text-red-400" />
+                          )}
+                          <h4 className={`font-bold text-lg
+                            ${questionFeedback[currentQuestion.id]?.is_correct 
+                              ? 'text-green-400' 
+                              : 'text-red-400'
+                            }
+                          `}>
+                            {questionFeedback[currentQuestion.id]?.is_correct ? '¡Correcto!' : 'Incorrecto'}
+                          </h4>
+                        </div>
+
+                        {/* Show correct answer if wrong */}
+                        {!questionFeedback[currentQuestion.id]?.is_correct && (
+                          <div className="mb-4 p-3 bg-black/30 rounded-lg">
+                            <p className="text-yellow-300">
+                              <strong>Respuesta correcta:</strong> {questionFeedback[currentQuestion.id]?.correct_answer}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Explanation */}
+                        {(currentQuestion.explicacion_respuesta || questionFeedback[currentQuestion.id]?.explicacion_respuesta) && (
+                          <div className="mb-4">
+                            <h5 className="text-blue-300 font-semibold mb-2 flex items-center gap-2">
+                              <BookOpen className="w-4 h-4" />
+                              Explicación:
+                            </h5>
+                            <p className="text-gray-300 leading-relaxed">
+                              {currentQuestion.explicacion_respuesta || questionFeedback[currentQuestion.id]?.explicacion_respuesta}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Common Error (only shown for wrong answers) */}
+                        {!questionFeedback[currentQuestion.id]?.is_correct && 
+                         (currentQuestion.error_comun || questionFeedback[currentQuestion.id]?.error_comun) && (
+                          <div className="p-3 bg-orange-900/20 border border-orange-500/30 rounded-lg">
+                            <h5 className="text-orange-300 font-semibold mb-2 flex items-center gap-2">
+                              <AlertCircle className="w-4 h-4" />
+                              Error Común:
+                            </h5>
+                            <p className="text-orange-200 text-sm">
+                              {currentQuestion.error_comun || questionFeedback[currentQuestion.id]?.error_comun}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Toggle Button */}
+                        <div className="mt-4 pt-3 border-t border-gray-700">
+                          <button
+                            onClick={() => setShowExplanation(prev => ({
+                              ...prev,
+                              [currentQuestion.id]: false
+                            }))}
+                            className="text-sm text-purple-300 hover:text-purple-200 transition-colors flex items-center gap-1"
+                          >
+                            <X className="w-4 h-4" />
+                            Ocultar explicación
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Show Explanation Button (if answered but explanation is hidden) */}
+                {answers[currentQuestion.id] && questionFeedback[currentQuestion.id] && 
+                 !showExplanation[currentQuestion.id] && (
+                  <div className="mt-4">
+                    <button
+                      onClick={() => setShowExplanation(prev => ({
+                        ...prev,
+                        [currentQuestion.id]: true
+                      }))}
+                      className="px-4 py-2 bg-blue-600/20 text-blue-300 rounded-lg hover:bg-blue-600/30 transition-colors flex items-center gap-2"
+                    >
+                      <BookOpen className="w-4 h-4" />
+                      Ver explicación
+                    </button>
+                  </div>
+                )}
               </motion.div>
             </div>
           </div>

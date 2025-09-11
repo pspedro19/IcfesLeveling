@@ -10,7 +10,8 @@ import uuid
 from ..core.database import get_db
 from ..core.security import get_current_user
 from ..models.user import User
-from ..models.question import Question, Topic
+from ..models.topic import Topic
+from ..models.question import Question
 from ..models.subject import Subject
 from ..schemas.question import QuestionResponse
 from ..import_icfes_excel import ICFESExcelImporter

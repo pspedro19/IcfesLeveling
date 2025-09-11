@@ -55,13 +55,25 @@ class User(Base):
     store_transactions = relationship("StoreTransaction", back_populates="user", cascade="all, delete-orphan")
     user_power_ups = relationship("UserPowerUp", back_populates="user", cascade="all, delete-orphan")
     currency_earnings = relationship("CurrencyEarning", back_populates="user", cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}', level={self.level})>"
     
     @property
     def rank_info(self):
-        """Get rank information based on level"""
+        """
+        Get rank information based on actual performance data.
+        
+        NOTE: This property now returns the stored rank from diagnostic test performance.
+        For live rank calculation based on theta scores, use PerformanceRankService.
+        """
+        # Return the stored rank (calculated from actual diagnostic test performance)
+        return self.rank or 'E'
+    
+    @property 
+    def legacy_rank_info(self):
+        """Legacy rank calculation based on level (kept for compatibility)"""
         ranks = ['E', 'D', 'C', 'B', 'A', 'S', 'SS', 'SSS']
         if self.level <= 10:
             return ranks[0]
@@ -81,14 +93,35 @@ class User(Base):
             return ranks[7]
     
     def add_experience(self, exp_amount: int):
-        """Add experience and handle level up"""
+        """
+        Add experience and handle level up.
+        
+        NOTE: Rank updates are now handled by PerformanceRankService based on 
+        actual diagnostic test performance data, not just level.
+        """
         self.experience += exp_amount
         
-        # Calculate new level (simple formula: level = sqrt(exp/100))
-        new_level = int((self.experience / 100) ** 0.5) + 1
+        # Calculate new level using improved XP curve: level = sqrt(exp/50) + 1
+        import math
+        new_level = int(math.sqrt(self.experience / 50)) + 1
+        new_level = max(1, min(new_level, 999))  # Cap at level 999
         
-        if new_level > self.level:
+        level_up_occurred = new_level > self.level
+        if level_up_occurred:
             self.level = new_level
-            self.rank = self.rank_info
-            return True  # Level up occurred
-        return False  # No level up 
+            # Note: Rank is no longer automatically updated here
+            # Use PerformanceRankService.update_user_rank_and_level() for rank updates
+        
+        return level_up_occurred
+    
+    def add_test_experience(self, xp_from_questions: int):
+        """
+        Add XP earned from diagnostic test questions (Puntos_XP field).
+        
+        Args:
+            xp_from_questions: Total XP earned from correctly answered questions
+        
+        Returns:
+            bool: Whether a level up occurred
+        """
+        return self.add_experience(xp_from_questions) 

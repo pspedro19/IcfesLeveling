@@ -15,7 +15,7 @@ from ..schemas.diagnostic_test import (
     DiagnosticTestResponse,
     DiagnosticTestQuestion,
     DiagnosticResultResponse,
-    DiagnosticAnswerSubmit
+    DiagnosticTestAnswer as DiagnosticAnswerSubmit
 )
 from ..services.adaptive_diagnostic_service import AdaptiveDiagnosticService
 from ..models.user import User

@@ -1,0 +1,531 @@
+# YAML de Recomendaciones Personalizadas - Sistema ICFES Leveling
+# Generado para Estudiante de Ejemplo
+# Fecha: 2025-09-09
+
+metadata:
+  student_id: "student_12345"
+  student_name: "Juan Pérez"
+  generation_date: "2025-09-09T03:30:00Z"
+  algorithm_version: "v2.0-IRT-3PL"
+  theta_global: -0.35
+  confidence_interval: [-0.65, -0.05]
+  last_diagnostic_date: "2025-09-01"
+  next_diagnostic_recommended: "2025-10-01"
+
+performance_summary:
+  overall_accuracy: 0.68
+  total_questions_answered: 476
+  correct_answers: 323
+  incorrect_answers: 153
+  average_response_time: 67.3
+  improvement_since_last_month: 0.12
+
+weakness_analysis:
+  most_critical:
+    - subject: "Matemáticas"
+      topic: "Álgebra Lineal"
+      accuracy: 0.35
+      severity_score: 0.85
+      questions_failed: 12
+      common_distractor: "B"
+      estimated_improvement_time: "8 horas"
+    
+    - subject: "Ciencias Naturales"
+      topic: "Química Orgánica"
+      accuracy: 0.42
+      severity_score: 0.78
+      questions_failed: 9
+      common_distractor: "C"
+      estimated_improvement_time: "6 horas"
+    
+    - subject: "Lectura Crítica"
+      topic: "Inferencia Textual"
+      accuracy: 0.48
+      severity_score: 0.72
+      questions_failed: 8
+      common_distractor: "A"
+      estimated_improvement_time: "5 horas"
+
+strength_areas:
+  - subject: "Inglés"
+    topic: "Grammar"
+    accuracy: 0.92
+    mastery_level: "ADVANCED"
+  
+  - subject: "Matemáticas"
+    topic: "Geometría"
+    accuracy: 0.88
+    mastery_level: "PROFICIENT"
+
+# ============================================
+# RECOMENDACIONES DE VIDEOS POR MATERIA
+# ============================================
+
+video_recommendations:
+  
+  # MATEMÁTICAS - Videos prioritarios basados en fallos
+  matematicas:
+    priority_high:
+      - video_id: "dQw4w9WgXcQ"
+        title: "Álgebra Lineal: Sistemas de Ecuaciones Paso a Paso"
+        channel: "Profesor Alex"
+        url: "https://youtube.com/watch?v=dQw4w9WgXcQ"
+        duration_minutes: 25
+        difficulty_level: "INTERMEDIATE"
+        
+        # EXPLICACIÓN DE LA IA
+        ai_explanation:
+          reason_for_recommendation: |
+            Este video se recomienda porque fallaste 12 preguntas de Álgebra Lineal,
+            específicamente en sistemas de ecuaciones 2x2 y 3x3.
+          
+          failed_question_reference:
+            question_id: "q_math_045"
+            question_text: "Resuelve el sistema: 2x + 3y = 7; x - y = 1"
+            your_answer: "B) x=2, y=1"
+            correct_answer: "C) x=2, y=1.5"
+            
+          why_you_failed: |
+            Elegiste la opción B porque realizaste un error algebraico al despejar 'y'.
+            El video muestra exactamente cómo evitar este tipo de errores comunes.
+          
+          what_youll_learn:
+            - "Método de sustitución paso a paso"
+            - "Verificación de soluciones"
+            - "Errores algebraicos comunes"
+            - "Trucos para resolver más rápido"
+        
+        relevance_score: 0.95
+        semantic_similarity: 0.92
+        expected_improvement: 0.25
+      
+      - video_id: "abc123xyz"
+        title: "Factorización de Polinomios - Método Completo"
+        channel: "MateFácil"
+        url: "https://youtube.com/watch?v=abc123xyz"
+        duration_minutes: 30
+        difficulty_level: "INTERMEDIATE"
+        
+        ai_explanation:
+          reason_for_recommendation: |
+            Fallaste 8 preguntas relacionadas con factorización, mostrando
+            dificultad consistente con casos especiales como diferencia de cuadrados.
+          
+          failed_question_reference:
+            question_id: "q_math_078"
+            question_text: "Factoriza: x² - 9"
+            your_answer: "A) (x-3)(x-3)"
+            correct_answer: "D) (x+3)(x-3)"
+          
+          why_you_failed: |
+            Confundiste la diferencia de cuadrados con un cuadrado perfecto.
+            Este es un error conceptual que el video aclara en el minuto 5:30.
+          
+          what_youll_learn:
+            - "Identificación de patrones de factorización"
+            - "Diferencia entre casos especiales"
+            - "Método sistemático para factorizar"
+        
+        relevance_score: 0.91
+        semantic_similarity: 0.89
+        expected_improvement: 0.20
+    
+    priority_medium:
+      - video_id: "def456abc"
+        title: "Trigonometría: Identidades Fundamentales"
+        channel: "Khan Academy Español"
+        url: "https://youtube.com/watch?v=def456abc"
+        duration_minutes: 18
+        difficulty_level: "INTERMEDIATE"
+        
+        ai_explanation:
+          reason_for_recommendation: |
+            Aunque tu desempeño en trigonometría es aceptable (65% accuracy),
+            las identidades son tu punto débil específico.
+          
+          what_youll_learn:
+            - "Las 6 identidades fundamentales"
+            - "Cómo demostrar identidades"
+            - "Aplicaciones prácticas"
+        
+        relevance_score: 0.78
+        semantic_similarity: 0.75
+  
+  # CIENCIAS NATURALES - Videos basados en conceptos débiles
+  ciencias_naturales:
+    priority_high:
+      - video_id: "chem_org_001"
+        title: "Química Orgánica: Nomenclatura IUPAC Completa"
+        channel: "Ciencia Explicada"
+        url: "https://youtube.com/watch?v=chem_org_001"
+        duration_minutes: 35
+        difficulty_level: "INTERMEDIATE"
+        
+        ai_explanation:
+          reason_for_recommendation: |
+            Tu principal debilidad está en nombrar compuestos orgánicos.
+            Fallaste 9 preguntas de nomenclatura, todas por el mismo patrón.
+          
+          failed_question_reference:
+            question_id: "q_chem_112"
+            question_text: "Nombre el siguiente compuesto: CH₃-CH₂-CH(CH₃)-CH₃"
+            your_answer: "B) 2-metilpropano"
+            correct_answer: "A) 2-metilbutano"
+          
+          why_you_failed: |
+            Contaste incorrectamente la cadena principal. Este es un error
+            muy común que el video aborda específicamente en el minuto 12:00.
+          
+          what_youll_learn:
+            - "Identificación de la cadena principal"
+            - "Numeración correcta de carbonos"
+            - "Prefijos y sufijos IUPAC"
+            - "Casos especiales y excepciones"
+        
+        relevance_score: 0.93
+        semantic_similarity: 0.91
+        expected_improvement: 0.30
+      
+      - video_id: "bio_cell_002"
+        title: "Respiración Celular: ATP y Cadena de Transporte"
+        channel: "BiologíaVisual"
+        url: "https://youtube.com/watch?v=bio_cell_002"
+        duration_minutes: 28
+        difficulty_level: "ADVANCED"
+        
+        ai_explanation:
+          reason_for_recommendation: |
+            Mostraste confusión entre fotosíntesis y respiración celular
+            en 6 preguntas del último diagnóstico.
+          
+          failed_question_reference:
+            question_id: "q_bio_089"
+            question_text: "¿Cuántas moléculas de ATP se producen en la glucólisis?"
+            your_answer: "D) 36"
+            correct_answer: "B) 2 (neto)"
+          
+          why_you_failed: |
+            Confundiste el ATP total de la respiración con el de glucólisis.
+            El video desglosa cada etapa con animaciones claras.
+          
+          what_youll_learn:
+            - "Las 3 etapas de la respiración celular"
+            - "Balance energético de cada etapa"
+            - "Diferencias con fotosíntesis"
+        
+        relevance_score: 0.88
+        semantic_similarity: 0.86
+  
+  # LECTURA CRÍTICA - Videos de estrategias de comprensión
+  lectura_critica:
+    priority_high:
+      - video_id: "read_inf_001"
+        title: "Inferencia Textual: Técnicas Avanzadas ICFES"
+        channel: "Lenguaje Sin Vueltas"
+        url: "https://youtube.com/watch?v=read_inf_001"
+        duration_minutes: 22
+        difficulty_level: "INTERMEDIATE"
+        
+        ai_explanation:
+          reason_for_recommendation: |
+            La inferencia es tu área más débil en Lectura Crítica (48% accuracy).
+            Este video aborda específicamente el tipo de preguntas ICFES.
+          
+          failed_question_reference:
+            question_id: "q_lect_234"
+            question_text: "Del texto se puede inferir que el autor..."
+            your_answer: "A) Apoya completamente la propuesta"
+            correct_answer: "C) Mantiene una posición neutral"
+          
+          why_you_failed: |
+            Confundiste información explícita con inferencias implícitas.
+            El video enseña a distinguir entre hechos e interpretaciones.
+          
+          what_youll_learn:
+            - "Diferencia entre deducción e inducción"
+            - "Pistas contextuales clave"
+            - "Errores comunes en inferencia"
+            - "Estrategia de eliminación"
+        
+        relevance_score: 0.90
+        semantic_similarity: 0.87
+        expected_improvement: 0.22
+  
+  # SOCIALES - Videos de contexto histórico
+  ciencias_sociales:
+    priority_medium:
+      - video_id: "hist_col_001"
+        title: "Independencia de Colombia: Causas y Consecuencias"
+        channel: "Historia Colombiana"
+        url: "https://youtube.com/watch?v=hist_col_001"
+        duration_minutes: 30
+        difficulty_level: "INTERMEDIATE"
+        
+        ai_explanation:
+          reason_for_recommendation: |
+            Aunque Sociales no es tu área más débil, las preguntas de
+            contexto histórico colombiano muestran un patrón de error.
+          
+          what_youll_learn:
+            - "Contexto internacional de la independencia"
+            - "Personajes clave y sus roles"
+            - "Consecuencias económicas y sociales"
+        
+        relevance_score: 0.75
+        semantic_similarity: 0.72
+  
+  # INGLÉS - Videos de refuerzo (área fuerte)
+  ingles:
+    priority_low:
+      - video_id: "eng_adv_001"
+        title: "Advanced Grammar: Subjunctive Mood"
+        channel: "English Mastery"
+        url: "https://youtube.com/watch?v=eng_adv_001"
+        duration_minutes: 15
+        difficulty_level: "ADVANCED"
+        
+        ai_explanation:
+          reason_for_recommendation: |
+            Como Inglés es tu área fuerte (92% accuracy), este video
+            es para perfeccionar temas avanzados que aparecen ocasionalmente.
+          
+          what_youll_learn:
+            - "Subjunctive in formal contexts"
+            - "Common mistakes natives make"
+            - "ICFES advanced questions"
+        
+        relevance_score: 0.65
+        semantic_similarity: 0.70
+
+# ============================================
+# PLAN DE ESTUDIO ESTRUCTURADO
+# ============================================
+
+study_plan:
+  # SEMANA 1: Enfoque en debilidades críticas
+  week_1:
+    monday:
+      morning:
+        - type: "video"
+          video_id: "dQw4w9WgXcQ"
+          subject: "Matemáticas"
+          topic: "Álgebra Lineal"
+          duration: 25
+        - type: "practice"
+          questions: 10
+          subject: "Matemáticas"
+          topic: "Álgebra Lineal"
+          difficulty: "ADAPTIVE"
+      
+      afternoon:
+        - type: "video"
+          video_id: "chem_org_001"
+          subject: "Ciencias Naturales"
+          topic: "Química Orgánica"
+          duration: 35
+        - type: "practice"
+          questions: 8
+          subject: "Ciencias Naturales"
+          topic: "Química Orgánica"
+    
+    tuesday:
+      morning:
+        - type: "review"
+          subject: "Matemáticas"
+          topic: "Álgebra Lineal"
+          duration: 20
+        - type: "practice"
+          questions: 15
+          focus: "failed_questions"
+      
+      afternoon:
+        - type: "video"
+          video_id: "read_inf_001"
+          subject: "Lectura Crítica"
+          topic: "Inferencia"
+          duration: 22
+    
+    # ... continúa para cada día
+    
+    weekly_goals:
+      - "Mejorar accuracy en Álgebra Lineal de 35% a 50%"
+      - "Dominar nomenclatura IUPAC básica"
+      - "Practicar 100 preguntas totales"
+      - "Ver todos los videos prioritarios"
+    
+    estimated_study_hours: 12
+    expected_theta_improvement: 0.15
+  
+  # SEMANA 2: Consolidación y práctica intensiva
+  week_2:
+    focus: "practice_intensive"
+    daily_questions: 30
+    review_videos: ["abc123xyz", "bio_cell_002"]
+    mock_test: "saturday"
+    
+    weekly_goals:
+      - "Alcanzar 60% accuracy en áreas débiles"
+      - "Completar simulacro de 45 preguntas"
+      - "Reducir tiempo promedio de respuesta"
+    
+    estimated_study_hours: 15
+    expected_theta_improvement: 0.12
+  
+  # SEMANA 3: Expansión y temas complementarios
+  week_3:
+    focus: "complementary_topics"
+    new_topics: ["Estadística", "Geografía", "Reading Comprehension"]
+    
+    weekly_goals:
+      - "Explorar áreas no evaluadas"
+      - "Mantener fortalezas"
+      - "Preparación integral"
+    
+    estimated_study_hours: 10
+    expected_theta_improvement: 0.08
+  
+  # SEMANA 4: Preparación final y simulacros
+  week_4:
+    focus: "final_preparation"
+    mock_tests: 3
+    review_all_failures: true
+    
+    weekly_goals:
+      - "3 simulacros completos"
+      - "Review de todos los errores del mes"
+      - "Optimización de tiempo"
+      - "Preparación mental"
+    
+    estimated_study_hours: 18
+    expected_theta_improvement: 0.10
+
+# ============================================
+# SISTEMA DE CHAT IA CONTEXTUAL
+# ============================================
+
+ai_assistant:
+  enabled: true
+  model: "gpt-4"
+  
+  available_interactions:
+    - type: "question_explanation"
+      description: "Pregunta sobre cualquier pregunta fallada"
+      example: "¿Por qué la respuesta correcta es C en la pregunta de álgebra?"
+    
+    - type: "concept_clarification"
+      description: "Aclaración de conceptos"
+      example: "¿Qué es exactamente una función lineal?"
+    
+    - type: "video_discussion"
+      description: "Preguntas sobre los videos"
+      example: "No entendí la parte del minuto 5:30 sobre factorización"
+    
+    - type: "strategy_help"
+      description: "Estrategias para resolver"
+      example: "¿Cómo identifico rápidamente una diferencia de cuadrados?"
+    
+    - type: "practice_generation"
+      description: "Generar más práctica"
+      example: "Dame 5 ejercicios similares a los que fallé"
+  
+  context_awareness:
+    - "Recuerda todas tus preguntas falladas"
+    - "Conoce tu nivel de habilidad actual"
+    - "Adapta explicaciones a tu estilo de aprendizaje"
+    - "Sugiere recursos adicionales relevantes"
+    - "Monitorea tu progreso en tiempo real"
+  
+  sample_responses:
+    - prompt: "¿Por qué fallé la pregunta de sistemas de ecuaciones?"
+      response: |
+        Fallaste porque cometiste un error algebraico al despejar 'y' en la segunda ecuación.
+        
+        Tu proceso fue:
+        x - y = 1 → y = x - 1 ✓ (correcto)
+        
+        Pero al sustituir en la primera ecuación:
+        2x + 3(x - 1) = 7
+        2x + 3x - 3 = 7
+        5x = 10 ✓ (correcto)
+        x = 2 ✓ (correcto)
+        
+        El error vino al calcular y:
+        Pusiste y = 1, pero debería ser:
+        y = x - 1 = 2 - 1 = 1 ❌
+        
+        Espera, revisando... el cálculo da y = 1, pero la respuesta correcta dice y = 1.5.
+        
+        Verifiquemos con la ecuación original:
+        2(2) + 3y = 7
+        4 + 3y = 7
+        3y = 3
+        y = 1
+        
+        Hmm, parece haber un error en la respuesta marcada como correcta. 
+        ¿Podrías verificar el enunciado original?
+
+# ============================================
+# MÉTRICAS Y PREDICCIONES
+# ============================================
+
+predictions:
+  month_1:
+    expected_theta_change: 0.45
+    confidence_interval: [0.35, 0.55]
+    probability_pass_diagnostic: 0.78
+    areas_to_master: ["Álgebra Lineal", "Química Orgánica"]
+  
+  month_2:
+    expected_theta_change: 0.30
+    confidence_interval: [0.20, 0.40]
+    probability_pass_diagnostic: 0.89
+    expected_rank_improvement: "C → B"
+  
+  month_3:
+    expected_theta_change: 0.20
+    confidence_interval: [0.10, 0.30]
+    probability_reach_percentile_80: 0.75
+    expected_final_theta: 0.30
+
+gamification:
+  current_rank: "C"
+  current_level: 24
+  xp_to_next_level: 450
+  achievements_this_month:
+    - "Álgebra Apprentice"
+    - "Video Marathon (10 videos)"
+    - "Practice Streak (7 days)"
+  
+  upcoming_challenges:
+    - name: "Álgebra Master"
+      requirement: "80% accuracy in 50 algebra questions"
+      reward: "500 XP + Exclusive Badge"
+    
+    - name: "Speed Demon"
+      requirement: "Complete 20 questions in 15 minutes with 70% accuracy"
+      reward: "300 XP + Speed Boost Item"
+
+# ============================================
+# NOTAS FINALES
+# ============================================
+
+notes:
+  generation_method: "IRT-3PL + Semantic Embeddings + Collaborative Filtering"
+  data_sources:
+    - "Student diagnostic results"
+    - "YouTube educational catalog"
+    - "Historical performance data"
+    - "Peer comparison metrics"
+  
+  privacy_notice: |
+    Este plan es personalizado y confidencial. No compartir sin autorización.
+    Los datos se usan únicamente para mejorar tu aprendizaje.
+  
+  support:
+    email: "soporte@icfesleveling.com"
+    chat: "Available 24/7 in app"
+    tutor_hours: "Monday-Friday 2pm-8pm"
+
+last_updated: "2025-09-09T03:30:00Z"
+next_update_scheduled: "2025-09-16T03:30:00Z"
+plan_version: "2.0.1"

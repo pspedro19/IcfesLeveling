@@ -11,12 +11,14 @@ import math
 import logging
 from collections import defaultdict
 
-from ..models.diagnostic_test import DiagnosticTest, DiagnosticTestAnswer
-from ..models.question import Question, Topic
+from ..models.diagnostic_test import DiagnosticTest, DiagnosticTestAnswer, DiagnosticTestResult
+from ..models.topic import Topic
+from ..models.question import Question
 from ..models.subject import Subject
 from ..models.user import User
 from ..schemas.diagnostic_test import DiagnosticTestQuestion
 from .diagnostic_service import DiagnosticService
+from .irt_calculation_service import IRTCalculationService
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +31,9 @@ class AdaptiveDiagnosticService(DiagnosticService):
         super().__init__(db)
         self.db = db
         self.logger = logger
+        
+        # Initialize IRT calculation service
+        self.irt_service = IRTCalculationService(db)
         
         # Adaptive algorithm parameters
         self.INITIAL_THETA = 0.0  # Starting ability estimate
@@ -125,9 +130,9 @@ class AdaptiveDiagnosticService(DiagnosticService):
             if i > 0:
                 target_difficulty = self._calculate_next_difficulty(test_id, current_theta)
             
-            # Select question closest to target difficulty
+            # Select question using maximum information criterion at current theta
             question = self._select_optimal_question(
-                question_pools, target_difficulty, answered_questions
+                question_pools, current_theta, answered_questions
             )
             
             if question:
@@ -165,12 +170,40 @@ class AdaptiveDiagnosticService(DiagnosticService):
         )
         self.db.add(test_answer)
         
+        # Create DiagnosticTestResult entry with tracking metrics
+        # First, get additional question data that might be available
+        tiempo_estimado = getattr(question, 'tiempo_estimado', None)
+        nivel_desempeno = getattr(question, 'nivel_desempeno_esperado', None)
+        puntos_xp = getattr(question, 'puntos_xp', 10)  # Default 10 XP
+        
+        # Calculate XP earned based on correctness and difficulty
+        xp_earned = puntos_xp if is_correct else max(1, puntos_xp // 4)  # 1/4 XP for incorrect answers
+        
+        diagnostic_result = DiagnosticTestResult(
+            user_id=test.user_id,
+            subject_id=test.subject_id,
+            question_id=question_id,
+            user_answer=user_answer,
+            is_correct=is_correct,
+            response_time=response_time_ms,
+            theta_before=current_theta,
+            # theta_after will be updated below
+            tiempo_estimado_baseline=tiempo_estimado,
+            nivel_dificultad=question.difficulty,
+            nivel_desempeno_esperado=nivel_desempeno,
+            puntos_xp_earned=xp_earned
+        )
+        self.db.add(diagnostic_result)
+        
         # Update adaptive parameters
         adaptive_params = test.score_by_topic.get("adaptive_params", {})
         current_theta = adaptive_params.get("current_theta", 0.0)
         
         # Calculate new theta using IRT-based adaptation
         new_theta = self._update_theta_estimate(current_theta, question, is_correct, response_time_ms)
+        
+        # Update the diagnostic result with the new theta
+        diagnostic_result.theta_after = new_theta
         
         # Update test metadata
         adaptive_params["current_theta"] = new_theta
@@ -268,6 +301,14 @@ class AdaptiveDiagnosticService(DiagnosticService):
         
         self.db.commit()
         
+        # Generate comprehensive IRT theta profile using the IRT service
+        try:
+            irt_profile = self.irt_service.generate_theta_profile(test_id)
+            test.score_by_topic["irt_analysis"] = irt_profile
+        except Exception as e:
+            self.logger.warning(f"Could not generate IRT profile for test {test_id}: {e}")
+            irt_profile = None
+        
         # Update user stats
         self._update_user_gamification_stats(test.user_id, xp_earned, icfes_rank)
         
@@ -288,7 +329,8 @@ class AdaptiveDiagnosticService(DiagnosticService):
                 "damage_dealt": damage_dealt,
                 "level_up": False  # Will be calculated when updating user
             },
-            "next_steps": self._generate_next_steps(final_theta, icfes_rank, performance_analysis)
+            "next_steps": self._generate_next_steps(final_theta, icfes_rank, performance_analysis),
+            "irt_analysis": irt_profile if irt_profile else None
         }
 
     # Private helper methods
@@ -348,8 +390,8 @@ class AdaptiveDiagnosticService(DiagnosticService):
                 return rank
         return 'E'
     
-    def _get_stratified_question_pool(self, subject_id: str, answered_questions) -> Dict[str, List[Question]]:
-        """Get questions organized by difficulty bands"""
+    def _get_stratified_question_pool(self, subject_id: str, answered_questions, min_discrimination: float = 0.2) -> Dict[str, List[Question]]:
+        """Get questions organized by difficulty bands, filtered by discrimination index"""
         pools = {}
         
         for band, (min_diff, max_diff) in self.DIFFICULTY_BANDS.items():
@@ -358,6 +400,10 @@ class AdaptiveDiagnosticService(DiagnosticService):
                     Question.subject_id == subject_id,
                     Question.difficulty >= min_diff,
                     Question.difficulty <= max_diff,
+                    # Filter out questions with poor discrimination (< 0.2)
+                    # Only include questions with good discrimination for accurate theta estimation
+                    Question.indice_discriminacion >= min_discrimination,
+                    Question.indice_discriminacion.isnot(None),
                     ~Question.id.in_(answered_questions)
                 )
             ).all()
@@ -366,39 +412,81 @@ class AdaptiveDiagnosticService(DiagnosticService):
         return pools
     
     def _select_optimal_question(self, question_pools: Dict[str, List[Question]], 
-                               target_difficulty: int, answered_questions) -> Optional[Question]:
-        """Select the most appropriate question for current ability level"""
-        # Determine which pool to use based on target difficulty
-        if target_difficulty <= 3:
-            pool_order = ['easy', 'medium', 'hard']
-        elif target_difficulty <= 6:
-            pool_order = ['medium', 'easy', 'hard']
-        else:
-            pool_order = ['hard', 'medium', 'easy']
+                               current_theta: float, answered_questions) -> Optional[Question]:
+        """Select question using maximum information criterion (IRT-based adaptive selection)"""
+        # Combine all available questions from pools
+        all_available_questions = []
+        for pool in question_pools.values():
+            all_available_questions.extend(pool)
+        
+        if not all_available_questions:
+            return None
+        
+        # Calculate Fisher information for each question at current theta
+        question_information_scores = []
+        
+        for question in all_available_questions:
+            # Get Fisher information at current theta
+            information = question.get_irt_information(current_theta)
             
-        for pool_name in pool_order:
-            pool = question_pools.get(pool_name, [])
-            if pool:
-                # Find question closest to target difficulty
-                best_question = min(pool, key=lambda q: abs(q.difficulty - target_difficulty))
-                return best_question
-                
-        return None
+            # Add small penalty for questions without IRT parameters to encourage using calibrated items
+            if (question.parametro_irt_a is None or 
+                question.parametro_irt_b is None or 
+                question.parametro_irt_c is None):
+                information *= 0.5  # Reduce information for non-calibrated questions
+            
+            # Add small randomness to avoid always selecting the same question
+            # when multiple questions have similar information
+            randomness_factor = 1.0 + (random.random() - 0.5) * 0.1  # ±5% randomness
+            
+            adjusted_information = information * randomness_factor
+            question_information_scores.append((question, adjusted_information))
+        
+        # Sort by information (descending) and select the best
+        question_information_scores.sort(key=lambda x: x[1], reverse=True)
+        
+        # Select the question with maximum information
+        selected_question = question_information_scores[0][0]
+        
+        self.logger.info(
+            f"Selected question {selected_question.id} with information score "
+            f"{question_information_scores[0][1]:.4f} at theta={current_theta:.3f}"
+        )
+        
+        return selected_question
     
     def _update_theta_estimate(self, current_theta: float, question: Question, 
                              is_correct: bool, response_time_ms: int) -> float:
-        """Update ability estimate using IRT principles"""
-        # Get question difficulty as theta value
-        question_theta = self._difficulty_to_theta(question.difficulty)
+        """Update ability estimate using IRT maximum likelihood estimation"""
+        import math
         
-        # Calculate expected probability of correct response
-        expected_prob = 1 / (1 + math.exp(-(current_theta - question_theta)))
+        # Use IRT 3PL model for probability calculation
+        expected_prob = question.get_irt_probability(current_theta)
         
         # Actual response (1 for correct, 0 for incorrect)
         actual_response = 1 if is_correct else 0
         
-        # Update theta using gradient descent-like approach
-        adjustment = self.THETA_ADJUSTMENT_RATE * (actual_response - expected_prob)
+        # Calculate first derivative of log-likelihood for Newton-Raphson
+        # For 3PL: dL/dθ = a(P-c)(u-P)/[P(1-c)] where u is the actual response
+        a = question.parametro_irt_a if question.parametro_irt_a is not None else 1.0
+        c = question.parametro_irt_c if question.parametro_irt_c is not None else 0.25
+        
+        # Protect against division by zero and invalid parameters
+        a = max(0.1, min(10.0, a))
+        c = max(0.0, min(1.0, c))
+        expected_prob = max(0.001, min(0.999, expected_prob))
+        
+        # Calculate derivative
+        numerator = a * (expected_prob - c) * (actual_response - expected_prob)
+        denominator = expected_prob * (1 - c)
+        
+        if abs(denominator) < 1e-10:
+            # Fallback to simple adjustment if derivative calculation fails
+            adjustment = self.THETA_ADJUSTMENT_RATE * (actual_response - expected_prob)
+        else:
+            # Newton-Raphson step (simplified, using only first derivative)
+            derivative = numerator / denominator
+            adjustment = self.THETA_ADJUSTMENT_RATE * derivative
         
         # Factor in response time (faster responses indicate higher confidence)
         time_factor = self._calculate_time_factor(response_time_ms)

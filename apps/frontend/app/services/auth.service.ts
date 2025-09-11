@@ -16,15 +16,13 @@ export interface RegisterData {
 class AuthService {
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
-      // API expects form data for OAuth2
-      const formData = new URLSearchParams();
-      formData.append('username', credentials.username);
-      formData.append('password', credentials.password);
-      
-      // Intentar primero con la ruta simplificada para testing
-      const response = await apiClient.post<LoginResponse>('/auth-simple/login', formData, {
+      // Send JSON data to match backend expectation
+      const response = await apiClient.post<LoginResponse>('/auth-simple/login', {
+        username: credentials.username,
+        password: credentials.password
+      }, {
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Type': 'application/json',
         },
       });
       

@@ -14,7 +14,8 @@ from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum
 
-from ..models.question import Question, Topic
+from ..models.topic import Topic
+from ..models.question import Question
 from ..models.subject import Subject
 from ..models.diagnostic_test import DiagnosticTest, DiagnosticTestAnswer
 from ..models.user import User
@@ -321,11 +322,14 @@ class QuestionPoolManager:
             )
         )
         
-        # Apply quality filters
+        # Apply quality filters - Filter out questions with poor discrimination
         if config.min_discrimination_index > 0:
-            # This would need to be implemented with proper JSON querying
-            # query = query.filter(Question.power_stats['discrimination_index'] >= config.min_discrimination_index)
-            pass
+            query = query.filter(
+                and_(
+                    Question.indice_discriminacion >= config.min_discrimination_index,
+                    Question.indice_discriminacion.isnot(None)
+                )
+            )
         
         questions = query.all()
         
@@ -355,16 +359,17 @@ class QuestionPoolManager:
         return QuestionMetrics(
             question_id=str(question.id),
             difficulty_level=question.difficulty,
-            discrimination_index=usage_stats.get("discrimination_index", power_stats.get("discrimination_index", 0.5)),
+            # Use the actual indice_discriminacion field from database, fallback to calculated value
+            discrimination_index=question.indice_discriminacion if question.indice_discriminacion is not None else usage_stats.get("discrimination_index", power_stats.get("discrimination_index", 0.5)),
             success_rate=usage_stats.get("success_rate", power_stats.get("success_rate", 0.6)),
             usage_count=usage_stats.get("usage_count", 0),
             avg_response_time=usage_stats.get("avg_response_time", 45000),
             last_used=usage_stats.get("last_used"),
             topic_representation=self._calculate_topic_representation(question),
             irt_parameters={
-                "a": power_stats.get("discrimination", 1.0),
-                "b": (question.difficulty - 5.5) / 2.0,  # Map 1-10 to roughly -2.25 to 2.25
-                "c": power_stats.get("guessing", 0.25)
+                "a": question.parametro_irt_a if question.parametro_irt_a is not None else power_stats.get("discrimination", 1.0),
+                "b": question.parametro_irt_b if question.parametro_irt_b is not None else (question.difficulty - 5.5) / 2.0,  # Map 1-10 to roughly -2.25 to 2.25
+                "c": question.parametro_irt_c if question.parametro_irt_c is not None else power_stats.get("guessing", 0.25)
             }
         )
 

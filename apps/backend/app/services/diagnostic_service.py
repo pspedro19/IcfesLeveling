@@ -1,13 +1,14 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
+from sqlalchemy import func, and_, or_
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 import random
 import uuid
 import logging
 
-from ..models.diagnostic_test import DiagnosticTest, DiagnosticTestAnswer
-from ..models.question import Question, Topic
+from ..models.diagnostic_test import DiagnosticTest, DiagnosticTestAnswer, DiagnosticTestResult
+from ..models.topic import Topic
+from ..models.question import Question
 from ..models.subject import Subject
 from ..models.user import User
 from ..schemas.diagnostic_test import (
@@ -42,9 +43,21 @@ class DiagnosticService:
         self.db.refresh(diagnostic_test)
         return diagnostic_test
 
-    def get_diagnostic_questions(self, subject_id: str, limit: int = None) -> List[Question]:
+    def get_diagnostic_questions(self, subject_id: str, limit: int = None, min_discrimination: float = 0.2) -> List[Question]:
         """Obtener preguntas para el test diagnóstico"""
         query = self.db.query(Question).filter(Question.subject_id == subject_id)
+        
+        # Filter out questions with poor discrimination (< 0.2) when available
+        # For ICFES questions without discrimination index, include them all
+        query = query.filter(
+            or_(
+                and_(
+                    Question.indice_discriminacion >= min_discrimination,
+                    Question.indice_discriminacion.isnot(None)
+                ),
+                Question.indice_discriminacion.is_(None)  # Include questions without discrimination index
+            )
+        )
         
         if limit:
             query = query.limit(limit)
@@ -149,6 +162,29 @@ class DiagnosticService:
                 topic_id=question.topic_id
             )
             self.db.add(test_answer)
+            
+            # Create DiagnosticTestResult entry with tracking metrics
+            # Get additional question data that might be available
+            tiempo_estimado = getattr(question, 'tiempo_estimado', None)
+            nivel_desempeno = getattr(question, 'nivel_desempeno_esperado', None)
+            puntos_xp = question.puntos_xp or 10  # Use puntos_xp field or default 10 XP
+            
+            # Calculate XP earned based on correctness and difficulty
+            xp_earned = puntos_xp if is_correct else max(1, puntos_xp // 4)  # 1/4 XP for incorrect answers
+            
+            diagnostic_result = DiagnosticTestResult(
+                user_id=test.user_id,
+                subject_id=test.subject_id,
+                question_id=answer_data["question_id"],
+                user_answer=answer_data["user_answer"],
+                is_correct=is_correct,
+                response_time=raw_rt,
+                tiempo_estimado_baseline=tiempo_estimado,
+                nivel_dificultad=question.difficulty,
+                nivel_desempeno_esperado=nivel_desempeno,
+                puntos_xp_earned=xp_earned
+            )
+            self.db.add(diagnostic_result)
 
         # Calcular porcentajes por tema
         score_by_topic = {}
@@ -236,6 +272,44 @@ class DiagnosticService:
         test.completed_at = datetime.utcnow()
 
         self.db.commit()
+
+        # Award XP to user and update rank based on test performance
+        try:
+            from .performance_rank_service import PerformanceRankService
+            
+            # Calculate total XP earned from this test
+            total_xp_earned = self.db.query(func.sum(DiagnosticTestResult.puntos_xp_earned)).filter(
+                DiagnosticTestResult.user_id == test.user_id,
+                DiagnosticTestResult.subject_id == test.subject_id
+            ).scalar() or 0
+            
+            # Get user and add XP
+            user = self.db.query(User).filter(User.id == test.user_id).first()
+            if user:
+                # Add XP from this test completion (only new XP earned in this session)
+                test_xp = sum(dr.puntos_xp_earned for dr in self.db.query(DiagnosticTestResult).filter(
+                    DiagnosticTestResult.user_id == test.user_id,
+                    DiagnosticTestResult.subject_id == test.subject_id,
+                    DiagnosticTestResult.created_at >= test.started_at
+                ).all())
+                
+                level_up = user.add_test_experience(test_xp)
+                
+                # Update rank and level based on performance data
+                rank_service = PerformanceRankService(self.db)
+                rank_update = rank_service.update_user_rank_and_level(str(user.id))
+                
+                # Log XP and rank changes
+                self.logger.info(f"User {user.username} earned {test_xp} XP from diagnostic test. Level up: {level_up}")
+                if rank_update.get('rank_changed'):
+                    self.logger.info(f"User {user.username} rank updated: {rank_update['current_rank']} → {rank_update['new_rank']}")
+                
+                # Commit the user updates
+                self.db.commit()
+                
+        except Exception as e:
+            # Don't fail the test submission if XP/rank update fails
+            self.logger.warning(f"Failed to update XP/rank for user {test.user_id}: {str(e)}")
 
         # Crear análisis detallado con el nuevo servicio (no bloquear guardado si falla)
         try:

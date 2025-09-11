@@ -19,7 +19,8 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.database import get_db, engine
-from app.models.question import Question, Topic
+from app.models.topic import Topic
+from app.models.question import Question
 from app.models.subject import Subject
 from app.core.config import settings
 

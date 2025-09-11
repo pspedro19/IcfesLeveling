@@ -13,6 +13,7 @@ import {
   Sparkles,
   Timer,
   CheckCircle,
+  Star,
   XCircle
 } from 'lucide-react';
 import { useAudio } from '../PortalLogin/AudioEngine';

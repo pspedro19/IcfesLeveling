@@ -47,10 +47,10 @@ function useAuth() {
 
   useEffect(() => {
     // Verificar si hay un token en localStorage
-    const token = localStorage.getItem('authToken')
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token')
     if (token) {
       // Verificar token con el backend
-      fetch('http://localhost:4000/api/v1/auth/me', {
+      fetch('/api/v1/auth/me', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -60,11 +60,13 @@ function useAuth() {
         if (data.id) {
           setUser(data)
         } else {
-          localStorage.removeItem('authToken')
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('token')
         }
       })
       .catch(() => {
-        localStorage.removeItem('authToken')
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('token')
       })
       .finally(() => {
         setLoading(false)
@@ -101,7 +103,7 @@ export default function OnboardingPage() {
 
   const loadQuestions = async () => {
     try {
-      const response = await fetch('http://localhost:4000/api/v1/personality/questions')
+      const response = await fetch('/api/v1/personality/questions')
       if (response.ok) {
         const data = await response.json()
         setQuestions(data)
@@ -137,8 +139,8 @@ export default function OnboardingPage() {
     
     setIsLoading(true)
     try {
-      const token = localStorage.getItem('authToken')
-      const response = await fetch('http://localhost:4000/api/v1/personality/test', {
+      const token = localStorage.getItem('access_token') || localStorage.getItem('token')
+      const response = await fetch('/api/v1/personality/test', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

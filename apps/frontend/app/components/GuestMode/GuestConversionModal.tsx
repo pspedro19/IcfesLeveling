@@ -109,7 +109,7 @@ export default function GuestConversionModal({
       const data = await response.json();
       
       // Auto login después del registro
-      await login({ username: formData.username, password: formData.password });
+      await login(formData.username, formData.password);
       
       playSound('level_up');
       

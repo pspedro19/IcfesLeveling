@@ -9,7 +9,8 @@ from ..models.battle import Battle, BattleAnswer
 from ..models.question import Question
 from ..models.user import User
 from ..models.subject import Subject
-from ..models.question import Topic
+from ..models.topic import Topic
+from ..models.question import Question
 from ..schemas.analytics import (
     PersonalAnalytics, SubjectProgress, ICFESProjection, 
     NationalComparison, StrengthWeaknessHeatmap

@@ -122784,3 +122784,6 @@ sqlalchemy.exc.ProgrammingError: (psycopg2.ProgrammingError) set_session cannot 
 (Background on this error at: https://sqlalche.me/e/20/e3q8)
 2025-08-11 17:53:54,872 - app.main - INFO - lifespan:95 - Shutting down ICFES LEVELING API...
 2025-08-11 17:53:54,872 - app.main - INFO - lifespan:95 - Shutting down ICFES LEVELING API...
+2025-09-10 12:00:10,151 - app.services.media_cache_service - INFO - _init_redis:123 - Redis connections initialized successfully
+2025-09-10 12:00:10,179 - app.services.media_metrics_service - INFO - _init_redis:100 - Metrics service Redis connection initialized
+2025-09-10 12:00:10,180 - app.middleware.media_cache_middleware - INFO - setup_media_cache_middleware:421 - Media cache middleware configured

@@ -51,10 +51,11 @@ export default function StudyPlanView() {
   const fetchStudyPlan = async () => {
     try {
       setLoading(true);
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
       
       // Primero intentar obtener el plan por ID
       if (planId) {
-        const response = await fetch(`http://localhost:4000/api/v1/study-plan/view/${planId}`);
+        const response = await fetch(`${API_URL}/api/v1/study-plan/view/${planId}`);
         if (response.ok) {
           const data = await response.json();
           setPlan(data);
@@ -65,7 +66,7 @@ export default function StudyPlanView() {
       
       // Si no hay plan_id o falla, obtener unidades por materia
       if (subjectId) {
-        const response = await fetch(`http://localhost:4000/api/v1/study-plan/units/by-subject/${subjectId}`);
+        const response = await fetch(`${API_URL}/api/v1/study-plan/units/by-subject/${subjectId}`);
         if (response.ok) {
           const data = await response.json();
           setPlan({ units: data.units, summary: data });
@@ -111,7 +112,8 @@ export default function StudyPlanView() {
 
   const trackVideoProgress = async (videoId: string) => {
     try {
-      await fetch('http://localhost:4000/api/v1/video-progress/track', {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      await fetch(`${API_URL}/api/v1/video-progress/track`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ video_id: videoId, completed: true })

@@ -3,6 +3,7 @@ Modelos para sistema de suscripciones y pagos
 """
 
 from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, Text, JSON, ForeignKey, Enum, Numeric
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
@@ -30,8 +31,8 @@ class Subscription(Base):
     """Modelo de suscripción de usuario"""
     __tablename__ = "subscriptions"
     
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     plan_id = Column(String, nullable=False)
     plan_name = Column(String, nullable=False)
     status = Column(String, default="inactive")  # active, inactive, cancelled, expired
@@ -65,7 +66,7 @@ class Subscription(Base):
     payment_method_id = Column(String, ForeignKey("payment_methods.id"))
     
     # Metadata
-    metadata = Column(JSON)
+    meta_data = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -78,8 +79,8 @@ class Payment(Base):
     """Modelo de pagos realizados"""
     __tablename__ = "payments"
     
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     subscription_id = Column(String, ForeignKey("subscriptions.id"))
     
     # Información del pago
@@ -125,8 +126,8 @@ class PaymentMethod(Base):
     """Métodos de pago guardados del usuario"""
     __tablename__ = "payment_methods"
     
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     
     # Tipo de método de pago
     type = Column(String, nullable=False)  # CARD, NEQUI, PSE
@@ -161,8 +162,8 @@ class Invoice(Base):
     """Facturas generadas"""
     __tablename__ = "invoices"
     
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     payment_id = Column(String, ForeignKey("payments.id"))
     subscription_id = Column(String, ForeignKey("subscriptions.id"))
     
@@ -198,7 +199,7 @@ class Invoice(Base):
     
     # Metadata
     notes = Column(Text)
-    metadata = Column(JSON)
+    meta_data = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -210,7 +211,7 @@ class Coupon(Base):
     """Cupones de descuento"""
     __tablename__ = "coupons"
     
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     code = Column(String, unique=True, nullable=False)
     description = Column(Text)
     
@@ -234,7 +235,7 @@ class Coupon(Base):
     
     # Metadata
     created_by = Column(String)
-    metadata = Column(JSON)
+    meta_data = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -242,9 +243,9 @@ class CouponUsage(Base):
     """Registro de uso de cupones"""
     __tablename__ = "coupon_usage"
     
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     coupon_id = Column(String, ForeignKey("coupons.id"), nullable=False)
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     payment_id = Column(String, ForeignKey("payments.id"))
     
     # Descuento aplicado

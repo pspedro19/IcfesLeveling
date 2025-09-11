@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .testing { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🔐 ICFES Leveling Login Test</h1>
+    
+    <div id="status">
+        <div class="test-result testing">🔄 Initializing test environment...</div>
+    </div>
+    
+    <h2>Test Accounts</h2>
+    <button onclick="testLogin('admin', 'secret')">Test Admin Login</button>
+    <button onclick="testLogin('test', 'secret')">Test User Login</button>
+    <button onclick="testLogin('student1', 'secret')">Test Student Login</button>
+    <button onclick="testBackendHealth()">Test Backend Health</button>
+    
+    <h2>Results</h2>
+    <div id="results"></div>
+    
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        const FRONTEND_BASE = 'http://localhost:3002';
+        
+        function addResult(message, type = 'testing') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = message;
+            document.getElementById('results').appendChild(div);
+            console.log(message);
+        }
+        
+        async function testBackendHealth() {
+            addResult('🔍 Testing backend health...');
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addResult(`✅ Backend Health: ${data.status} - ${data.service}`, 'success');
+                    return true;
+                } else {
+                    addResult(`❌ Backend Health Check Failed: ${response.status}`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                addResult(`❌ Backend Connection Failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        async function testLogin(username, password) {
+            addResult(`🔐 Testing login for: ${username}`);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/auth-simple/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    addResult(`❌ Login failed for ${username}: ${response.status} - ${errorText}`, 'error');
+                    return false;
+                }
+                
+                const data = await response.json();
+                
+                if (data.access_token && data.user) {
+                    addResult(`✅ Login successful for ${username}! 
+                        <br>• Level: ${data.user.level} 
+                        <br>• Rank: ${data.user.rank}
+                        <br>• Role: ${data.user.role}
+                        <br>• Display Name: ${data.user.display_name}
+                        <br>• Token: ${data.access_token.substring(0, 10)}...`, 'success');
+                    
+                    // Test token usage
+                    await testTokenUsage(data.access_token, username);
+                    return true;
+                } else {
+                    addResult(`❌ Login response invalid for ${username}`, 'error');
+                    return false;
+                }
+                
+            } catch (error) {
+                addResult(`❌ Network error for ${username}: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        async function testTokenUsage(token, username) {
+            addResult(`🔑 Testing token usage for ${username}...`);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/auth/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const userData = await response.json();
+                    addResult(`✅ Token validation successful for ${username}`, 'success');
+                } else {
+                    addResult(`⚠️ Token validation failed for ${username}: ${response.status}`, 'error');
+                }
+                
+            } catch (error) {
+                addResult(`❌ Token test error for ${username}: ${error.message}`, 'error');
+            }
+        }
+        
+        // Run initial health check
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('status').innerHTML = '<div class="test-result testing">🚀 Test environment ready!</div>';
+            await testBackendHealth();
+        });
+    </script>
+</body>
+</html>

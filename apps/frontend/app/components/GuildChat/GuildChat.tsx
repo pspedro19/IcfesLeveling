@@ -162,7 +162,7 @@ export default function GuildChat({
     setGuildMembers([
       {
         id: user?.id || '1',
-        username: user?.name || 'Tú',
+        username: user?.username || 'Tú',
         role: 'member',
         level: user?.level || 1,
         isOnline: true
@@ -228,7 +228,7 @@ export default function GuildChat({
     const messageData = {
       guildId,
       userId: user?.id,
-      username: user?.name || 'Anonymous',
+      username: user?.username || 'Anonymous',
       userRole: 'member' as const,
       userLevel: user?.level || 1,
       message: inputMessage.trim(),

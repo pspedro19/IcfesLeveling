@@ -1,0 +1,27 @@
+Traceback (most recent call last):
+  File "C:\Users\PEDRO_PEREZ\Documents\IcfesLeveling\apps\backend\update_questions_from_db.py", line 126, in <module>
+    update_startup_file()
+  File "C:\Users\PEDRO_PEREZ\Documents\IcfesLeveling\apps\backend\update_questions_from_db.py", line 89, in update_startup_file
+    questions = get_questions_from_db()
+                ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PEDRO_PEREZ\Documents\IcfesLeveling\apps\backend\update_questions_from_db.py", line 11, in get_questions_from_db
+    conn = psycopg2.connect(
+           ^^^^^^^^^^^^^^^^^
+  File "C:\Users\PEDRO_PEREZ\AppData\Local\Programs\Python\Python311\Lib\site-packages\psycopg2\__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\PEDRO_PEREZ\Documents\IcfesLeveling\apps\backend\update_questions_from_db.py", line 128, in <module>
+    print(f"\u274c Error: {e}")
+  File "C:\Users\PEDRO_PEREZ\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u274c' in position 0: character maps to <undefined>

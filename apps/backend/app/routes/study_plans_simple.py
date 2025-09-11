@@ -1,7 +1,7 @@
 """
 Simple Study Plans API - Generates Khan Academy Style Study Plans
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
@@ -12,98 +12,15 @@ from ..core.database import get_db
 from ..models.subject import Subject
 from ..models.question import Question
 from ..models.diagnostic_test import DiagnosticTest, DiagnosticTestAnswer
+from ..models.topic import Topic
+from ..models.study_plan import StudyPlan, StudyPlanTemplate
+from ..core.security import get_current_user
+from ..models.user import User
 
 router = APIRouter(prefix="/api/v1/study-plans", tags=["study-plans-simple"])
 
-# Khan Academy style study plan templates
-KHAN_ACADEMY_TEMPLATES = {
-    "Matemáticas": {
-        "beginner": {
-            "units": [
-                {
-                    "number": 1,
-                    "title": "Fundamentos de Álgebra",
-                    "description": "Conceptos básicos de álgebra y ecuaciones simples",
-                    "topics": [
-                        {"name": "Variables y expresiones", "videos": ["dQw4w9WgXcQ"], "exercises": 15},
-                        {"name": "Ecuaciones lineales", "videos": ["PUB0TaZ7h-A"], "exercises": 20},
-                        {"name": "Sistemas de ecuaciones", "videos": ["6AgB3UUUC7Y"], "exercises": 25}
-                    ],
-                    "estimated_hours": 8,
-                    "difficulty": "Básico"
-                },
-                {
-                    "number": 2,
-                    "title": "Geometría Esencial",
-                    "description": "Formas, ángulos y propiedades geométricas",
-                    "topics": [
-                        {"name": "Ángulos y triángulos", "videos": ["eTymJPy6rT4"], "exercises": 18},
-                        {"name": "Perímetro y área", "videos": ["xCJoaGGJ1W0"], "exercises": 22},
-                        {"name": "Teorema de Pitágoras", "videos": ["AA6RfgP-AHU"], "exercises": 20}
-                    ],
-                    "estimated_hours": 10,
-                    "difficulty": "Básico"
-                },
-                {
-                    "number": 3,
-                    "title": "Probabilidad y Estadística",
-                    "description": "Análisis de datos y probabilidad básica",
-                    "topics": [
-                        {"name": "Media, mediana y moda", "videos": ["k3aKKasOmIw"], "exercises": 15},
-                        {"name": "Probabilidad simple", "videos": ["xSc4oLA9e8o"], "exercises": 20},
-                        {"name": "Gráficas estadísticas", "videos": ["hEWY6kkBdpo"], "exercises": 18}
-                    ],
-                    "estimated_hours": 7,
-                    "difficulty": "Intermedio"
-                }
-            ]
-        },
-        "intermediate": {
-            "units": [
-                {
-                    "number": 1,
-                    "title": "Álgebra Avanzada",
-                    "description": "Funciones y expresiones complejas",
-                    "topics": [
-                        {"name": "Funciones cuadráticas", "videos": ["Y036bRD36gY"], "exercises": 25},
-                        {"name": "Polinomios", "videos": ["Vm7H0VTlIco"], "exercises": 30},
-                        {"name": "Factorización", "videos": ["6MmLVS5PAVo"], "exercises": 28}
-                    ],
-                    "estimated_hours": 12,
-                    "difficulty": "Intermedio"
-                },
-                {
-                    "number": 2,
-                    "title": "Trigonometría",
-                    "description": "Funciones trigonométricas y aplicaciones",
-                    "topics": [
-                        {"name": "Seno, coseno y tangente", "videos": ["yBw67Fb31Cs"], "exercises": 25},
-                        {"name": "Identidades trigonométricas", "videos": ["0IEaW2NeAD0"], "exercises": 30},
-                        {"name": "Ley de senos y cosenos", "videos": ["pGaDcOMdw48"], "exercises": 25}
-                    ],
-                    "estimated_hours": 15,
-                    "difficulty": "Intermedio"
-                }
-            ]
-        },
-        "advanced": {
-            "units": [
-                {
-                    "number": 1,
-                    "title": "Cálculo Diferencial",
-                    "description": "Límites, derivadas y aplicaciones",
-                    "topics": [
-                        {"name": "Límites", "videos": ["riXcZT2ICjA"], "exercises": 30},
-                        {"name": "Derivadas", "videos": ["WUvTyaaNkzM"], "exercises": 35},
-                        {"name": "Optimización", "videos": ["Yx62iETruFE"], "exercises": 30}
-                    ],
-                    "estimated_hours": 20,
-                    "difficulty": "Avanzado"
-                }
-            ]
-        }
-    }
-}
+# Templates are now loaded dynamically from the database
+# using StudyPlanTemplate model and get_study_plan_templates_from_db function
 
 import math
 import requests
@@ -250,7 +167,8 @@ def validate_youtube_video(youtube_url):
 
 def get_quality_validated_videos(topic_name, difficulty_level, count=3):
     """Get videos with quality validation and smart selection"""
-    template = KHAN_ACADEMY_TEMPLATES.get("Matemáticas", {}).get(difficulty_level, {})
+    # Use fallback templates since we don't have the dynamic template loading in this context
+    template = get_fallback_templates().get(difficulty_level, {})
     
     validated_videos = []
     fallback_videos = []
@@ -303,6 +221,180 @@ def calculate_topic_similarity(topic1, topic2):
     
     return len(intersection) / len(union) if union else 0
 
+async def get_study_plan_templates_from_db(subject_id: str, db: Session):
+    """Get study plan templates from database instead of hardcoded templates"""
+    try:
+        # Get templates for the subject from database
+        templates = db.query(StudyPlanTemplate).filter(
+            StudyPlanTemplate.subject_id == subject_id
+        ).order_by(StudyPlanTemplate.unit_number).all()
+        
+        if not templates:
+            # Return fallback template structure if no templates in DB
+            return get_fallback_templates()
+        
+        # Group templates by difficulty level
+        templates_by_level = {
+            "beginner": {"units": []},
+            "intermediate": {"units": []}, 
+            "advanced": {"units": []}
+        }
+        
+        for template in templates:
+            # Determine level based on difficulty_level
+            level = "beginner" if template.difficulty_level <= 2 else "advanced" if template.difficulty_level >= 4 else "intermediate"
+            
+            unit_data = {
+                "number": template.unit_number,
+                "title": template.unit_name,
+                "description": template.unit_description or "",
+                "topics": [],
+                "estimated_hours": template.estimated_hours or 8,
+                "difficulty": level.capitalize()
+            }
+            
+            # Convert template topics to the expected format
+            if template.topics:
+                for i, topic_name in enumerate(template.topics):
+                    video_urls = template.video_urls.get(topic_name, []) if template.video_urls else []
+                    
+                    topic_data = {
+                        "name": topic_name,
+                        "videos": video_urls,
+                        "exercises": template.exercise_count or 15
+                    }
+                    unit_data["topics"].append(topic_data)
+            
+            templates_by_level[level]["units"].append(unit_data)
+        
+        return templates_by_level
+        
+    except Exception as e:
+        print(f"Error loading templates from DB: {e}")
+        return get_fallback_templates()
+
+def get_fallback_templates():
+    """Fallback templates when database templates are not available"""
+    return {
+        "beginner": {
+            "units": [
+                {
+                    "number": 1,
+                    "title": "Fundamentos Básicos",
+                    "description": "Conceptos básicos para iniciar",
+                    "topics": [
+                        {"name": "Introducción", "videos": ["dQw4w9WgXcQ"], "exercises": 10},
+                        {"name": "Conceptos básicos", "videos": ["PUB0TaZ7h-A"], "exercises": 15}
+                    ],
+                    "estimated_hours": 6,
+                    "difficulty": "Básico"
+                }
+            ]
+        },
+        "intermediate": {
+            "units": [
+                {
+                    "number": 1,
+                    "title": "Nivel Intermedio",
+                    "description": "Conceptos de nivel intermedio",
+                    "topics": [
+                        {"name": "Temas intermedios", "videos": ["6AgB3UUUC7Y"], "exercises": 20}
+                    ],
+                    "estimated_hours": 10,
+                    "difficulty": "Intermedio"
+                }
+            ]
+        },
+        "advanced": {
+            "units": [
+                {
+                    "number": 1,
+                    "title": "Nivel Avanzado", 
+                    "description": "Conceptos avanzados",
+                    "topics": [
+                        {"name": "Temas avanzados", "videos": ["eTymJPy6rT4"], "exercises": 25}
+                    ],
+                    "estimated_hours": 15,
+                    "difficulty": "Avanzado"
+                }
+            ]
+        }
+    }
+
+async def get_real_diagnostic_data(subject_id: str, user_id: str = None, db: Session = None):
+    """Get real diagnostic test data from database"""
+    try:
+        # If no user_id provided, use sample data based on subject
+        if not user_id:
+            # Return fallback data structure with default values
+            return {
+                "score_percentage": 60,
+                "test_answers": [],
+                "questions_data": [],
+                "response_times": {}
+            }
+        
+        # Get latest completed diagnostic test for user and subject
+        latest_test = db.query(DiagnosticTest).filter(
+            DiagnosticTest.user_id == user_id,
+            DiagnosticTest.subject_id == subject_id,
+            DiagnosticTest.status == "completed"
+        ).order_by(DiagnosticTest.completed_at.desc()).first()
+        
+        if not latest_test:
+            # No diagnostic test found - return default values
+            return {
+                "score_percentage": 50,
+                "test_answers": [],
+                "questions_data": [],
+                "response_times": {}
+            }
+        
+        # Get all answers for this test
+        test_answers = db.query(DiagnosticTestAnswer).filter(
+            DiagnosticTestAnswer.diagnostic_test_id == latest_test.id
+        ).all()
+        
+        # Convert answers to format expected by weakness calculation
+        formatted_answers = []
+        questions_data = []
+        response_times = {}
+        
+        for answer in test_answers:
+            question = db.query(Question).filter(Question.id == answer.question_id).first()
+            topic = db.query(Topic).filter(Topic.id == answer.topic_id).first() if answer.topic_id else None
+            
+            formatted_answers.append({
+                "question_id": str(answer.question_id),
+                "user_answer": answer.user_answer,
+                "response_time": answer.response_time_ms
+            })
+            
+            questions_data.append({
+                "id": str(answer.question_id),
+                "topic": {"name": topic.name if topic else "General"},
+                "difficulty": question.difficulty if question else 3,
+                "correct_answer": question.correct_answer if question else "A"
+            })
+            
+            response_times[str(answer.question_id)] = answer.response_time_ms
+        
+        return {
+            "score_percentage": latest_test.score_percentage,
+            "test_answers": formatted_answers,
+            "questions_data": questions_data,
+            "response_times": response_times
+        }
+        
+    except Exception as e:
+        # Return default values on error
+        return {
+            "score_percentage": 50,
+            "test_answers": [],
+            "questions_data": [],
+            "response_times": {}
+        }
+
 def get_difficulty_level(score_percentage: float) -> str:
     """Determine difficulty level based on diagnostic score"""
     if score_percentage >= 80:
@@ -339,6 +431,7 @@ def generate_personalized_recommendations(score: float, subject: str) -> Dict[st
 @router.get("/generate/{subject_id}")
 async def generate_study_plan_simple(
     subject_id: str,
+    user_id: str = None,
     db: Session = Depends(get_db)
 ):
     """Generate a Khan Academy style study plan with smart weakness detection"""
@@ -346,46 +439,28 @@ async def generate_study_plan_simple(
         # Get subject info
         subject = db.query(Subject).filter(Subject.id == subject_id).first()
         if not subject:
-            subject_name = "Matemáticas"
-        else:
-            subject_name = subject.name
-
-        # Try to get diagnostic results from latest test
-        # For now, simulate with mock data - in production, get from diagnostic test results
-        mock_diagnostic_data = {
-            "score_percentage": 65,
-            "test_answers": [
-                {"question_id": "q1", "user_answer": "A", "response_time": 45000},
-                {"question_id": "q2", "user_answer": "B", "response_time": 30000},
-                {"question_id": "q3", "user_answer": "C", "response_time": 90000},
-                {"question_id": "q4", "user_answer": "B", "response_time": 60000},
-            ],
-            "questions_data": [
-                {"id": "q1", "topic": {"name": "Funciones cuadráticas"}, "difficulty": 3, "correct_answer": "B"},
-                {"id": "q2", "topic": {"name": "Funciones cuadráticas"}, "difficulty": 2, "correct_answer": "B"},
-                {"id": "q3", "topic": {"name": "Sistemas de ecuaciones"}, "difficulty": 4, "correct_answer": "A"},
-                {"id": "q4", "topic": {"name": "Sistemas de ecuaciones"}, "difficulty": 3, "correct_answer": "B"},
-            ],
-            "response_times": {
-                "q1": 45000, "q2": 30000, "q3": 90000, "q4": 60000
-            }
-        }
+            raise HTTPException(status_code=404, detail="Subject not found")
         
-        score_percentage = mock_diagnostic_data["score_percentage"]
+        subject_name = subject.name
+
+        # Get diagnostic test results from database
+        diagnostic_data = await get_real_diagnostic_data(subject_id, user_id, db)
+        
+        score_percentage = diagnostic_data["score_percentage"]
         
         # Calculate smart weaknesses using statistical methods
         weaknesses = calculate_smart_weaknesses(
-            mock_diagnostic_data["test_answers"],
-            mock_diagnostic_data["questions_data"], 
-            mock_diagnostic_data["response_times"]
+            diagnostic_data["test_answers"],
+            diagnostic_data["questions_data"], 
+            diagnostic_data["response_times"]
         )
         
         # Determine difficulty level
         level = get_difficulty_level(score_percentage)
         
-        # Get base template for subject and level
-        template = KHAN_ACADEMY_TEMPLATES.get(subject_name, KHAN_ACADEMY_TEMPLATES["Matemáticas"])
-        base_units = template.get(level, template["intermediate"])["units"]
+        # Get base template for subject and level from database
+        templates_from_db = await get_study_plan_templates_from_db(subject_id, db)
+        base_units = templates_from_db.get(level, templates_from_db["intermediate"])["units"]
         
         # Enhance units with weakness-based prioritization and validated videos
         enhanced_units = []
@@ -542,22 +617,69 @@ async def generate_study_plan_post(
 ):
     """Generate study plan from diagnostic results (POST)"""
     subject_id = request.get("subject_id", "2a9c9371-b931-41d4-8d3e-ce5aae91a5c3")
-    score = request.get("score_percentage", 50)
+    user_id = request.get("user_id", None)
     
     # Redirect to GET endpoint logic
-    return await generate_study_plan_simple(subject_id, db)
+    return await generate_study_plan_simple(subject_id, user_id, db)
 
 @router.get("/my-plans")
-async def get_my_plans(db: Session = Depends(get_db)):
+async def get_my_plans(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """Get user's study plans"""
-    # Return mock data for now
-    return [
-        {
-            "id": "plan-1",
-            "subject": "Matemáticas",
-            "title": "Plan Personalizado de Matemáticas",
-            "progress": 35,
-            "next_topic": "Ecuaciones cuadráticas",
-            "estimated_completion": "4 semanas"
-        }
-    ]
+    try:
+        # Get all active study plans for the user
+        user_plans = db.query(StudyPlan).filter(
+            StudyPlan.user_id == current_user.id,
+            StudyPlan.is_active == True
+        ).all()
+        
+        plans_data = []
+        for plan in user_plans:
+            # Get subject name
+            subject = db.query(Subject).filter(Subject.id == plan.subject_id).first()
+            subject_name = subject.name if subject else "Unknown"
+            
+            # Calculate estimated completion based on progress
+            total_units = plan.total_units
+            completed_units = plan.completed_units
+            progress_percentage = float(plan.progress_percentage) if plan.progress_percentage else 0
+            
+            # Estimate weeks remaining (assuming 2 units per week)
+            remaining_units = max(0, total_units - completed_units)
+            estimated_weeks = max(1, remaining_units // 2)
+            
+            # Get next topic from plan data
+            next_topic = "Comenzar plan"
+            if plan.plan_data and isinstance(plan.plan_data, dict):
+                units = plan.plan_data.get("units", [])
+                for unit in units:
+                    topics = unit.get("topics", [])
+                    for topic in topics:
+                        if not topic.get("completed", False):
+                            next_topic = topic.get("name", "Próximo tema")
+                            break
+                    if next_topic != "Comenzar plan":
+                        break
+            
+            plans_data.append({
+                "id": str(plan.id),
+                "subject": subject_name,
+                "title": plan.plan_name,
+                "progress": int(progress_percentage),
+                "next_topic": next_topic,
+                "estimated_completion": f"{estimated_weeks} semana{'s' if estimated_weeks != 1 else ''}",
+                "total_units": total_units,
+                "completed_units": completed_units,
+                "created_at": plan.generated_at.isoformat() if plan.generated_at else None,
+                "updated_at": plan.updated_at.isoformat() if plan.updated_at else None
+            })
+        
+        return plans_data
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al obtener planes de estudio: {str(e)}"
+        )

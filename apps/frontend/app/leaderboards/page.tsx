@@ -220,31 +220,31 @@ export default function LeaderboardsPage() {
               >
                 <div className="bg-gray-800/50 rounded-lg p-4 backdrop-blur-sm">
                   <Crown className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
-                  <p className="text-3xl font-bold text-white">#{userStats.globalRank}</p>
+                  <p className="text-3xl font-bold text-white">#{userStats?.globalRank || '--'}</p>
                   <p className="text-sm text-gray-400">Rango Global</p>
                 </div>
                 
                 <div className="bg-gray-800/50 rounded-lg p-4 backdrop-blur-sm">
                   <Star className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-                  <p className="text-3xl font-bold text-white">{userStats.totalPoints.toLocaleString()}</p>
+                  <p className="text-3xl font-bold text-white">{userStats?.totalPoints?.toLocaleString() || '0'}</p>
                   <p className="text-sm text-gray-400">Puntos Totales</p>
                 </div>
                 
                 <div className="bg-gray-800/50 rounded-lg p-4 backdrop-blur-sm">
                   <Target className="w-8 h-8 text-green-400 mx-auto mb-2" />
-                  <p className="text-3xl font-bold text-white">{userStats.accuracy}%</p>
+                  <p className="text-3xl font-bold text-white">{userStats?.accuracy || '0'}%</p>
                   <p className="text-sm text-gray-400">Precisión</p>
                 </div>
                 
                 <div className="bg-gray-800/50 rounded-lg p-4 backdrop-blur-sm">
                   <Zap className="w-8 h-8 text-orange-400 mx-auto mb-2" />
-                  <p className="text-3xl font-bold text-white">{userStats.streakDays}</p>
+                  <p className="text-3xl font-bold text-white">{userStats?.streakDays || '0'}</p>
                   <p className="text-sm text-gray-400">Días de Racha</p>
                 </div>
                 
                 <div className="bg-gray-800/50 rounded-lg p-4 backdrop-blur-sm">
                   <Award className="w-8 h-8 text-purple-400 mx-auto mb-2" />
-                  <p className="text-3xl font-bold text-white">{userStats.achievements}</p>
+                  <p className="text-3xl font-bold text-white">{userStats?.achievements || '0'}</p>
                   <p className="text-sm text-gray-400">Logros</p>
                 </div>
               </motion.div>

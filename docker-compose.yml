@@ -13,6 +13,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init:/docker-entrypoint-initdb.d
+      - ./database/allquestions:/data  # Mount Excel files directory
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U gameplay -d gameplay_db"]
       interval: 10s

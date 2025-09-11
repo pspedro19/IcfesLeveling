@@ -384,6 +384,217 @@ async def get_subject_stats(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error obteniendo estadísticas: {str(e)}")
 
+@router.get("/results/{test_id}")
+async def get_diagnostic_results_dashboard(
+    test_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get comprehensive diagnostic results for dashboard display"""
+    try:
+        diagnostic_service = DiagnosticService(db)
+        
+        # Get the diagnostic test
+        test = diagnostic_service.get_diagnostic_test_by_id(test_id)
+        if not test or str(test.user_id) != str(current_user.id):
+            raise HTTPException(status_code=404, detail="Test diagnóstico no encontrado")
+        
+        if test.status != "completed":
+            raise HTTPException(status_code=400, detail="Test diagnóstico no completado")
+        
+        # Get test answers with detailed question information
+        answers = db.query(DiagnosticTestAnswer).filter(
+            DiagnosticTestAnswer.diagnostic_test_id == test_id
+        ).all()
+        
+        # Get questions with their details for analysis
+        question_ids = [answer.question_id for answer in answers]
+        questions = db.query(Question).filter(Question.id.in_(question_ids)).all()
+        question_map = {str(q.id): q for q in questions}
+        
+        # Calculate final theta score using IRT
+        final_theta = 0.0
+        total_information = 0.0
+        
+        for answer in answers:
+            question = question_map.get(str(answer.question_id))
+            if question and hasattr(question, 'get_irt_probability'):
+                # Use actual IRT parameters if available
+                if question.parametro_irt_a and question.parametro_irt_b:
+                    theta_est = question.parametro_irt_b if answer.is_correct else question.parametro_irt_b - 1.0
+                    information = question.get_irt_information(theta_est) if hasattr(question, 'get_irt_information') else 1.0
+                    
+                    final_theta += theta_est * information
+                    total_information += information
+        
+        if total_information > 0:
+            final_theta = final_theta / total_information
+        
+        # Questions answered correctly/incorrectly with detailed breakdown
+        correct_questions = []
+        incorrect_questions = []
+        
+        for answer in answers:
+            question = question_map.get(str(answer.question_id))
+            if question:
+                question_data = {
+                    "id": str(question.id),
+                    "question_text": question.pregunta_texto or question.question_text or "Pregunta sin texto",
+                    "user_answer": answer.user_answer,
+                    "correct_answer": question.respuesta_correcta or question.correct_answer,
+                    "response_time_ms": answer.response_time_ms,
+                    "topic": question.topic.name if question.topic else "General",
+                    "difficulty": question.difficulty,
+                    # Additional ICFES-specific data if available
+                    "componente": getattr(question, 'componente', None),
+                    "proceso_cognitivo": getattr(question, 'proceso_cognitivo', None),
+                    "competencia": getattr(question, 'competencia', None),
+                }
+                
+                if answer.is_correct:
+                    correct_questions.append(question_data)
+                else:
+                    incorrect_questions.append(question_data)
+        
+        # Competencies analysis based on Componente and Proceso_Cognitivo
+        componente_performance = {}
+        proceso_cognitivo_performance = {}
+        
+        for answer in answers:
+            question = question_map.get(str(answer.question_id))
+            if question:
+                # Analyze by Componente
+                componente = getattr(question, 'componente', None) or 'General'
+                if componente not in componente_performance:
+                    componente_performance[componente] = {"correct": 0, "total": 0}
+                componente_performance[componente]["total"] += 1
+                if answer.is_correct:
+                    componente_performance[componente]["correct"] += 1
+                
+                # Analyze by Proceso_Cognitivo
+                proceso = getattr(question, 'proceso_cognitivo', None) or 'General'
+                if proceso not in proceso_cognitivo_performance:
+                    proceso_cognitivo_performance[proceso] = {"correct": 0, "total": 0}
+                proceso_cognitivo_performance[proceso]["total"] += 1
+                if answer.is_correct:
+                    proceso_cognitivo_performance[proceso]["correct"] += 1
+        
+        # Determine mastered competencies (>70% performance)
+        mastered_competencies = []
+        improvement_areas = []
+        
+        for componente, stats in componente_performance.items():
+            percentage = (stats["correct"] / stats["total"]) * 100
+            if percentage >= 70:
+                mastered_competencies.append({
+                    "name": componente,
+                    "type": "Componente",
+                    "percentage": round(percentage, 1),
+                    "questions_correct": stats["correct"],
+                    "questions_total": stats["total"]
+                })
+            elif percentage < 50:
+                improvement_areas.append({
+                    "name": componente,
+                    "type": "Componente", 
+                    "percentage": round(percentage, 1),
+                    "questions_correct": stats["correct"],
+                    "questions_total": stats["total"]
+                })
+        
+        for proceso, stats in proceso_cognitivo_performance.items():
+            percentage = (stats["correct"] / stats["total"]) * 100
+            if percentage >= 70:
+                mastered_competencies.append({
+                    "name": proceso,
+                    "type": "Proceso Cognitivo",
+                    "percentage": round(percentage, 1),
+                    "questions_correct": stats["correct"],
+                    "questions_total": stats["total"]
+                })
+            elif percentage < 50:
+                improvement_areas.append({
+                    "name": proceso,
+                    "type": "Proceso Cognitivo",
+                    "percentage": round(percentage, 1),
+                    "questions_correct": stats["correct"],
+                    "questions_total": stats["total"]
+                })
+        
+        # Generate study topics based on improvement areas and incorrect questions
+        recommended_topics = set()
+        
+        # Add topics from incorrect questions
+        for question_data in incorrect_questions:
+            if question_data["topic"] and question_data["topic"] != "General":
+                recommended_topics.add(question_data["topic"])
+        
+        # Add topics from low-performing competencies
+        for area in improvement_areas:
+            if area["type"] == "Componente":
+                # Map componentes to study topics
+                componente_topic_map = {
+                    "Entorno_vivo": "Biología y Ecosistemas",
+                    "Entorno_físico": "Física y Química",
+                    "Ciencia_tecnologia_sociedad": "Ciencias Aplicadas",
+                    "Numeric": "Razonamiento Cuantitativo",
+                    "Aleatorio": "Estadística y Probabilidad",
+                    "Geométrico": "Geometría",
+                    "Variacional": "Funciones y Cálculo"
+                }
+                topic = componente_topic_map.get(area["name"], area["name"])
+                recommended_topics.add(topic)
+        
+        recommended_study_topics = list(recommended_topics)
+        
+        return {
+            "test_id": str(test.id),
+            "subject": test.subject.name if test.subject else "General",
+            "final_theta_score": round(final_theta, 3),
+            "score_percentage": round(test.score_percentage, 1),
+            "questions_answered": test.questions_answered,
+            "questions_correct": test.correct_answers,
+            "questions_incorrect": test.questions_answered - test.correct_answers,
+            "time_spent_minutes": round(test.time_spent_seconds / 60, 1),
+            "completed_at": test.completed_at.isoformat() if test.completed_at else None,
+            
+            # Detailed question breakdown
+            "correct_questions": correct_questions,
+            "incorrect_questions": incorrect_questions,
+            
+            # Competencies analysis
+            "competencies_mastered": mastered_competencies,
+            "areas_for_improvement": improvement_areas,
+            "componente_performance": {
+                name: {
+                    "percentage": round((stats["correct"] / stats["total"]) * 100, 1),
+                    "questions_correct": stats["correct"],
+                    "questions_total": stats["total"]
+                } 
+                for name, stats in componente_performance.items()
+            },
+            "proceso_cognitivo_performance": {
+                name: {
+                    "percentage": round((stats["correct"] / stats["total"]) * 100, 1),
+                    "questions_correct": stats["correct"],
+                    "questions_total": stats["total"]
+                } 
+                for name, stats in proceso_cognitivo_performance.items()
+            },
+            
+            # Study recommendations
+            "recommended_study_topics": recommended_study_topics,
+            "strengths": test.strengths or [],
+            "weaknesses": test.weaknesses or [],
+            "score_by_topic": test.score_by_topic or {}
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting diagnostic results dashboard: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error obteniendo resultados: {str(e)}")
+
 @router.get("/subjects")
 async def get_diagnostic_subjects(db: Session = Depends(get_db)):
     """Obtener materias disponibles para tests diagnósticos"""

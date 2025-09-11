@@ -20,15 +20,7 @@ export default function DiagnosticTest() {
       })
       .catch(err => {
         console.error('Error fetching subjects:', err);
-        // Use fallback subjects if API fails
-        setSubjects([
-          { id: '1', name: 'Matemáticas', description: 'Álgebra, geometría, cálculo y estadística', icon_url: '🔢' },
-          { id: '2', name: 'Lectura Crítica', description: 'Comprensión y análisis de textos', icon_url: '📚' },
-          { id: '3', name: 'Ciencias Naturales', description: 'Física, química y biología', icon_url: '🔬' },
-          { id: '4', name: 'Ciencias Sociales', description: 'Historia, geografía y ciudadanía', icon_url: '🌍' },
-          { id: '5', name: 'Inglés', description: 'Comprensión del idioma inglés', icon_url: '🌐' }
-        ]);
-        setError('Usando materias de respaldo');
+        setError('No se pudieron cargar las materias desde la base de datos');
         setLoading(false);
       });
   }, []);
@@ -51,9 +43,8 @@ export default function DiagnosticTest() {
 
   // If a subject is selected, show the test interface
   if (selectedSubject) {
-    const TestInterface = require('./test-interface').default;
     return (
-      <TestInterface
+      <DiagnosticTestFlow
         subjectId={selectedSubject.id}
         subjectName={selectedSubject.name}
         onComplete={handleTestComplete}

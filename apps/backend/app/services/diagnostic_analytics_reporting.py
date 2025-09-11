@@ -17,7 +17,8 @@ import json
 from ..models.diagnostic_test import DiagnosticTest, DiagnosticTestAnswer
 from ..models.diagnostic_analytics import DiagnosticTestAnalytics, DiagnosticImprovementTracking, DiagnosticErrorPattern
 from ..models.user import User
-from ..models.question import Question, Topic
+from ..models.topic import Topic
+from ..models.question import Question
 from ..models.subject import Subject
 
 logger = logging.getLogger(__name__)

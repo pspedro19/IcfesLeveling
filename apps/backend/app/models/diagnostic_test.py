@@ -51,9 +51,43 @@ class DiagnosticTestAnswer(Base):
     is_correct = Column(Boolean, nullable=False)
     response_time_ms = Column(Integer, default=0)
     topic_id = Column(UUID(as_uuid=True), ForeignKey("topics.id"), nullable=True)
+    hints_used = Column(Integer, default=0)  # Number of hints requested for this question
+    hint_levels_requested = Column(JSON, default=[])  # Array of hint levels requested [1,2,3]
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
     test = relationship("DiagnosticTest", back_populates="answers", foreign_keys=[diagnostic_test_id])
     question = relationship("Question")
-    topic = relationship("Topic") 
+    topic = relationship("Topic")
+
+class DiagnosticTestResult(Base):
+    """
+    Individual diagnostic test results with IRT theta tracking.
+    This table tracks every individual question attempt with adaptive testing metrics.
+    """
+    __tablename__ = "diagnostic_test_results"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    subject_id = Column(UUID(as_uuid=True), ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
+    question_id = Column(UUID(as_uuid=True), ForeignKey("questions.id", ondelete="CASCADE"), nullable=False)
+    user_answer = Column(Text, nullable=True)
+    is_correct = Column(Boolean, nullable=False)
+    response_time = Column(Integer, nullable=False)  # Response time in milliseconds
+    theta_before = Column(Float(precision=4), nullable=True)  # IRT theta before question
+    theta_after = Column(Float(precision=4), nullable=True)   # IRT theta after question
+    hints_used = Column(Integer, default=0)  # Number of hints requested for this question
+    hint_levels_requested = Column(JSON, default=[])  # Array of hint levels requested [1,2,3]
+    
+    # Tracking metrics as requested
+    tiempo_estimado_baseline = Column(Integer, nullable=True)  # Baseline response time from question data (seconds)
+    nivel_dificultad = Column(Integer, nullable=True)  # Difficulty level attempted (1-10 scale)
+    nivel_desempeno_esperado = Column(String(20), nullable=True)  # Performance level achieved (e.g., "Mínimo", "Satisfactorio", "Avanzado")
+    puntos_xp_earned = Column(Integer, default=0)  # XP points earned for this question
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    user = relationship("User")
+    subject = relationship("Subject")
+    question = relationship("Question") 

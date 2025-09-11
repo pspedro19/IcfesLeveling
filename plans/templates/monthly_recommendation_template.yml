@@ -1,0 +1,574 @@
+# PLANTILLA YAML DE PLAN DE ESTUDIO PERSONALIZADO MENSUAL
+# Generado automáticamente por el Sistema de Recomendaciones IcfesLeveling
+# Versión: 1.0 | Motor: AI-Enhanced Recommendations
+
+metadata:
+  student_id: "${STUDENT_ID}"
+  student_name: "${STUDENT_NAME}"
+  generation_date: "${GENERATION_DATE}"
+  plan_month: "${PLAN_MONTH}"
+  plan_year: "${PLAN_YEAR}"
+  plan_version: "1.0"
+  algorithm_version: "v2.0_embeddings"
+  
+  # Información del estudiante
+  student_profile:
+    current_grade: "${CURRENT_GRADE}"
+    target_exam: "${TARGET_EXAM}"
+    registration_date: "${REGISTRATION_DATE}"
+    last_activity: "${LAST_ACTIVITY}"
+    
+  # Parámetros IRT globales
+  theta_global: ${THETA_GLOBAL}
+  confidence_interval: [${THETA_CI_LOWER}, ${THETA_CI_UPPER}]
+  measurement_precision: ${MEASUREMENT_PRECISION}
+  
+  # Estadísticas de actividad
+  total_questions_attempted: ${TOTAL_QUESTIONS}
+  total_study_time_hours: ${TOTAL_STUDY_TIME}
+  streak_days: ${STREAK_DAYS}
+  
+# ANÁLISIS DE FORTALEZAS (Top 5 áreas donde el estudiante destaca)
+strengths:
+  # Materias/temas donde accuracy > 75% y theta > 0.0
+  ${STRENGTH_1}:
+    subject_area: "${STRENGTH_1_SUBJECT}"
+    topic_name: "${STRENGTH_1_TOPIC}"
+    accuracy_percentage: ${STRENGTH_1_ACCURACY}
+    irt_theta: ${STRENGTH_1_THETA}
+    total_attempts: ${STRENGTH_1_ATTEMPTS}
+    avg_time_seconds: ${STRENGTH_1_TIME}
+    mastery_level: "${STRENGTH_1_MASTERY}"  # novice, developing, proficient, advanced
+    confidence_score: ${STRENGTH_1_CONFIDENCE}
+    last_assessment: "${STRENGTH_1_LAST}"
+    
+  ${STRENGTH_2}:
+    subject_area: "${STRENGTH_2_SUBJECT}"
+    topic_name: "${STRENGTH_2_TOPIC}"
+    accuracy_percentage: ${STRENGTH_2_ACCURACY}
+    irt_theta: ${STRENGTH_2_THETA}
+    total_attempts: ${STRENGTH_2_ATTEMPTS}
+    avg_time_seconds: ${STRENGTH_2_TIME}
+    mastery_level: "${STRENGTH_2_MASTERY}"
+    confidence_score: ${STRENGTH_2_CONFIDENCE}
+    last_assessment: "${STRENGTH_2_LAST}"
+    
+  ${STRENGTH_3}:
+    subject_area: "${STRENGTH_3_SUBJECT}"
+    topic_name: "${STRENGTH_3_TOPIC}"
+    accuracy_percentage: ${STRENGTH_3_ACCURACY}
+    irt_theta: ${STRENGTH_3_THETA}
+    total_attempts: ${STRENGTH_3_ATTEMPTS}
+    avg_time_seconds: ${STRENGTH_3_TIME}
+    mastery_level: "${STRENGTH_3_MASTERY}"
+    confidence_score: ${STRENGTH_3_CONFIDENCE}
+    last_assessment: "${STRENGTH_3_LAST}"
+    
+  ${STRENGTH_4}:
+    subject_area: "${STRENGTH_4_SUBJECT}"
+    topic_name: "${STRENGTH_4_TOPIC}"
+    accuracy_percentage: ${STRENGTH_4_ACCURACY}
+    irt_theta: ${STRENGTH_4_THETA}
+    total_attempts: ${STRENGTH_4_ATTEMPTS}
+    avg_time_seconds: ${STRENGTH_4_TIME}
+    mastery_level: "${STRENGTH_4_MASTERY}"
+    confidence_score: ${STRENGTH_4_CONFIDENCE}
+    last_assessment: "${STRENGTH_4_LAST}"
+    
+  ${STRENGTH_5}:
+    subject_area: "${STRENGTH_5_SUBJECT}"
+    topic_name: "${STRENGTH_5_TOPIC}"
+    accuracy_percentage: ${STRENGTH_5_ACCURACY}
+    irt_theta: ${STRENGTH_5_THETA}
+    total_attempts: ${STRENGTH_5_ATTEMPTS}
+    avg_time_seconds: ${STRENGTH_5_TIME}
+    mastery_level: "${STRENGTH_5_MASTERY}"
+    confidence_score: ${STRENGTH_5_CONFIDENCE}
+    last_assessment: "${STRENGTH_5_LAST}"
+
+# ANÁLISIS DE DEBILIDADES (Top 5 áreas que requieren intervención)
+weaknesses:
+  # Basado en vw_student_weak_topics con intervention_priority_score > 30
+  ${WEAKNESS_1}:
+    subject_area: "${WEAKNESS_1_SUBJECT}"
+    topic_name: "${WEAKNESS_1_TOPIC}"
+    accuracy_percentage: ${WEAKNESS_1_ACCURACY}
+    irt_theta: ${WEAKNESS_1_THETA}
+    total_attempts: ${WEAKNESS_1_ATTEMPTS}
+    intervention_priority_score: ${WEAKNESS_1_PRIORITY}
+    weakness_severity: "${WEAKNESS_1_SEVERITY}"  # critical, significant, time_inefficient
+    weakness_type: "${WEAKNESS_1_TYPE}"  # conceptual_gap, procedural_slowness, systematic_error
+    
+    # Análisis de errores específicos
+    dominant_distractor: "${WEAKNESS_1_DISTRACTOR}"
+    distractor_frequency: ${WEAKNESS_1_DIST_FREQ}
+    common_error_pattern: "${WEAKNESS_1_ERROR_PATTERN}"
+    
+    # Tiempos de respuesta
+    avg_time_seconds: ${WEAKNESS_1_TIME}
+    p90_time_seconds: ${WEAKNESS_1_P90_TIME}
+    time_efficiency_score: ${WEAKNESS_1_TIME_SCORE}
+    
+    # Recomendaciones de acción
+    recommended_action: "${WEAKNESS_1_ACTION}"
+    estimated_sessions_needed: ${WEAKNESS_1_SESSIONS}
+    needs_concept_review: ${WEAKNESS_1_CONCEPT_REVIEW}
+    needs_speed_practice: ${WEAKNESS_1_SPEED_PRACTICE}
+    
+  ${WEAKNESS_2}:
+    subject_area: "${WEAKNESS_2_SUBJECT}"
+    topic_name: "${WEAKNESS_2_TOPIC}"
+    accuracy_percentage: ${WEAKNESS_2_ACCURACY}
+    irt_theta: ${WEAKNESS_2_THETA}
+    total_attempts: ${WEAKNESS_2_ATTEMPTS}
+    intervention_priority_score: ${WEAKNESS_2_PRIORITY}
+    weakness_severity: "${WEAKNESS_2_SEVERITY}"
+    weakness_type: "${WEAKNESS_2_TYPE}"
+    dominant_distractor: "${WEAKNESS_2_DISTRACTOR}"
+    distractor_frequency: ${WEAKNESS_2_DIST_FREQ}
+    common_error_pattern: "${WEAKNESS_2_ERROR_PATTERN}"
+    avg_time_seconds: ${WEAKNESS_2_TIME}
+    p90_time_seconds: ${WEAKNESS_2_P90_TIME}
+    time_efficiency_score: ${WEAKNESS_2_TIME_SCORE}
+    recommended_action: "${WEAKNESS_2_ACTION}"
+    estimated_sessions_needed: ${WEAKNESS_2_SESSIONS}
+    needs_concept_review: ${WEAKNESS_2_CONCEPT_REVIEW}
+    needs_speed_practice: ${WEAKNESS_2_SPEED_PRACTICE}
+    
+  ${WEAKNESS_3}:
+    subject_area: "${WEAKNESS_3_SUBJECT}"
+    topic_name: "${WEAKNESS_3_TOPIC}"
+    accuracy_percentage: ${WEAKNESS_3_ACCURACY}
+    irt_theta: ${WEAKNESS_3_THETA}
+    total_attempts: ${WEAKNESS_3_ATTEMPTS}
+    intervention_priority_score: ${WEAKNESS_3_PRIORITY}
+    weakness_severity: "${WEAKNESS_3_SEVERITY}"
+    weakness_type: "${WEAKNESS_3_TYPE}"
+    dominant_distractor: "${WEAKNESS_3_DISTRACTOR}"
+    distractor_frequency: ${WEAKNESS_3_DIST_FREQ}
+    common_error_pattern: "${WEAKNESS_3_ERROR_PATTERN}"
+    avg_time_seconds: ${WEAKNESS_3_TIME}
+    p90_time_seconds: ${WEAKNESS_3_P90_TIME}
+    time_efficiency_score: ${WEAKNESS_3_TIME_SCORE}
+    recommended_action: "${WEAKNESS_3_ACTION}"
+    estimated_sessions_needed: ${WEAKNESS_3_SESSIONS}
+    needs_concept_review: ${WEAKNESS_3_CONCEPT_REVIEW}
+    needs_speed_practice: ${WEAKNESS_3_SPEED_PRACTICE}
+    
+  ${WEAKNESS_4}:
+    subject_area: "${WEAKNESS_4_SUBJECT}"
+    topic_name: "${WEAKNESS_4_TOPIC}"
+    accuracy_percentage: ${WEAKNESS_4_ACCURACY}
+    irt_theta: ${WEAKNESS_4_THETA}
+    total_attempts: ${WEAKNESS_4_ATTEMPTS}
+    intervention_priority_score: ${WEAKNESS_4_PRIORITY}
+    weakness_severity: "${WEAKNESS_4_SEVERITY}"
+    weakness_type: "${WEAKNESS_4_TYPE}"
+    dominant_distractor: "${WEAKNESS_4_DISTRACTOR}"
+    distractor_frequency: ${WEAKNESS_4_DIST_FREQ}
+    common_error_pattern: "${WEAKNESS_4_ERROR_PATTERN}"
+    avg_time_seconds: ${WEAKNESS_4_TIME}
+    p90_time_seconds: ${WEAKNESS_4_P90_TIME}
+    time_efficiency_score: ${WEAKNESS_4_TIME_SCORE}
+    recommended_action: "${WEAKNESS_4_ACTION}"
+    estimated_sessions_needed: ${WEAKNESS_4_SESSIONS}
+    needs_concept_review: ${WEAKNESS_4_CONCEPT_REVIEW}
+    needs_speed_practice: ${WEAKNESS_4_SPEED_PRACTICE}
+    
+  ${WEAKNESS_5}:
+    subject_area: "${WEAKNESS_5_SUBJECT}"
+    topic_name: "${WEAKNESS_5_TOPIC}"
+    accuracy_percentage: ${WEAKNESS_5_ACCURACY}
+    irt_theta: ${WEAKNESS_5_THETA}
+    total_attempts: ${WEAKNESS_5_ATTEMPTS}
+    intervention_priority_score: ${WEAKNESS_5_PRIORITY}
+    weakness_severity: "${WEAKNESS_5_SEVERITY}"
+    weakness_type: "${WEAKNESS_5_TYPE}"
+    dominant_distractor: "${WEAKNESS_5_DISTRACTOR}"
+    distractor_frequency: ${WEAKNESS_5_DIST_FREQ}
+    common_error_pattern: "${WEAKNESS_5_ERROR_PATTERN}"
+    avg_time_seconds: ${WEAKNESS_5_TIME}
+    p90_time_seconds: ${WEAKNESS_5_P90_TIME}
+    time_efficiency_score: ${WEAKNESS_5_TIME_SCORE}
+    recommended_action: "${WEAKNESS_5_ACTION}"
+    estimated_sessions_needed: ${WEAKNESS_5_SESSIONS}
+    needs_concept_review: ${WEAKNESS_5_CONCEPT_REVIEW}
+    needs_speed_practice: ${WEAKNESS_5_SPEED_PRACTICE}
+
+# RECOMENDACIONES DE CONTENIDO (Videos priorizados por debilidad)
+content_recommendations:
+  # Videos recomendados con score > 0.75 organizados por debilidad
+  critical_interventions:
+    # Para debilidades críticas (severity = critical)
+    ${CRITICAL_WEAKNESS_1}:
+      videos:
+        - video_id: ${CRITICAL_VIDEO_1_ID}
+          title: "${CRITICAL_VIDEO_1_TITLE}"
+          channel: "${CRITICAL_VIDEO_1_CHANNEL}"
+          duration_minutes: ${CRITICAL_VIDEO_1_DURATION}
+          youtube_url: "${CRITICAL_VIDEO_1_URL}"
+          recommendation_score: ${CRITICAL_VIDEO_1_SCORE}
+          recommendation_type: "${CRITICAL_VIDEO_1_TYPE}"
+          confidence_level: "${CRITICAL_VIDEO_1_CONFIDENCE}"
+          targets_error: "${CRITICAL_VIDEO_1_ERROR}"
+          
+        - video_id: ${CRITICAL_VIDEO_2_ID}
+          title: "${CRITICAL_VIDEO_2_TITLE}"
+          channel: "${CRITICAL_VIDEO_2_CHANNEL}"
+          duration_minutes: ${CRITICAL_VIDEO_2_DURATION}
+          youtube_url: "${CRITICAL_VIDEO_2_URL}"
+          recommendation_score: ${CRITICAL_VIDEO_2_SCORE}
+          recommendation_type: "${CRITICAL_VIDEO_2_TYPE}"
+          confidence_level: "${CRITICAL_VIDEO_2_CONFIDENCE}"
+          targets_error: "${CRITICAL_VIDEO_2_ERROR}"
+          
+  concept_reinforcement:
+    # Para debilidades significativas que necesitan refuerzo conceptual
+    ${CONCEPT_WEAKNESS_1}:
+      videos:
+        - video_id: ${CONCEPT_VIDEO_1_ID}
+          title: "${CONCEPT_VIDEO_1_TITLE}"
+          channel: "${CONCEPT_VIDEO_1_CHANNEL}"
+          duration_minutes: ${CONCEPT_VIDEO_1_DURATION}
+          youtube_url: "${CONCEPT_VIDEO_1_URL}"
+          recommendation_score: ${CONCEPT_VIDEO_1_SCORE}
+          recommendation_type: "${CONCEPT_VIDEO_1_TYPE}"
+          confidence_level: "${CONCEPT_VIDEO_1_CONFIDENCE}"
+          semantic_similarity: ${CONCEPT_VIDEO_1_SEMANTIC}
+          
+  skill_building:
+    # Videos para desarrollo de habilidades específicas
+    ${SKILL_WEAKNESS_1}:
+      videos:
+        - video_id: ${SKILL_VIDEO_1_ID}
+          title: "${SKILL_VIDEO_1_TITLE}"
+          channel: "${SKILL_VIDEO_1_CHANNEL}"
+          duration_minutes: ${SKILL_VIDEO_1_DURATION}
+          youtube_url: "${SKILL_VIDEO_1_URL}"
+          recommendation_score: ${SKILL_VIDEO_1_SCORE}
+          recommendation_type: "${SKILL_VIDEO_1_TYPE}"
+          difficulty_alignment: ${SKILL_VIDEO_1_DIFFICULTY}
+          
+  maintenance_review:
+    # Videos para mantener fortalezas existentes
+    strengths_maintenance:
+      - video_id: ${MAINTENANCE_VIDEO_1_ID}
+        title: "${MAINTENANCE_VIDEO_1_TITLE}"
+        subject_area: "${MAINTENANCE_VIDEO_1_SUBJECT}"
+        recommended_frequency: "weekly"
+        
+# PLAN DE ESTUDIO ESTRUCTURADO (Calendario 1-3-7-14-30 días)
+study_plan:
+  # Plan inmediato (1 día)
+  day_1:
+    focus: "Debilidad más crítica"
+    target_weakness: "${CRITICAL_WEAKNESS_1}"
+    recommended_activities:
+      - type: "video_review"
+        content: "${CRITICAL_VIDEO_1_TITLE}"
+        estimated_time_minutes: ${CRITICAL_VIDEO_1_DURATION}
+        priority: "high"
+        
+      - type: "practice_questions"
+        topic: "${CRITICAL_WEAKNESS_1}"
+        question_count: 5
+        estimated_time_minutes: 15
+        focus: "error_remediation"
+        
+      - type: "concept_review"
+        subject: "${CRITICAL_WEAKNESS_1_SUBJECT}"
+        estimated_time_minutes: 10
+        
+    total_estimated_time: ${DAY_1_TOTAL_TIME}
+    success_criteria:
+      - "Completar video recomendado"
+      - "Responder correctamente 3/5 preguntas de práctica"
+      - "Identificar patrón de error común"
+  
+  # Plan corto plazo (3 días)
+  days_1_to_3:
+    focus: "Top 2 debilidades críticas"
+    target_weaknesses: ["${CRITICAL_WEAKNESS_1}", "${CRITICAL_WEAKNESS_2}"]
+    daily_time_commitment: ${DAYS_3_DAILY_TIME}
+    
+    activities_progression:
+      day_1: ["critical_video_1", "practice_set_1", "error_analysis"]
+      day_2: ["critical_video_2", "practice_set_2", "concept_mapping"]
+      day_3: ["review_session", "mixed_practice", "progress_assessment"]
+      
+    success_criteria:
+      - "Mejora de 10% en accuracy para debilidades objetivo"
+      - "Reducción de tiempo promedio en 20%"
+      - "Eliminación de error sistemático dominante"
+  
+  # Plan semanal (7 días)
+  week_1:
+    focus: "Debilidades críticas + 1 fortaleza"
+    balanced_approach: true
+    target_weaknesses: ["${CRITICAL_WEAKNESS_1}", "${CRITICAL_WEAKNESS_2}", "${WEAKNESS_3}"]
+    strength_maintenance: "${STRENGTH_1}"
+    
+    weekly_schedule:
+      monday:
+        - type: "critical_intervention"
+          weakness: "${CRITICAL_WEAKNESS_1}"
+          time_minutes: 45
+          
+      tuesday:
+        - type: "concept_building"
+          weakness: "${CRITICAL_WEAKNESS_2}"
+          time_minutes: 30
+          
+      wednesday:
+        - type: "mixed_practice"
+          topics: ["${CRITICAL_WEAKNESS_1}", "${STRENGTH_1}"]
+          time_minutes: 35
+          
+      thursday:
+        - type: "skill_development"
+          weakness: "${WEAKNESS_3}"
+          time_minutes: 40
+          
+      friday:
+        - type: "comprehensive_review"
+          all_topics: true
+          time_minutes: 50
+          
+      saturday:
+        - type: "diagnostic_practice"
+          mixed_topics: true
+          time_minutes: 60
+          
+      sunday:
+        - type: "rest_and_review"
+          light_maintenance: true
+          time_minutes: 20
+    
+    weekly_targets:
+      accuracy_improvement: "+15%"
+      speed_improvement: "+25%"
+      consistency_score: ">80%"
+  
+  # Plan bi-semanal (14 días)
+  weeks_1_to_2:
+    focus: "Consolidación y expansión"
+    progression_strategy: "gradual_difficulty_increase"
+    
+    week_1_goals:
+      - "Estabilizar debilidades críticas"
+      - "Introducir conceptos intermedios"
+      - "Establecer rutina de estudio"
+      
+    week_2_goals:
+      - "Expandir a debilidades secundarias"
+      - "Integrar conocimientos"
+      - "Preparar para evaluación"
+      
+    milestones:
+      day_7: "Evaluación de progreso intermedia"
+      day_14: "Evaluación comprehensiva"
+      
+  # Plan mensual (30 días)
+  month_plan:
+    overall_goal: "Transformación de debilidades en competencias"
+    strategic_approach: "spiral_learning"
+    
+    phase_1_days_1_7:
+      focus: "Estabilización crítica"
+      primary_weaknesses: 2
+      target_improvement: "40%"
+      
+    phase_2_days_8_14:
+      focus: "Expansión controlada"
+      additional_topics: 2
+      integration_level: "basic"
+      
+    phase_3_days_15_21:
+      focus: "Consolidación avanzada"
+      mixed_practice_increase: "60%"
+      complex_problems: true
+      
+    phase_4_days_22_30:
+      focus: "Evaluación y ajuste"
+      comprehensive_assessment: true
+      next_month_preparation: true
+      
+    monthly_targets:
+      overall_theta_improvement: "+0.3"
+      critical_weaknesses_resolved: ">=3"
+      new_strengths_developed: ">=1"
+      study_consistency: ">90%"
+
+# PREDICCIÓN DE MEJORA (Estimación basada en ML)
+predicted_improvement:
+  # Basado en modelos de ML entrenados con datos históricos
+  model_version: "v2.1_irt_enhanced"
+  confidence_interval: 0.85
+  
+  # Predicciones por timeline
+  predictions:
+    day_1:
+      theta_change: +0.05
+      accuracy_improvement: "+5%"
+      confidence: 0.92
+      
+    day_3:
+      theta_change: +0.12
+      accuracy_improvement: "+12%"
+      confidence: 0.88
+      
+    week_1:
+      theta_change: +0.25
+      accuracy_improvement: "+20%"
+      confidence: 0.85
+      
+    week_2:
+      theta_change: +0.35
+      accuracy_improvement: "+28%"
+      confidence: 0.82
+      
+    month_1:
+      theta_change: +0.45
+      accuracy_improvement: "+35%"
+      confidence: 0.78
+      
+  # Predicciones por debilidad específica
+  weakness_specific_predictions:
+    ${CRITICAL_WEAKNESS_1}:
+      current_theta: ${WEAKNESS_1_THETA}
+      predicted_theta_month: ${WEAKNESS_1_PRED_THETA}
+      resolution_probability: ${WEAKNESS_1_RESOLUTION_PROB}
+      estimated_sessions_to_proficiency: ${WEAKNESS_1_SESSIONS_TO_PROF}
+      
+  # Factores que influyen en la predicción
+  prediction_factors:
+    student_engagement_history: ${ENGAGEMENT_SCORE}
+    learning_velocity: ${LEARNING_VELOCITY}
+    topic_difficulty_factor: ${TOPIC_DIFFICULTY}
+    available_study_time: ${AVAILABLE_TIME}
+    
+  # Escenarios optimista/pesimista
+  scenarios:
+    optimistic:
+      condition: "Seguimiento completo del plan"
+      theta_improvement: +0.6
+      timeline_acceleration: "20%"
+      
+    realistic:
+      condition: "Seguimiento del 80% del plan"
+      theta_improvement: +0.45
+      timeline_standard: "100%"
+      
+    pessimistic:
+      condition: "Seguimiento del 60% del plan"
+      theta_improvement: +0.25
+      timeline_deceleration: "40%"
+
+# CONFIGURACIÓN DE SEGUIMIENTO Y MÉTRICAS
+tracking_and_metrics:
+  # Métricas clave a monitorear
+  key_performance_indicators:
+    - name: "accuracy_improvement"
+      current_baseline: ${CURRENT_ACCURACY}
+      target_month_end: ${TARGET_ACCURACY}
+      measurement_frequency: "daily"
+      
+    - name: "response_time_efficiency"
+      current_baseline: ${CURRENT_AVG_TIME}
+      target_improvement: "-25%"
+      measurement_frequency: "weekly"
+      
+    - name: "theta_progression"
+      current_baseline: ${THETA_GLOBAL}
+      target_month_end: ${TARGET_THETA}
+      measurement_frequency: "weekly"
+      
+    - name: "study_consistency"
+      target: ">85%"
+      measurement: "days_active / total_days"
+      
+  # Alertas automáticas
+  automated_alerts:
+    - condition: "accuracy_decline > 10%"
+      action: "immediate_review_session"
+      notification: true
+      
+    - condition: "study_gap > 3_days"
+      action: "motivational_reminder"
+      content_suggestion: "quick_review_video"
+      
+    - condition: "theta_stagnation > 1_week"
+      action: "plan_adjustment"
+      escalation: "educational_specialist"
+
+# METADATOS DE GENERACIÓN
+generation_metadata:
+  # Información técnica del proceso de generación
+  algorithm_details:
+    embedding_model: "text-embedding-3-large"
+    similarity_threshold: 0.75
+    diversification_applied: true
+    weakness_detection_model: "irt_enhanced_v2"
+    
+  data_sources:
+    user_answers: ${TOTAL_ANSWERS}
+    video_catalog_size: ${CATALOG_SIZE}
+    embeddings_generated: ${EMBEDDINGS_COUNT}
+    analysis_period_days: 90
+    
+  computation_stats:
+    generation_time_seconds: ${GENERATION_TIME}
+    recommendations_computed: ${RECS_COMPUTED}
+    videos_analyzed: ${VIDEOS_ANALYZED}
+    ml_model_inference_time: ${ML_INFERENCE_TIME}
+    
+  quality_assurance:
+    validation_passed: ${VALIDATION_PASSED}
+    recommendation_coverage: ${REC_COVERAGE}
+    diversity_score: ${DIVERSITY_SCORE}
+    confidence_average: ${CONFIDENCE_AVG}
+    
+# INFORMACIÓN DE CONTACTO Y SOPORTE
+support_information:
+  # Recursos adicionales para el estudiante
+  educational_support:
+    tutor_contact: "soporte@icfesleveling.com"
+    study_group_recommendations: ${STUDY_GROUPS}
+    additional_resources: ${ADDITIONAL_RESOURCES}
+    
+  technical_support:
+    platform_help: "ayuda@icfesleveling.com"
+    video_playback_issues: "tecnico@icfesleveling.com"
+    plan_questions: "planes@icfesleveling.com"
+    
+  feedback_collection:
+    plan_effectiveness_survey: "${FEEDBACK_URL}"
+    video_rating_system: "embedded_in_platform"
+    suggestion_box: "sugerencias@icfesleveling.com"
+
+# DISCLAIMER Y NOTAS IMPORTANTES
+important_notes:
+  plan_flexibility: |
+    Este plan está diseñado como una guía personalizada basada en tu desempeño actual.
+    Es importante adaptarlo a tu ritmo de aprendizaje y disponibilidad de tiempo.
+    
+  progress_monitoring: |
+    El progreso será monitoreado automáticamente. Las recomendaciones se actualizarán
+    semanalmente basándose en tu desempeño real vs. las predicciones.
+    
+  content_updates: |
+    El catálogo de videos se actualiza constantemente. Nuevas recomendaciones pueden
+    aparecer si se encuentran contenidos más relevantes para tus necesidades.
+    
+  disclaimer: |
+    Las predicciones están basadas en modelos estadísticos y pueden variar según
+    factores individuales. El éxito depende del compromiso personal con el plan de estudio.
+
+# FOOTER CON INFORMACIÓN DE VERSIÓN
+footer:
+  generated_by: "IcfesLeveling AI Recommendation Engine"
+  version: "2.0.0"
+  generation_timestamp: "${GENERATION_TIMESTAMP}"
+  next_update_scheduled: "${NEXT_UPDATE}"
+  plan_expires: "${PLAN_EXPIRY}"
+  contact_support: "soporte@icfesleveling.com"

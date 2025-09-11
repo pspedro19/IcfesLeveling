@@ -18,8 +18,6 @@ const nextConfig = {
     optimizePackageImports: ['@radix-ui/react-icons', 'lucide-react'],
     // Enable SWC minification
     swcMinify: true,
-    // Memory optimization
-    memoryBasedWatching: true,
     // Reduce file system watching
     webpackBuildWorker: false,
   },

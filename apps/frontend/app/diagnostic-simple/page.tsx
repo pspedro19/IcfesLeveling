@@ -11,7 +11,7 @@ export default function DiagnosticSimple() {
     const loadSubjects = async () => {
       try {
         console.log('🚀 Loading subjects...');
-        const response = await fetch('http://localhost:4000/api/v1/diagnostic-public/subjects');
+        const response = await fetch('http://localhost:4001/api/v1/diagnostic-public/subjects');
         
         if (response.ok) {
           const data = await response.json();

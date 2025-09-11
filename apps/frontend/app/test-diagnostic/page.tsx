@@ -50,7 +50,7 @@ export default function TestDiagnostic() {
     setLoading(false);
 
     // Try to load real data in background
-    fetch('http://localhost:4000/api/v1/diagnostic-public/subjects')
+    fetch('http://localhost:4001/api/v1/diagnostic-public/subjects')
       .then(res => res.json())
       .then(data => {
         console.log('Real subjects loaded:', data);

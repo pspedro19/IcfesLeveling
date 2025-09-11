@@ -3,7 +3,7 @@
 import React, { useState, useRef, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Box, Text, Environment, PerspectiveCamera } from '@react-three/drei';
-import { ARButton } from '@react-three/xr';
+import { ARButton, createXRStore } from '@react-three/xr';
 import { motion } from 'framer-motion';
 import { 
   Smartphone,
@@ -93,6 +93,7 @@ function Dungeon3D({ dungeonData }: { dungeonData: any }) {
 }
 
 export default function DungeonARPreview({ dungeonData, onClose }: DungeonARPreviewProps) {
+  const store = createXRStore();
   const [isARSupported, setIsARSupported] = useState(false);
   const [isARActive, setIsARActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -189,6 +190,7 @@ export default function DungeonARPreview({ dungeonData, onClose }: DungeonARPrev
               {isARSupported && (
                 <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
                   <ARButton
+                    store={store}
                     style={{
                       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                       color: 'white',

@@ -4,6 +4,7 @@ import React from 'react';
 import { Sword, Shield, FlaskConical as Potion, Gem, Star, Sparkles } from 'lucide-react';
 import InventorySystem from '../components/Inventory/InventorySystem';
 import { useInventoryStore } from '../stores/useInventoryStore';
+import { AudioProvider } from '../components/PortalLogin/AudioEngine';
 
 // Icon mapping for items
 const ITEM_ICONS: Record<string, React.ReactNode> = {
@@ -83,8 +84,9 @@ export default function InventoryPage() {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 p-4">
-      <div className="max-w-6xl mx-auto">
+    <AudioProvider>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 p-4">
+        <div className="max-w-6xl mx-auto">
         <h1 className="text-4xl font-bold text-white text-center mb-8 font-cinzel">
           Sistema de Inventario
         </h1>
@@ -125,7 +127,8 @@ export default function InventoryPage() {
             <li>• Filtra items por tipo usando las pestañas superiores</li>
           </ul>
         </div>
+        </div>
       </div>
-    </div>
+    </AudioProvider>
   );
 }

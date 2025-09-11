@@ -12,7 +12,9 @@ import os
 from .core.config import settings, LOGGING_CONFIG
 from .core.database import engine, Base
 # from .middleware.guest_limits import GuestLimitsMiddleware  # Comentado temporalmente
-from .routes import auth, auth_simple, questions, battles, ai, leaderboard, quests, personality, diagnostic, diagnostic_public, diagnostic_simple, diagnostic_public_fix, diagnostic_test_fix, subjects_fix, study_plans, study_plans_simple, videos, video_recommendations, quizzes, bosses, analytics, monthly_reassessment, premium_simple as premium, guilds, achievements, store, analytics_advanced, questions_cached, users_cached, battles_cached, ai_tips, recommendations, admin, video_tracking, exercise_tracking, rank_reevaluation, advanced_health, video_progress_api, yml_plans, dynamic_subjects, dynamic_study_plan, diagnostic_adaptive, boss_battle_diagnostic
+# from .middleware.media_rate_limit import media_rate_limit_middleware  # TEMPORALMENTE COMENTADO
+# Temporary fix: comment out problematic imports due to numpy/pandas/scipy issues
+from .routes import auth, auth_simple, questions, battles, ai, leaderboard, quests, personality, diagnostic, diagnostic_public, diagnostic_simple, diagnostic_public_fix, diagnostic_test_fix, subjects_fix, study_plans, study_plans_simple, videos, video_recommendations, quizzes, bosses, analytics, monthly_reassessment, premium_simple as premium, guilds, achievements, store, analytics_advanced, questions_cached, users_cached, battles_cached, ai_tips, recommendations  # , admin, video_tracking, exercise_tracking, rank_reevaluation, advanced_health, video_progress_api, yml_plans, dynamic_subjects, dynamic_study_plan, diagnostic_adaptive, boss_battle_diagnostic, media, diagnostic_api, rank_management
 from .routes.icfes import recommendations as icfes_recommendations
 from .routes import icfes_catalog
 
@@ -36,7 +38,8 @@ def _ensure_question_columns() -> None:
             "ALTER TABLE IF EXISTS questions ADD COLUMN IF NOT EXISTS opcion_c_imagen VARCHAR(500)",
             "ALTER TABLE IF EXISTS questions ADD COLUMN IF NOT EXISTS opcion_d_texto TEXT",
             "ALTER TABLE IF EXISTS questions ADD COLUMN IF NOT EXISTS opcion_d_imagen VARCHAR(500)",
-            "ALTER TABLE IF EXISTS questions ADD COLUMN IF NOT EXISTS respuesta_correcta VARCHAR(1)"
+            "ALTER TABLE IF EXISTS questions ADD COLUMN IF NOT EXISTS respuesta_correcta VARCHAR(1)",
+            "ALTER TABLE IF EXISTS questions ADD COLUMN IF NOT EXISTS puntos_xp INTEGER DEFAULT 10"
         ]
         with engine.begin() as conn:
             for ddl in ddl_statements:
@@ -145,6 +148,15 @@ def _ensure_advanced_learning_tables() -> None:
 async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting ICFES LEVELING API...")
+    
+    # Initialize media cache system
+    try:
+        from .services.media_background_service import media_background_service
+        await media_background_service.start_background_service()
+        logger.info("✅ Media cache background service started")
+    except Exception as e:
+        logger.error(f"❌ Failed to start media cache background service: {e}")
+        logger.warning("⚠️ System will operate without background cache management")
     
     # Crear tablas si no existen
     try:
@@ -297,6 +309,22 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("Shutting down ICFES LEVELING API...")
+    
+    # Stop media cache background service
+    try:
+        from .services.media_background_service import media_background_service
+        await media_background_service.stop_background_service()
+        logger.info("✅ Media cache background service stopped")
+    except Exception as e:
+        logger.error(f"❌ Error stopping media cache background service: {e}")
+    
+    # Cleanup optimization service resources
+    try:
+        from .services.media_optimization_service import media_optimization_service
+        media_optimization_service.cleanup()
+        logger.info("✅ Media optimization service cleaned up")
+    except Exception as e:
+        logger.error(f"❌ Error cleaning up media optimization service: {e}")
 
 # Crear aplicación FastAPI
 app = FastAPI(
@@ -307,7 +335,7 @@ app = FastAPI(
 )
 
 # Configurar CORS con configuración optimizada para desarrollo
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:4001,http://127.0.0.1:4001,http://localhost:4000,http://127.0.0.1:4000,http://localhost:4002,http://127.0.0.1:4002,http://localhost:8002,http://127.0.0.1:8002").split(",")
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,http://localhost:4001,http://127.0.0.1:4001,http://localhost:4000,http://127.0.0.1:4000,http://localhost:4002,http://127.0.0.1:4002,http://localhost:8002,http://127.0.0.1:8002").split(",")
 
 app.add_middleware(
     CORSMiddleware,
@@ -326,6 +354,13 @@ app.add_middleware(
     https_only=False,  # Set to True in production
     same_site='lax'
 )
+
+# Add media rate limiting middleware - TEMPORALMENTE COMENTADO
+# app.middleware("http")(media_rate_limit_middleware)
+
+# Setup media cache middleware - TEMPORALMENTE COMENTADO PARA DEBUGGING
+# from .middleware.media_cache_middleware import setup_media_cache_middleware
+# setup_media_cache_middleware(app)
 
 # Global OPTIONS handler for CORS preflight
 @app.options("/{full_path:path}")
@@ -376,6 +411,7 @@ app.include_router(diagnostic.router, prefix="/api/v1")
 # Alias para compatibilidad con clientes que usan 'agnostic' por error tipográfico
 app.include_router(diagnostic.router, prefix="/api/v1/agnostic")
 app.include_router(diagnostic_public.router)  # Sin prefijo /api/v1 para acceso directo
+app.include_router(diagnostic_public.router, prefix="/api/v1")  # Con prefijo /api/v1 para frontend
 app.include_router(diagnostic_simple.router)  # Ruta simple para testing
 app.include_router(diagnostic_public_fix.router)  # Public routes fix
 app.include_router(diagnostic_test_fix.router)  # Fixed diagnostic endpoints
@@ -399,25 +435,35 @@ app.include_router(premium.router, prefix="/api/v1")
 app.include_router(guilds.router, prefix="/api/v1")
 app.include_router(achievements.router, prefix="/api/v1")
 app.include_router(store.router, prefix="/api/v1")
-app.include_router(admin.router, prefix="/api/v1")
-app.include_router(video_tracking.router, prefix="/api/v1")
-app.include_router(exercise_tracking.router, prefix="/api/v1")
-app.include_router(rank_reevaluation.router, prefix="/api/v1")
+# app.include_router(admin.router, prefix="/api/v1")  # TEMPORALMENTE COMENTADO
+# app.include_router(video_tracking.router, prefix="/api/v1")  # TEMPORALMENTE COMENTADO
+# app.include_router(exercise_tracking.router, prefix="/api/v1")  # TEMPORALMENTE COMENTADO
+# app.include_router(rank_reevaluation.router, prefix="/api/v1")  # TEMPORALMENTE COMENTADO
+# app.include_router(rank_management.router, prefix="/api/v1", tags=["rank-management"])  # TEMPORALMENTE COMENTADO
 app.include_router(icfes_recommendations.router, prefix="/api/v1")  # Rutas ICFES
 app.include_router(icfes_catalog.router, prefix="/api/v1")  # Catálogo ICFES
-app.include_router(yml_plans.router)  # Rutas YML personalizadas
-app.include_router(video_progress_api.router)  # Sistema de Video Progress
-app.include_router(advanced_health.router)  # Endpoints de salud avanzada
-app.include_router(dynamic_subjects.router)  # Dynamic subjects management (has own /api/v1/subjects prefix)
-app.include_router(dynamic_study_plan.router)  # Dynamic study plans with YouTube videos
+# app.include_router(yml_plans.router)  # TEMPORALMENTE COMENTADO
+# app.include_router(video_progress_api.router)  # TEMPORALMENTE COMENTADO
+# app.include_router(advanced_health.router)  # TEMPORALMENTE COMENTADO
+# app.include_router(dynamic_subjects.router)  # TEMPORALMENTE COMENTADO
+# app.include_router(dynamic_study_plan.router)  # TEMPORALMENTE COMENTADO
 
 # Enhanced diagnostic system with adaptive features
-app.include_router(diagnostic_adaptive.router, prefix="/api/v1")  # Adaptive diagnostic tests
-app.include_router(boss_battle_diagnostic.router, prefix="/api/v1")  # Boss battle integration
+# app.include_router(diagnostic_adaptive.router, prefix="/api/v1")  # TEMPORALMENTE COMENTADO
+# app.include_router(boss_battle_diagnostic.router, prefix="/api/v1")  # TEMPORALMENTE COMENTADO
+
+# Complete Diagnostic API endpoints
+# app.include_router(diagnostic_api.router, prefix="/api")  # TEMPORALMENTE COMENTADO
 
 # Importar y registrar el nuevo router de YouTube API
 from .routes import youtube_api
 app.include_router(youtube_api.router)
+
+# Register secure media service endpoint
+# app.include_router(media.router, prefix="/api/v1")  # TEMPORALMENTE COMENTADO
+
+# Register images service endpoint
+# app.include_router(images.router, prefix="/api/v1")  # TEMPORALMENTE COMENTADO
 
 # Rutas de health check
 @app.get("/")

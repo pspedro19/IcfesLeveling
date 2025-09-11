@@ -55,42 +55,17 @@ export default function DiagnosticTestFlow({ subjectId, subjectName, onComplete 
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
       
-      // First, create a test session
-      const testResponse = await fetch(`${API_URL}/api/v1/diagnostic/tests`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          subject_id: subjectId,
-          test_type: 'initial'
-        })
-      });
-
-      if (!testResponse.ok) {
-        // If creating test fails, get questions directly
-        const questionsResponse = await fetch(`${API_URL}/api/v1/diagnostic/tests/test-${subjectId}/questions`);
-        
-        if (questionsResponse.ok) {
-          const data = await questionsResponse.json();
-          setQuestions(data);
-          setTestStarted(true);
-        } else {
-          throw new Error('No se pudieron cargar las preguntas');
-        }
+      // Get questions directly from the diagnostic endpoint
+      const questionsResponse = await fetch(`${API_URL}/diagnostic-public/diagnostic-questions/${subjectId}?limit=20`);
+      
+      if (questionsResponse.ok) {
+        const data = await questionsResponse.json();
+        // Extract questions from the response
+        const questionsData = data.questions || data;
+        setQuestions(Array.isArray(questionsData) ? questionsData : []);
+        setTestStarted(true);
       } else {
-        const testData = await testResponse.json();
-        
-        // Get questions for the test
-        const questionsResponse = await fetch(`${API_URL}/api/v1/diagnostic/tests/${testData.id}/questions`);
-        
-        if (questionsResponse.ok) {
-          const data = await questionsResponse.json();
-          setQuestions(data);
-          setTestStarted(true);
-        } else {
-          throw new Error('No se pudieron cargar las preguntas del test');
-        }
+        throw new Error('No se pudieron cargar las preguntas');
       }
     } catch (err) {
       console.error('Error loading questions:', err);

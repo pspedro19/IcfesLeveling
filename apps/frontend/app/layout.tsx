@@ -8,6 +8,7 @@ import AnalyticsProvider from './providers/AnalyticsProvider'
 import dynamic from 'next/dynamic'
 
 const ParticleBackground = dynamic(() => import('./components/gamified/ParticleBackground'), { ssr: false })
+const MainNavigation = dynamic(() => import('./components/Navigation/MainNavigation'), { ssr: false })
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -94,6 +95,9 @@ export default function RootLayout({
                   <div className="absolute top-3/4 right-1/3 w-64 h-64 bg-game-neonGold/5 rounded-full blur-2xl animate-float-slow" style={{ animationDelay: '4s' }}></div>
                   <ParticleBackground />
                 </div>
+                
+                {/* Navigation - Temporarily disabled */}
+                {/* <MainNavigation /> */}
                 
                 {/* Main Content */}
                 <div className="relative z-10">

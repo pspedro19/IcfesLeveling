@@ -18,10 +18,11 @@ import os
 # Añadir el directorio raíz al path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from .core.database import get_db, engine
-from .models.question import Question, Topic
-from .models.subject import Subject
-from .core.config import settings
+from app.core.database import get_db, engine
+from app.models.topic import Topic
+from app.models.question import Question
+from app.models.subject import Subject
+from app.core.config import settings
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -42,10 +43,11 @@ class ICFESExcelImporter:
         subjects = self.db.query(Subject).all()
         mapping = {}
         
-        # Mapeo directo
+        # Mapeo directo - Excel "Área_Evaluada" -> Database Subject Name
         area_to_subject = {
             'Matemáticas': 'Matemáticas',
             'Lenguaje': 'Lenguaje', 
+            'Lectura Crítica': 'Lenguaje',  # ICFES Excel uses "Lectura Crítica" but DB has "Lenguaje"
             'Ciencias Naturales': 'Ciencias Naturales',
             'Ciencias Sociales': 'Ciencias Sociales',
             'Inglés': 'Inglés',
@@ -268,6 +270,54 @@ class ICFESExcelImporter:
         
         return tags
 
+    def _safe_get_string(self, row: pd.Series, column: str) -> str:
+        """Safely get a string value from row, handling variants and missing values"""
+        # Try multiple column name variants
+        variants = [
+            column,
+            column.replace('_', ' '),
+            column.replace('_', ''),
+            column.replace('ó', 'o').replace('é', 'e').replace('í', 'i').replace('á', 'a').replace('ú', 'u'),
+            column.replace('ñ', 'n')
+        ]
+        
+        for variant in variants:
+            if variant in row.index:
+                value = row.get(variant, '')
+                if pd.notna(value) and str(value).strip():
+                    return str(value).strip()
+        
+        return None
+
+    def _safe_get_int(self, row: pd.Series, column: str) -> int:
+        """Safely get an integer value from row, handling variants and missing values"""
+        # Try multiple column name variants
+        variants = [
+            column,
+            column.replace('_', ' '),
+            column.replace('_', ''),
+            column.replace('ó', 'o').replace('é', 'e').replace('í', 'i').replace('á', 'a').replace('ú', 'u'),
+            column.replace('ñ', 'n')
+        ]
+        
+        for variant in variants:
+            if variant in row.index:
+                value = row.get(variant, '')
+                if pd.notna(value):
+                    try:
+                        if isinstance(value, str) and 'minuto' in value.lower():
+                            # Extract number from "3 minutos" -> 180 seconds
+                            import re
+                            match = re.search(r'\d+', str(value))
+                            if match:
+                                return int(match.group()) * 60
+                        else:
+                            return int(float(str(value)))
+                    except (ValueError, TypeError):
+                        continue
+        
+        return None
+
     def _validate_question_data(self, row: pd.Series, resolved_columns: Dict[str, str]) -> List[str]:
         """Validar datos de la pregunta antes de importar usando columnas normalizadas"""
         errors = []
@@ -475,9 +525,21 @@ class ICFESExcelImporter:
                         hint=row.get('Contexto', ''),
                         tags=self._build_tags(row),
                         power_stats=self._build_power_stats(row),
-                        # image_url=preg_imagen or '',  # Comentado: columna no existe en la tabla
-                        # options_images=self._build_options_images(row),  # Comentado: columna no existe en la tabla
-                        # is_validated='pending'  # Comentado: columna no existe en la tabla
+                        # CAMPOS ICFES - Competencias y componentes
+                        competencia=self._safe_get_string(row, 'Competencia'),
+                        componente=self._safe_get_string(row, 'Componente'),
+                        proceso_cognitivo=self._safe_get_string(row, 'Proceso_Cognitivo'),
+                        tipo_conocimiento=self._safe_get_string(row, 'Tipo_Conocimiento'),
+                        afirmacion=self._safe_get_string(row, 'Afirmación'),
+                        evidencia=self._safe_get_string(row, 'Evidencia'),
+                        nivel_desempeno_esperado=self._safe_get_string(row, 'Nivel_Desempeño_Esperado'),
+                        tiempo_estimado=self._safe_get_int(row, 'Tiempo_Estimado'),
+                        # Sistema de ayuda gradual  
+                        pista_1=self._safe_get_string(row, 'Pista_1'),
+                        pista_2=self._safe_get_string(row, 'Pista_2'),
+                        pista_3=self._safe_get_string(row, 'Pista_3'),
+                        explicacion_respuesta=self._safe_get_string(row, 'Explicación_Respuesta'),
+                        error_comun=self._safe_get_string(row, 'Error_Común')
                     )
                     
                     # Validar pregunta

@@ -14,7 +14,8 @@ from enum import Enum
 
 from ..models.user import User
 from ..models.study_plan import StudyPlan, PlanProgress
-from ..models.question import Question, Topic
+from ..models.topic import Topic
+from ..models.question import Question
 from ..models.battle import Battle, BattleAnswer
 from ..models.video_tracking import VideoTracking
 from ..core.config import settings

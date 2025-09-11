@@ -7,7 +7,8 @@ import uuid
 
 from ..models.subject import Subject
 from ..models.subject_config import SubjectConfig, SubjectAlias, AssetConfiguration
-from ..models.question import Topic
+from ..models.topic import Topic
+from ..models.question import Question
 from ..core.database import get_db
 
 logger = logging.getLogger(__name__)
@@ -29,11 +30,17 @@ class DynamicSubjectService:
             config = subject.config or self._create_default_config(subject.id)
             aliases = [alias.alias_name for alias in subject.aliases]
             
+            # Get actual question count from database
+            question_count = self.db.query(Question).filter(
+                Question.subject_id == subject.id
+            ).count()
+            
             result.append({
                 "id": str(subject.id),
                 "name": subject.name,
                 "description": subject.description,
                 "aliases": aliases,
+                "question_count": question_count,
                 "config": {
                     "total_questions": config.total_questions,
                     "time_limit_minutes": config.time_limit_minutes,

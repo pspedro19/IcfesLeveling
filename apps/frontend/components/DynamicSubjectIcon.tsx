@@ -17,7 +17,7 @@ interface DynamicSubjectIconProps {
 }
 
 // Fallback icon mapping for when dynamic assets aren't available
-const FALLBACK_ICONS = {
+const FALLBACK_ICONS: Record<string, any> = {
   'matemáticas': Calculator,
   'mathematics': Calculator,
   'math': Calculator,
@@ -77,23 +77,23 @@ export default function DynamicSubjectIcon({
   };
 
   const getFallbackIcon = () => {
-    if (!subjectName) return FALLBACK_ICONS.default;
+    if (!subjectName) return FALLBACK_ICONS.default || Globe;
     
     const normalizedName = subjectName.toLowerCase().trim();
     
     // Try exact match first
-    if (FALLBACK_ICONS[normalizedName]) {
+    if (normalizedName in FALLBACK_ICONS && FALLBACK_ICONS[normalizedName]) {
       return FALLBACK_ICONS[normalizedName];
     }
     
     // Try partial matches
     for (const [key, icon] of Object.entries(FALLBACK_ICONS)) {
-      if (normalizedName.includes(key) || key.includes(normalizedName)) {
+      if (key !== 'default' && (normalizedName.includes(key) || key.includes(normalizedName))) {
         return icon;
       }
     }
     
-    return FALLBACK_ICONS.default;
+    return FALLBACK_ICONS.default || Globe;
   };
 
   // If we have dynamic assets and an icon URL, use it

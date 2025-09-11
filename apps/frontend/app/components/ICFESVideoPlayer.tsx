@@ -79,7 +79,7 @@ export const ICFESVideoPlayer: React.FC<ICFESVideoPlayerProps> = ({
   // ESTADOS
   // =====================================================
   
-  const [player, setPlayer] = useState<YT.Player | null>(null);
+  const [player, setPlayer] = useState<any>(null);
   const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -124,7 +124,7 @@ export const ICFESVideoPlayer: React.FC<ICFESVideoPlayerProps> = ({
   
   // Inicializar YouTube Player
   useEffect(() => {
-    if (!window.YT) {
+    if (!(window as any).YT) {
       loadYouTubeAPI();
     } else {
       initializePlayer();
@@ -210,7 +210,7 @@ export const ICFESVideoPlayer: React.FC<ICFESVideoPlayerProps> = ({
   const initializePlayer = () => {
     if (!playerRef.current) return;
     
-    const newPlayer = new window.YT.Player(playerRef.current, {
+    const newPlayer = new (window as any).YT.Player(playerRef.current, {
       height: '100%',
       width: '100%',
       videoId: videoId,
@@ -240,35 +240,35 @@ export const ICFESVideoPlayer: React.FC<ICFESVideoPlayerProps> = ({
   // MANEJADORES DE EVENTOS DEL PLAYER
   // =====================================================
   
-  const onPlayerReady = (event: YT.PlayerEvent) => {
+  const onPlayerReady = (event: (window as any).YT.PlayerEvent) => {
     setIsReady(true);
     setDuration(event.target.getDuration());
     logger.info(`✅ Player listo para video ${videoId}`);
   };
   
-  const onPlayerStateChange = (event: YT.OnStateChangeEvent) => {
+  const onPlayerStateChange = (event: (window as any).YT.OnStateChangeEvent) => {
     const state = event.data;
     
     switch (state) {
-      case window.YT.PlayerState.PLAYING:
+      case (window as any).YT.PlayerState.PLAYING:
         setIsPlaying(true);
         setIsWatching(true);
         startProgressTracking();
         break;
-      case window.YT.PlayerState.PAUSED:
+      case (window as any).YT.PlayerState.PAUSED:
         setIsPlaying(false);
         pauseProgressTracking();
         break;
-      case window.YT.PlayerState.ENDED:
+      case (window as any).YT.PlayerState.ENDED:
         handleVideoComplete();
         break;
-      case window.YT.PlayerState.BUFFERING:
+      case (window as any).YT.PlayerState.BUFFERING:
         // El video está cargando
         break;
     }
   };
   
-  const onPlayerError = (event: YT.OnErrorEvent) => {
+  const onPlayerError = (event: (window as any).YT.OnErrorEvent) => {
     const errorMessage = getYouTubeErrorMessage(event.data);
     logger.error(`❌ Error en player: ${errorMessage}`);
     onError?.(errorMessage);

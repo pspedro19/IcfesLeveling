@@ -1,13 +1,23 @@
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 from typing import Optional
 import os
 
 class Settings(BaseSettings):
+    model_config = ConfigDict(extra='allow', env_file='.env')
     # Database
     DATABASE_URL: str = "postgresql://gameplay:gameplay123@postgres:5432/gameplay_db"
     
     # Redis
     REDIS_URL: str = "redis://redis:6379"
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
+    REDIS_PASSWORD: Optional[str] = None
+    REDIS_MAX_CONNECTIONS: int = 100
+    REDIS_SOCKET_TIMEOUT: int = 5
+    REDIS_CONNECTION_TIMEOUT: int = 10
+    REDIS_RETRY_ON_TIMEOUT: bool = True
     
     # JWT
     JWT_SECRET: str = "your-super-secret-jwt-key-change-in-production"
@@ -73,8 +83,28 @@ class Settings(BaseSettings):
     CLICKHOUSE_URL: str = "clickhouse://default:clickhouse123@clickhouse:9000/gameplay_analytics"
     CLICKHOUSE_DATABASE: str = "gameplay_analytics"
     
-    class Config:
-        env_file = ".env"
+    # Media Cache Settings
+    MEDIA_CACHE_TTL: int = 3600  # 1 hour default
+    MEDIA_CACHE_PREFIX: str = "img"
+    MEDIA_CACHE_COMPRESSION: bool = True
+    MEDIA_CACHE_COMPRESSION_LEVEL: int = 6
+    MEDIA_CACHE_MAX_SIZE: int = 50 * 1024 * 1024  # 50MB per cached item
+    
+    # Media Performance Settings
+    MEDIA_RESIZE_ENABLED: bool = True
+    MEDIA_LAZY_LOADING: bool = True
+    MEDIA_PREFETCH_ENABLED: bool = True
+    MEDIA_PREFETCH_LIMIT: int = 10
+    
+    # Media Metrics Settings
+    MEDIA_METRICS_RETENTION_DAYS: int = 30
+    MEDIA_METRICS_TOP_LIMIT: int = 10
+    MEDIA_ALERT_CACHE_MISS_THRESHOLD: float = 0.8  # 80% miss rate
+    
+    # Background Tasks Settings
+    BACKGROUND_TASK_INTERVAL: int = 300  # 5 minutes
+    CACHE_INVALIDATION_CHECK_INTERVAL: int = 60  # 1 minute
+    
 
 settings = Settings()
 

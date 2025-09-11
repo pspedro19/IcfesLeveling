@@ -6,7 +6,8 @@ import random
 import json
 
 from ..models.quiz import Quiz, QuizAnswer
-from ..models.question import Question, Topic
+from ..models.topic import Topic
+from ..models.question import Question
 from ..models.study_plan import StudyPlan, PlanProgress
 from ..models.user import User
 from ..schemas.quiz import (

@@ -20,7 +20,8 @@ def fix_database():
     """Fix all database issues"""
     try:
         from app.core.database import engine, get_db
-        from app.models.question import Question, Topic
+        from app.models.topic import Topic
+from app.models.question import Question
         from app.models.subject import Subject
         from app.import_icfes_excel import ICFESExcelImporter
         from sqlalchemy import text

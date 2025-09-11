@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { authService } from '../services/auth.service';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -17,40 +18,25 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const formData = new URLSearchParams();
-      formData.append('username', username);
-      formData.append('password', password);
-
-      const response = await fetch('http://localhost:4000/api/v1/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: formData,
+      const data = await authService.login({
+        username,
+        password
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Error desconocido' }));
-        throw new Error(errorData.detail || 'Error en el login');
-      }
-
-      const data = await response.json();
+      
       console.log('🔐 Datos de login recibidos:', data);
       
-      // Guardar token
-      localStorage.setItem('access_token', data.access_token);
+      // Store user data
       localStorage.setItem('user', JSON.stringify(data.user));
-      console.log('💾 Token guardado en localStorage con clave "access_token"');
-      console.log('💾 Token:', data.access_token ? data.access_token.substring(0, 20) + '...' : 'No recibido');
+      console.log('💾 Token guardado en localStorage');
       
       // Mostrar éxito
-      alert(`✅ Login exitoso! Bienvenido ${data.user.username}`);
+      alert(`✅ Login exitoso! Bienvenido ${data.user?.username || data.user?.display_name || 'Usuario'}`);
       
-      // Redirigir al diagnostic test
-      router.push('/diagnostic-test');
+      // Redirigir al Hub Central
+      router.push('/hub-central');
       
     } catch (error: any) {
-      setError(error.message || 'Error en el login');
+      setError(error.response?.data?.detail || error.message || 'Error en el login');
     } finally {
       setIsLoading(false);
     }

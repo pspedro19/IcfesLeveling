@@ -16,7 +16,8 @@ from dataclasses import dataclass
 
 from ..models.user import User
 from ..models.study_plan import StudyPlan, PlanProgress
-from ..models.question import Question, Topic
+from ..models.topic import Topic
+from ..models.question import Question
 from ..models.battle import BattleAnswer
 from ..core.config import settings
 from ..services.cache_service import cache_service
