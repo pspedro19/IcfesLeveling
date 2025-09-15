@@ -66,9 +66,9 @@ class StudyTopicsCatalog(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     # Relaciones
-    # questions = relationship("Question", back_populates="topic_catalog", foreign_keys="Question.codigo_tema")  # Comentado: columna no existe en la tabla Question
-    # performances = relationship("TopicPerformanceAnalytics", back_populates="topic")
-    # resources = relationship("LearningResource", back_populates="topic")
+    # questions = # relationship("relationship("Question",", foreign_keys="Question.codigo_tema")  # Comentado: columna no existe en la tabla Question
+    # performances = relationship("TopicPerformanceAnalytics", )
+    # resources = relationship("LearningResource", )
     
     def get_learning_path(self) -> List[str]:
         """Retorna la ruta de aprendizaje incluyendo prerequisitos"""

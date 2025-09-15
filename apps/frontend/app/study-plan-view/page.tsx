@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Play, Clock, Trophy, CheckCircle, BookOpen, Target, Calendar, TrendingUp } from 'lucide-react';
 
@@ -41,21 +41,20 @@ export default function StudyPlanView() {
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [showVideoModal, setShowVideoModal] = useState(false);
 
+  // Error boundary for component rendering
+  const [renderError, setRenderError] = useState<string | null>(null);
+
   const planId = searchParams.get('plan_id');
   const subjectId = searchParams.get('subject');
 
-  useEffect(() => {
-    fetchStudyPlan();
-  }, [planId, subjectId]);
-
-  const fetchStudyPlan = async () => {
+  const fetchStudyPlan = useCallback(async () => {
     try {
       setLoading(true);
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
       
-      // Primero intentar obtener el plan por ID
+      // Primero intentar obtener el plan por ID (test ID from diagnostic)
       if (planId) {
-        const response = await fetch(`${API_URL}/api/v1/study-plan/view/${planId}`);
+        const response = await fetch(`${API_URL}/api/v1/diagnostic-public/study-plan/view/${planId}`);
         if (response.ok) {
           const data = await response.json();
           setPlan(data);
@@ -66,7 +65,7 @@ export default function StudyPlanView() {
       
       // Si no hay plan_id o falla, obtener unidades por materia
       if (subjectId) {
-        const response = await fetch(`${API_URL}/api/v1/study-plan/units/by-subject/${subjectId}`);
+        const response = await fetch(`${API_URL}/api/v1/diagnostic-public/study-plan/units/by-subject/${subjectId}`);
         if (response.ok) {
           const data = await response.json();
           setPlan({ units: data.units, summary: data });
@@ -82,7 +81,11 @@ export default function StudyPlanView() {
       setError('Error al cargar el plan de estudio');
       setLoading(false);
     }
-  };
+  }, [planId, subjectId]);
+
+  useEffect(() => {
+    fetchStudyPlan();
+  }, [fetchStudyPlan]);
 
   const handleVideoClick = (video: Video) => {
     // Mostrar el video en el modal con iframe
@@ -105,12 +108,21 @@ export default function StudyPlanView() {
   };
 
   const getYouTubeEmbedUrl = (url: string) => {
-    // Convertir URL de YouTube a formato embed
-    const videoId = url.split('v=')[1] || url.split('/').pop();
-    return `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`;
+    if (!url) return '';
+    try {
+      // Convertir URL de YouTube a formato embed
+      const videoId = url.includes('v=') ? url.split('v=')[1]?.split('&')[0] : url.split('/').pop();
+      if (!videoId) return '';
+      return `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`;
+    } catch (error) {
+      console.error('Error processing YouTube URL:', error);
+      return '';
+    }
   };
 
   const trackVideoProgress = async (videoId: string) => {
+    if (!videoId) return;
+    
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
       await fetch(`${API_URL}/api/v1/video-progress/track`, {
@@ -124,19 +136,54 @@ export default function StudyPlanView() {
   };
 
   const calculateProgress = () => {
-    if (!plan) return 0;
-    const totalVideos = plan.units.reduce((acc, unit) => acc + unit.videos.length, 0);
-    if (totalVideos === 0) return 0;
-    return Math.round((completedVideos.size / totalVideos) * 100);
+    if (!plan?.units || plan.units.length === 0) return 0;
+    try {
+      const totalVideos = plan.units.reduce((acc, unit) => {
+        return acc + (unit?.videos?.length || 0);
+      }, 0);
+      if (totalVideos === 0) return 0;
+      return Math.round((completedVideos.size / totalVideos) * 100);
+    } catch (error) {
+      console.error('Error calculating progress:', error);
+      return 0;
+    }
   };
 
   const getTotalXP = () => {
-    if (!plan) return 0;
-    return plan.units.reduce((acc, unit) => 
-      acc + unit.videos.filter(v => completedVideos.has(v.id))
-        .reduce((sum, v) => sum + v.xp, 0), 0
-    );
+    if (!plan?.units || plan.units.length === 0) return 0;
+    try {
+      return plan.units.reduce((acc, unit) => {
+        if (!unit?.videos) return acc;
+        return acc + unit.videos
+          .filter(v => v?.id && completedVideos.has(v.id))
+          .reduce((sum, v) => sum + (v?.xp || 0), 0);
+      }, 0);
+    } catch (error) {
+      console.error('Error calculating total XP:', error);
+      return 0;
+    }
   };
+
+  // Handle render errors
+  if (renderError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
+        <div className="text-center bg-red-900/30 p-8 rounded-lg">
+          <h1 className="text-2xl font-bold text-red-400 mb-4">Error de renderizado</h1>
+          <p className="text-red-300">{renderError}</p>
+          <button
+            onClick={() => {
+              setRenderError(null);
+              window.location.reload();
+            }}
+            className="mt-4 px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg"
+          >
+            Recargar página
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -166,11 +213,12 @@ export default function StudyPlanView() {
     );
   }
 
-  const currentUnit = plan.units[selectedUnit];
+  const currentUnit = plan?.units?.[selectedUnit];
   const progress = calculateProgress();
   const totalXP = getTotalXP();
 
-  return (
+  try {
+    return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
       {/* Header */}
       <div className="bg-black/30 backdrop-blur-sm border-b border-purple-500/30">
@@ -181,7 +229,7 @@ export default function StudyPlanView() {
                 🎯 Tu Plan de Estudio Personalizado
               </h1>
               <p className="text-purple-300">
-                Basado en tu diagnóstico - {plan.units.length} unidades disponibles
+                Basado en tu diagnóstico - {plan?.units?.length || 0} unidades disponibles
               </p>
             </div>
             <div className="flex gap-4">
@@ -208,10 +256,12 @@ export default function StudyPlanView() {
                 Unidades
               </h2>
               <div className="space-y-2">
-                {plan.units.map((unit, index) => {
-                  const unitCompleted = unit.videos.every(v => completedVideos.has(v.id));
-                  const unitProgress = unit.videos.length > 0 
-                    ? Math.round((unit.videos.filter(v => completedVideos.has(v.id)).length / unit.videos.length) * 100)
+                {(plan?.units || []).map((unit, index) => {
+                  if (!unit) return null;
+                  const videos = unit.videos || [];
+                  const unitCompleted = videos.length > 0 && videos.every(v => v?.id && completedVideos.has(v.id));
+                  const unitProgress = videos.length > 0 
+                    ? Math.round((videos.filter(v => v?.id && completedVideos.has(v.id)).length / videos.length) * 100)
                     : 0;
                   
                   return (
@@ -233,7 +283,7 @@ export default function StudyPlanView() {
                         )}
                       </div>
                       <div className="text-purple-300 text-xs mb-2">
-                        {unit.videos.length} videos
+                        {videos.length} videos
                       </div>
                       <div className="w-full bg-black/50 rounded-full h-2">
                         <div 
@@ -268,9 +318,10 @@ export default function StudyPlanView() {
                     Videos de la Unidad
                   </h3>
                   
-                  {currentUnit.videos.length > 0 ? (
-                    currentUnit.videos.map((video, index) => {
-                      const isCompleted = completedVideos.has(video.id);
+                  {(currentUnit?.videos || []).length > 0 ? (
+                    (currentUnit?.videos || []).map((video, index) => {
+                      if (!video) return null;
+                      const isCompleted = video?.id && completedVideos.has(video.id);
                       
                       return (
                         <div
@@ -293,18 +344,18 @@ export default function StudyPlanView() {
                                   {isCompleted ? '✓' : index + 1}
                                 </div>
                                 <h4 className="text-white font-medium">
-                                  {video.title}
+                                  {video?.title || 'Video sin título'}
                                 </h4>
                               </div>
                               
                               <div className="flex items-center gap-4 text-sm">
                                 <span className="text-purple-300 flex items-center gap-1">
                                   <Clock className="w-4 h-4" />
-                                  {video.duration_minutes || Math.floor(Math.random() * 20 + 10)} min
+                                  {video?.duration_minutes || Math.floor(Math.random() * 20 + 10)} min
                                 </span>
                                 <span className="text-yellow-400 flex items-center gap-1">
                                   <Trophy className="w-4 h-4" />
-                                  {video.xp} XP
+                                  {video?.xp || 0} XP
                                 </span>
                                 {isCompleted && (
                                   <span className="text-green-400 text-xs">
@@ -336,7 +387,7 @@ export default function StudyPlanView() {
                 </div>
 
                 {/* Ejercicios */}
-                {currentUnit.exercises && currentUnit.exercises.length > 0 && (
+                {currentUnit?.exercises && currentUnit.exercises.length > 0 && (
                   <div className="mt-8 pt-6 border-t border-purple-500/30">
                     <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
                       <Target className="w-5 h-5 text-yellow-400" />
@@ -374,7 +425,7 @@ export default function StudyPlanView() {
           <div className="bg-black/30 backdrop-blur-sm rounded-lg border border-purple-500/30 p-6 text-center">
             <Calendar className="w-8 h-8 text-yellow-400 mx-auto mb-3" />
             <div className="text-2xl font-bold text-white mb-1">
-              {Math.ceil(plan.units.length / 3)} semanas
+              {Math.ceil((plan?.units?.length || 0) / 3)} semanas
             </div>
             <div className="text-purple-300">Duración estimada</div>
           </div>
@@ -382,7 +433,9 @@ export default function StudyPlanView() {
           <div className="bg-black/30 backdrop-blur-sm rounded-lg border border-purple-500/30 p-6 text-center">
             <Trophy className="w-8 h-8 text-yellow-400 mx-auto mb-3" />
             <div className="text-2xl font-bold text-white mb-1">
-              {plan.summary?.total_xp || plan.units.reduce((acc, u) => acc + u.videos.reduce((s, v) => s + v.xp, 0), 0)} XP
+              {plan?.summary?.total_xp || (plan?.units || []).reduce((acc, u) => {
+                return acc + (u?.videos || []).reduce((s, v) => s + (v?.xp || 0), 0);
+              }, 0)} XP
             </div>
             <div className="text-purple-300">Puntos totales</div>
           </div>
@@ -390,7 +443,7 @@ export default function StudyPlanView() {
           <div className="bg-black/30 backdrop-blur-sm rounded-lg border border-purple-500/30 p-6 text-center">
             <TrendingUp className="w-8 h-8 text-yellow-400 mx-auto mb-3" />
             <div className="text-2xl font-bold text-white mb-1">
-              {plan.summary?.total_videos || plan.units.reduce((acc, u) => acc + u.videos.length, 0)} videos
+              {plan?.summary?.total_videos || (plan?.units || []).reduce((acc, u) => acc + (u?.videos?.length || 0), 0)} videos
             </div>
             <div className="text-purple-300">Contenido disponible</div>
           </div>
@@ -406,16 +459,16 @@ export default function StudyPlanView() {
               <div className="flex justify-between items-center">
                 <div>
                   <h3 className="text-xl font-bold text-yellow-400">
-                    {selectedVideo.title}
+                    {selectedVideo?.title || 'Video sin título'}
                   </h3>
                   <div className="flex items-center gap-4 mt-2">
                     <span className="text-purple-300 text-sm flex items-center gap-1">
                       <Clock className="w-4 h-4" />
-                      {selectedVideo.duration_minutes || Math.floor(Math.random() * 20 + 10)} minutos
+                      {selectedVideo?.duration_minutes || Math.floor(Math.random() * 20 + 10)} minutos
                     </span>
                     <span className="text-yellow-400 text-sm flex items-center gap-1">
                       <Trophy className="w-4 h-4" />
-                      {selectedVideo.xp} XP
+                      {selectedVideo?.xp || 0} XP
                     </span>
                   </div>
                 </div>
@@ -432,8 +485,8 @@ export default function StudyPlanView() {
             <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
               <iframe
                 className="absolute top-0 left-0 w-full h-full"
-                src={getYouTubeEmbedUrl(selectedVideo.url)}
-                title={selectedVideo.title}
+                src={getYouTubeEmbedUrl(selectedVideo?.url || '')}
+                title={selectedVideo?.title || 'Video'}
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
@@ -444,7 +497,7 @@ export default function StudyPlanView() {
             <div className="bg-black/30 p-4 border-t border-purple-500/30">
               <div className="flex justify-between items-center">
                 <div className="text-purple-300 text-sm">
-                  💡 Tip: Completa el video para ganar {selectedVideo.xp} XP
+                  💡 Tip: Completa el video para ganar {selectedVideo?.xp || 0} XP
                 </div>
                 <div className="flex gap-3">
                   <button
@@ -467,5 +520,24 @@ export default function StudyPlanView() {
         </div>
       )}
     </div>
-  );
+    );
+  } catch (renderError: any) {
+    console.error('Render error in StudyPlanView:', renderError);
+    setRenderError(renderError?.message || 'Error desconocido durante el renderizado');
+    
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
+        <div className="text-center bg-red-900/30 p-8 rounded-lg">
+          <h1 className="text-2xl font-bold text-red-400 mb-4">Error</h1>
+          <p className="text-red-300">Ha ocurrido un error al cargar la página</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg"
+          >
+            Recargar página
+          </button>
+        </div>
+      </div>
+    );
+  }
 }

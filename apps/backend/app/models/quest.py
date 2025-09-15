@@ -19,8 +19,8 @@ class DailyQuest(Base):
     active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
-    user_quests = relationship("UserQuest", back_populates="quest", cascade="all, delete-orphan")
+    # Relationships - Simplified without back_populates
+    user_quests = relationship("UserQuest", cascade="all, delete-orphan")
 
 class UserQuest(Base):
     __tablename__ = "user_quests"
@@ -33,6 +33,6 @@ class UserQuest(Base):
     completed_at = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
-    user = relationship("User", back_populates="user_quests")
-    quest = relationship("DailyQuest", back_populates="user_quests") 
+    # Relationships - Simplified without back_populates
+    user = relationship("User")
+    quest = relationship("DailyQuest") 

@@ -42,7 +42,7 @@ class ShadowSoldier(Base):
     
     # Relationships
     user = relationship("User")
-    battle_participations = relationship("ShadowBattle", back_populates="shadow_soldier", cascade="all, delete-orphan")
+    #     battle_participations = # relationship("relationship("ShadowBattle",", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<ShadowSoldier(id={self.id}, name='{self.name}', type='{self.shadow_type}', rank='{self.rank}')>"
@@ -123,7 +123,7 @@ class ShadowBattle(Base):
     # Relationships
     user = relationship("User")
     battle = relationship("Battle")
-    shadow_soldier = relationship("ShadowSoldier", back_populates="battle_participations")
+    shadow_soldier = relationship("ShadowSoldier", )
     
     def __repr__(self):
         return f"<ShadowBattle(id={self.id}, battle_id={self.battle_id}, shadow_id={self.shadow_soldier_id})>"

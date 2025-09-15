@@ -27,9 +27,9 @@ class Item(Base):
     power_up_effect = Column(JSON, default={})
     
     # Relationships
-    user_items = relationship("UserItem", back_populates="item", cascade="all, delete-orphan")
-    store_transactions = relationship("StoreTransaction", back_populates="item", cascade="all, delete-orphan")
-    user_power_ups = relationship("UserPowerUp", back_populates="item", cascade="all, delete-orphan")
+    user_items = relationship("UserItem", cascade="all, delete-orphan")
+    store_transactions = relationship("StoreTransaction", cascade="all, delete-orphan")
+    user_power_ups = relationship("UserPowerUp", cascade="all, delete-orphan")
 
 class UserItem(Base):
     __tablename__ = "user_items"
@@ -41,6 +41,6 @@ class UserItem(Base):
     equipped = Column(Boolean, default=False)
     acquired_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
-    user = relationship("User", back_populates="user_items")
-    item = relationship("Item", back_populates="user_items") 
+    # Relationships - Temporalmente comentado para arreglar SQLAlchemy
+    # user = relationship("User")
+    item = relationship("Item") 

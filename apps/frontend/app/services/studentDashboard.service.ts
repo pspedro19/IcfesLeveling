@@ -123,8 +123,7 @@ class StudentDashboardService {
       return response.data;
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
-      // Return mock data for development
-      return this.getMockDashboardStats();
+      throw new Error('No se pudieron cargar las estadísticas del estudiante');
     }
   }
 
@@ -139,7 +138,7 @@ class StudentDashboardService {
       return response.data;
     } catch (error) {
       console.error('Error fetching theta evolution:', error);
-      return this.getMockThetaEvolution(timeFilter);
+      throw new Error('No se pudieron cargar los datos de evolución theta');
     }
   }
 
@@ -159,7 +158,7 @@ class StudentDashboardService {
       return response.data;
     } catch (error) {
       console.error('Error fetching error analysis:', error);
-      return this.getMockErrorAnalysis();
+      throw new Error('No se pudieron cargar los datos de análisis de errores');
     }
   }
 
@@ -172,7 +171,7 @@ class StudentDashboardService {
       return response.data;
     } catch (error) {
       console.error('Error fetching study recommendations:', error);
-      return this.getMockStudyRecommendations();
+      throw new Error('No se pudieron cargar las recomendaciones de estudio');
     }
   }
 
@@ -225,7 +224,7 @@ class StudentDashboardService {
       return response.data;
     } catch (error) {
       console.error('Error fetching IRT metrics:', error);
-      return this.getMockIRTMetrics();
+      throw new Error('No se pudieron cargar las métricas IRT');
     }
   }
 
@@ -277,140 +276,6 @@ class StudentDashboardService {
     return theta;
   }
 
-  // Mock data methods for development
-  private getMockDashboardStats(): DashboardStats {
-    return {
-      currentLevel: 15,
-      currentRank: 'A+',
-      experience: 12750,
-      experienceToNext: 2250,
-      totalBattles: 156,
-      winRate: 78.5,
-      currentStreak: 7,
-      mastery: {
-        mathematics: 82,
-        physics: 76,
-        chemistry: 71,
-        biology: 85,
-        spanish: 79
-      },
-      theta: {
-        mathematics: 1.2,
-        physics: 0.8,
-        chemistry: 0.6,
-        biology: 1.4,
-        spanish: 0.9
-      },
-      classRanking: 3,
-      nationalRanking: 1247
-    };
-  }
-
-  private getMockThetaEvolution(timeFilter: string): ThetaEvolution[] {
-    const days = timeFilter === '7d' ? 7 : timeFilter === '30d' ? 30 : 90;
-    const data: ThetaEvolution[] = [];
-    
-    for (let i = days; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      
-      const baseProgress = (days - i) / days * 0.5;
-      const randomFactor = (Math.random() - 0.5) * 0.3;
-      
-      data.push({
-        date: date.toISOString().split('T')[0],
-        mathematics: 0.2 + baseProgress + randomFactor + Math.sin(i * 0.1) * 0.1,
-        physics: 0.1 + baseProgress + randomFactor + Math.cos(i * 0.15) * 0.1,
-        chemistry: 0.15 + baseProgress + randomFactor + Math.sin(i * 0.12) * 0.1,
-        biology: 0.25 + baseProgress + randomFactor + Math.cos(i * 0.08) * 0.1,
-        spanish: 0.3 + baseProgress + randomFactor + Math.sin(i * 0.2) * 0.1,
-        overall: 0.2 + baseProgress + randomFactor
-      });
-    }
-    
-    return data;
-  }
-
-  private getMockErrorAnalysis(): ErrorAnalysis[] {
-    return [
-      {
-        id: 'error_1',
-        questionId: 'q_1001',
-        subject: 'Matemáticas',
-        topic: 'Álgebra',
-        difficulty: 3.5,
-        irtDifficulty: 0.8,
-        questionText: 'Resuelve la siguiente ecuación cuadrática: x² - 5x + 6 = 0',
-        correctAnswer: 'C',
-        selectedAnswer: 'A',
-        distractors: {
-          A: 'x = 1, x = 6',
-          B: 'x = -2, x = -3',
-          C: 'x = 2, x = 3',
-          D: 'x = 0, x = 5'
-        },
-        timeSpent: 180,
-        averageTime: 150,
-        percentile: 65,
-        explanation: 'Para resolver x² - 5x + 6 = 0, factorizamos: (x-2)(x-3) = 0, por lo que x = 2 o x = 3.',
-        aiAnalysis: 'Tu error sugiere dificultad con la factorización de ecuaciones cuadráticas. Practica más problemas similares.',
-        conceptsToReinforce: ['Factorización', 'Ecuaciones cuadráticas', 'Productos notables'],
-        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        wasReviewed: false
-      }
-    ];
-  }
-
-  private getMockStudyRecommendations(): StudyRecommendation[] {
-    return [
-      {
-        id: 'rec_1',
-        type: 'video',
-        title: 'Fundamentos de Álgebra Lineal',
-        description: 'Revisar conceptos básicos de vectores y matrices',
-        subject: 'Matemáticas',
-        difficulty: 'medium',
-        estimatedTime: 45,
-        priority: 'high',
-        xpReward: 150,
-        progress: 60,
-        completed: false
-      }
-    ];
-  }
-
-  private getMockIRTMetrics() {
-    return {
-      theta: {
-        mathematics: 1.2,
-        physics: 0.8,
-        chemistry: 0.6,
-        biology: 1.4,
-        spanish: 0.9
-      },
-      difficulty: {
-        mathematics: 0.8,
-        physics: 0.9,
-        chemistry: 0.85,
-        biology: 0.7,
-        spanish: 0.6
-      },
-      discrimination: {
-        mathematics: 1.2,
-        physics: 1.1,
-        chemistry: 1.15,
-        biology: 1.0,
-        spanish: 0.9
-      },
-      guessing: {
-        mathematics: 0.15,
-        physics: 0.18,
-        chemistry: 0.16,
-        biology: 0.20,
-        spanish: 0.22
-      }
-    };
-  }
 }
 
 export const studentDashboardService = new StudentDashboardService();

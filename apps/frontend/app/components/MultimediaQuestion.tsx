@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { getImageUrl } from '@/lib/config';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -100,6 +101,14 @@ export default function MultimediaQuestion({
         imagen = urlMatch[1].trim();
         texto = undefined;
       }
+    }
+
+    // Validar y construir URL completa para la imagen si es necesario
+    if (imagen && imagen !== 'No Aplica' && imagen.trim() !== '') {
+      // Usar la función de configuración dinámica
+      imagen = getImageUrl(imagen);
+    } else {
+      imagen = undefined; // Limpieza: no intentar cargar imágenes inválidas
     }
 
     // Renderizar imagen si existe

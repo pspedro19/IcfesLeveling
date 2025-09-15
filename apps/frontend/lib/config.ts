@@ -94,7 +94,7 @@ const isStaging = process.env.NEXT_PUBLIC_ENVIRONMENT === 'staging';
 const config: Config = {
   // API Configuration
   api: {
-    baseUrl: getEnvVar('API_URL', 'http://localhost:4000'),
+    baseUrl: getEnvVar('API_URL', ''), // Empty for auto-detection
     timeout: parseInt(getEnvVar('API_TIMEOUT', '15000')),
     version: 'v1',
   },
@@ -205,6 +205,21 @@ export const getMediaUrl = (path: string): string => {
   if (!path) return '';
   if (path.startsWith('http')) return path;
   return `${config.media.baseUrl}/${path}`;
+};
+
+export const getImageUrl = (imagePath: string): string => {
+  if (!imagePath || imagePath === 'No Aplica' || imagePath.trim() === '') {
+    return '';
+  }
+  if (imagePath.startsWith('http')) {
+    return imagePath;
+  }
+  
+  // Auto-detect API URL for images
+  const baseUrl = config.api.baseUrl || 
+    (typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:4000` : 'http://localhost:4000');
+  
+  return `${baseUrl}/api/images/${imagePath}`;
 };
 
 export const isFeatureEnabled = (feature: keyof Config['features']): boolean => {

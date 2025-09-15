@@ -39,7 +39,7 @@ class Notification(Base):
     expires_at = Column(DateTime, nullable=True)  # Optional expiration
     
     # Relationships
-    user = relationship("User", back_populates="notifications")
+    #     user = relationship("User", )
 
     def __repr__(self):
         return f"<Notification(id={self.id}, type={self.type.value}, title='{self.title}')>"

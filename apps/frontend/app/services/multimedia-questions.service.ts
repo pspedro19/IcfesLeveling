@@ -294,55 +294,6 @@ class MultimediaQuestionsService {
     };
   }
 
-  /**
-   * Generar preguntas de ejemplo para testing
-   */
-  generateMockQuestions(count: number = 45): MultimediaQuestion[] {
-    const questions: MultimediaQuestion[] = [];
-    
-    for (let i = 1; i <= count; i++) {
-      const questionType = i % 3; // 0: solo texto, 1: texto + imagen, 2: opciones con imágenes
-      
-      let question: MultimediaQuestion = {
-        id: i.toString(),
-        respuesta_correcta: ['a', 'b', 'c', 'd'][Math.floor(Math.random() * 4)],
-        difficulty: Math.floor(Math.random() * 5) + 1
-      };
-
-      switch (questionType) {
-        case 0:
-          question.pregunta_texto = `Pregunta ${i}: ¿Cuál es la respuesta correcta para esta pregunta de ejemplo?`;
-          question.opcion_a_texto = `Opción A para pregunta ${i}`;
-          question.opcion_b_texto = `Opción B para pregunta ${i}`;
-          question.opcion_c_texto = `Opción C para pregunta ${i}`;
-          question.opcion_d_texto = `Opción D para pregunta ${i}`;
-          break;
-        case 1:
-          question.pregunta_texto = `Pregunta ${i}: Observa la imagen y responde:`;
-          question.pregunta_imagen = `https://via.placeholder.com/400x300/${Math.floor(Math.random()*16777215).toString(16)}/FFFFFF?text=Imagen+${i}`;
-          question.opcion_a_texto = `Opción A para pregunta ${i}`;
-          question.opcion_b_texto = `Opción B para pregunta ${i}`;
-          question.opcion_c_texto = `Opción C para pregunta ${i}`;
-          question.opcion_d_texto = `Opción D para pregunta ${i}`;
-          break;
-        case 2:
-          question.pregunta_texto = `Pregunta ${i}: Selecciona la opción correcta:`;
-          question.opcion_a_texto = `Opción A`;
-          question.opcion_a_imagen = `https://via.placeholder.com/150x100/10B981/FFFFFF?text=A`;
-          question.opcion_b_texto = `Opción B`;
-          question.opcion_b_imagen = `https://via.placeholder.com/150x100/F59E0B/FFFFFF?text=B`;
-          question.opcion_c_texto = `Opción C`;
-          question.opcion_c_imagen = `https://via.placeholder.com/150x100/EF4444/FFFFFF?text=C`;
-          question.opcion_d_texto = `Opción D`;
-          question.opcion_d_imagen = `https://via.placeholder.com/150x100/8B5CF6/FFFFFF?text=D`;
-          break;
-      }
-
-      questions.push(question);
-    }
-    
-    return questions;
-  }
 }
 
 export const multimediaQuestionsService = new MultimediaQuestionsService(); 

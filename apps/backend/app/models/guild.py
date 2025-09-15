@@ -23,9 +23,9 @@ class Guild(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
     # Relationships
-    members = relationship("GuildMember", back_populates="guild", cascade="all, delete-orphan")
-    tournaments = relationship("TournamentParticipant", back_populates="guild")
-    chat_messages = relationship("GuildChatMessage", back_populates="guild", cascade="all, delete-orphan")
+    #     members = # relationship("relationship("GuildMember",", cascade="all, delete-orphan")
+    tournaments = relationship("TournamentParticipant", )
+    #     chat_messages = # relationship("relationship("GuildChatMessage",", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Guild(id={self.id}, guild_name='{self.guild_name}', school_name='{self.school_name}')>"
@@ -42,7 +42,7 @@ class GuildMember(Base):
     last_activity = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
-    guild = relationship("Guild", back_populates="members")
+    guild = relationship("Guild", )
     user = relationship("User")
     
     def __repr__(self):
@@ -65,7 +65,7 @@ class Tournament(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
-    participants = relationship("TournamentParticipant", back_populates="tournament", cascade="all, delete-orphan")
+    #     participants = # relationship("relationship("TournamentParticipant",", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Tournament(id={self.id}, name='{self.name}', status='{self.status}')>"
@@ -84,7 +84,7 @@ class TournamentParticipant(Base):
     joined_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
-    tournament = relationship("Tournament", back_populates="participants")
+    tournament = relationship("Tournament", )
     guild = relationship("Guild")
     user = relationship("User")
     
@@ -102,7 +102,7 @@ class GuildChatMessage(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
-    guild = relationship("Guild", back_populates="chat_messages")
+    guild = relationship("Guild", )
     user = relationship("User")
     
     def __repr__(self):

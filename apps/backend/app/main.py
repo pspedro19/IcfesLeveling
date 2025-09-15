@@ -14,7 +14,7 @@ from .core.database import engine, Base
 # from .middleware.guest_limits import GuestLimitsMiddleware  # Comentado temporalmente
 # from .middleware.media_rate_limit import media_rate_limit_middleware  # TEMPORALMENTE COMENTADO
 # Temporary fix: comment out problematic imports due to numpy/pandas/scipy issues
-from .routes import auth, auth_simple, questions, battles, ai, leaderboard, quests, personality, diagnostic, diagnostic_public, diagnostic_simple, diagnostic_public_fix, diagnostic_test_fix, subjects_fix, study_plans, study_plans_simple, videos, video_recommendations, quizzes, bosses, analytics, monthly_reassessment, premium_simple as premium, guilds, achievements, store, analytics_advanced, questions_cached, users_cached, battles_cached, ai_tips, recommendations  # , admin, video_tracking, exercise_tracking, rank_reevaluation, advanced_health, video_progress_api, yml_plans, dynamic_subjects, dynamic_study_plan, diagnostic_adaptive, boss_battle_diagnostic, media, diagnostic_api, rank_management
+from .routes import auth, auth_simple, questions, battles, ai, leaderboard, quests, personality, diagnostic, diagnostic_public, diagnostic_simple, diagnostic_public_fix, diagnostic_test_fix, subjects_fix, study_plans, study_plans_simple, videos, video_recommendations, quizzes, bosses, analytics, monthly_reassessment, premium_simple as premium, guilds, achievements, store, analytics_advanced, questions_cached, users_cached, battles_cached, ai_tips, recommendations, intelligent_video_recommendations, personalized_study_plan_api, images_api, subjects_with_count, image_required_questions, diagnostic_images_test, verified_image_diagnostic, dynamic_images_api  # , admin, video_tracking, exercise_tracking, rank_reevaluation, advanced_health, video_progress_api, yml_plans, dynamic_subjects, dynamic_study_plan, diagnostic_adaptive, boss_battle_diagnostic, media, diagnostic_api, rank_management, training_zone (temporarily disabled due to asyncpg dependency)
 from .routes.icfes import recommendations as icfes_recommendations
 from .routes import icfes_catalog
 
@@ -416,10 +416,16 @@ app.include_router(diagnostic_simple.router)  # Ruta simple para testing
 app.include_router(diagnostic_public_fix.router)  # Public routes fix
 app.include_router(diagnostic_test_fix.router)  # Fixed diagnostic endpoints
 app.include_router(subjects_fix.router)  # Fixed subjects endpoints
+app.include_router(subjects_with_count.router)  # Subjects with question counts
+app.include_router(image_required_questions.router)  # Questions requiring images for testing
+app.include_router(diagnostic_images_test.router)  # IMAGE-ONLY diagnostic test for frontend testing
+app.include_router(verified_image_diagnostic.router)  # VERIFIED image diagnostic with multi-agent validation
+app.include_router(dynamic_images_api.router)  # DYNAMIC images API with environment-based URLs
 app.include_router(study_plans.router, prefix="/api/v1")
 app.include_router(study_plans_simple.router)  # Simple study plans with built-in prefix
 app.include_router(videos.router, prefix="/api/v1")
 app.include_router(video_recommendations.router, prefix="/api/v1/video-recommendations")
+app.include_router(intelligent_video_recommendations.router)  # Intelligent video system with built-in prefix
 app.include_router(quizzes.router, prefix="/api/v1")
 app.include_router(bosses.router, prefix="/api/v1")
 app.include_router(analytics.router, prefix="/api/v1")
@@ -442,6 +448,8 @@ app.include_router(store.router, prefix="/api/v1")
 # app.include_router(rank_management.router, prefix="/api/v1", tags=["rank-management"])  # TEMPORALMENTE COMENTADO
 app.include_router(icfes_recommendations.router, prefix="/api/v1")  # Rutas ICFES
 app.include_router(icfes_catalog.router, prefix="/api/v1")  # Catálogo ICFES
+# app.include_router(training_zone.router, prefix="/api/v1")  # Training Zone System - temporarily disabled due to asyncpg dependency
+app.include_router(personalized_study_plan_api.router)  # Personalized Study Plan System (has built-in prefix)
 # app.include_router(yml_plans.router)  # TEMPORALMENTE COMENTADO
 # app.include_router(video_progress_api.router)  # TEMPORALMENTE COMENTADO
 # app.include_router(advanced_health.router)  # TEMPORALMENTE COMENTADO
@@ -459,11 +467,19 @@ app.include_router(icfes_catalog.router, prefix="/api/v1")  # Catálogo ICFES
 from .routes import youtube_api
 app.include_router(youtube_api.router)
 
+# Importar y registrar el enhanced video recommendation router
+from .routers import video_recommendations as enhanced_video_recommendations
+app.include_router(enhanced_video_recommendations.router, prefix="/api/v1/enhanced-video-recommendations")
+
 # Register secure media service endpoint
 # app.include_router(media.router, prefix="/api/v1")  # TEMPORALMENTE COMENTADO
 
 # Register images service endpoint
-# app.include_router(images.router, prefix="/api/v1")  # TEMPORALMENTE COMENTADO
+app.include_router(images_api.router)  # Question images serving endpoint
+
+# Register integrated study plan API
+from .routes import integrated_study_plan_api
+app.include_router(integrated_study_plan_api.router)  # Integrated study plan system with real videos
 
 # Rutas de health check
 @app.get("/")

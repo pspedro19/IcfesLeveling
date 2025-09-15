@@ -14,6 +14,7 @@ from ..models.question import Question
 from ..models.subject import Subject
 from ..services.yml_storage_service import YMLStorageService
 from ..services.llm_service import LLMService
+from .intelligent_video_recommendation_engine import IntelligentVideoRecommendationEngine
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ class PersonalizedYMLGenerator:
         self.db = db
         self.yml_storage = YMLStorageService(db)
         self.llm_service = LLMService()
+        self.video_engine = IntelligentVideoRecommendationEngine(db)
         
     async def generate_user_yml(
         self, 

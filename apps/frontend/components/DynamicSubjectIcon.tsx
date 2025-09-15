@@ -186,8 +186,8 @@ export function useDynamicSubjects() {
     setError(null);
     
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      const response = await fetch(`${API_URL}/api/v1/subjects/dynamic`);
+      const { buildApiUrl } = await import('../app/lib/dynamic-config');
+      const response = await fetch(buildApiUrl('/diagnostic-public/subjects'));
       if (response.ok) {
         const data = await response.json();
         setSubjects(data);

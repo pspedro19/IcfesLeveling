@@ -3,6 +3,7 @@
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getApiUrl } from '@/lib/config';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -68,18 +69,28 @@ export default function DiagnosticResultsPage() {
   useEffect(() => {
     const fetchResults = async () => {
       try {
+        // Try authenticated endpoint first
         const token = localStorage.getItem('auth_token');
-        if (!token) {
-          setError('No se encontró token de autenticación');
-          return;
+        let response;
+        
+        if (token) {
+          response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/diagnostic/results/${testId}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
         }
-
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/diagnostic/results/${testId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
+        
+        // If no token or authenticated request failed, try public endpoint
+        if (!token || !response?.ok) {
+          const baseUrl = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:4000` : 'http://localhost:4000';
+          response = await fetch(`${baseUrl}/api/v1/diagnostic-public/results/${testId}`, {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+        }
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -473,7 +484,7 @@ export default function DiagnosticResultsPage() {
             <Link href="/diagnostic-test">Tomar Otro Diagnóstico</Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/study-plan-view">Ver Plan de Estudio</Link>
+            <Link href={`/study-plan-view?plan_id=${testId}`}>Ver Plan de Estudio</Link>
           </Button>
         </div>
       </div>

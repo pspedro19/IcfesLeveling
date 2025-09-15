@@ -56,7 +56,7 @@ class DungeonGate(Base):
     
     # Relationships
     subject = relationship("Subject")
-    dungeon_runs = relationship("DungeonRun", back_populates="gate", cascade="all, delete-orphan")
+    #     dungeon_runs = # relationship("relationship("DungeonRun",", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<DungeonGate(id={self.id}, name='{self.name}', type='{self.gate_type}', rank='{self.difficulty_rank}')>"
@@ -106,9 +106,9 @@ class DungeonRun(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
     # Relationships
-    gate = relationship("DungeonGate", back_populates="dungeon_runs")
+    gate = relationship("DungeonGate", )
     user = relationship("User")
-    room_encounters = relationship("DungeonEncounter", back_populates="dungeon_run", cascade="all, delete-orphan")
+    #     room_encounters = # relationship("relationship("DungeonEncounter",", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<DungeonRun(id={self.id}, gate_id={self.gate_id}, user_id={self.user_id}, status='{self.status}')>"
@@ -150,7 +150,7 @@ class DungeonEncounter(Base):
     encounter_time = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
-    dungeon_run = relationship("DungeonRun", back_populates="room_encounters")
+    dungeon_run = relationship("DungeonRun", )
     
     def __repr__(self):
         return f"<DungeonEncounter(id={self.id}, room={self.room_number}, type='{self.encounter_type}')>"

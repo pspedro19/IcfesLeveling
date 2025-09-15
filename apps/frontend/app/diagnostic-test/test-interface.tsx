@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getImageUrl } from '@/lib/config';
 import { 
   Clock, 
   ChevronLeft, 
@@ -451,18 +452,39 @@ export default function DiagnosticTestInterface({
   }
   
   const questionText = currentQuestion.pregunta_texto || currentQuestion.question_text;
-  const questionImageUrl = currentQuestion.pregunta_imagen || currentQuestion.image_url;
+  // Solo usar imagen si existe y no es una cadena inválida
+  const questionImageUrl = getImageUrl(currentQuestion.pregunta_imagen || currentQuestion.image_url || '');
   
   // Get options from the properly formatted API response
   const optionsData = currentQuestion.options || {};
   const optionImages = currentQuestion.option_images || {};
   
   // Create options array with both text and images
-  const options = ['A', 'B', 'C', 'D'].map(key => ({
-    letter: key,
-    text: optionsData[key] || currentQuestion[`opcion_${key.toLowerCase()}_texto`] || `Opción ${key}`,
-    image: optionImages[key] || currentQuestion[`opcion_${key.toLowerCase()}_imagen`] || null
-  })).filter(option => option.text && option.text !== `Opción ${option.letter}`);
+  const options = ['A', 'B', 'C', 'D'].map(key => {
+    const imageField = optionImages[key] || currentQuestion[`opcion_${key.toLowerCase()}_imagen`];
+    const textField = optionsData[key] || currentQuestion[`opcion_${key.toLowerCase()}_texto`];
+    
+    return {
+      letter: key,
+      text: textField || '',
+      image: getImageUrl(imageField || '')
+    };
+  });
+
+  // Asegurar que siempre haya opciones válidas - fallback de emergencia
+  const validOptions = options.filter(option => {
+    const hasText = option.text && option.text.trim() !== '' && option.text !== `Opción ${option.letter}`;
+    const hasImage = option.image && option.image.trim() !== '';
+    return hasText || hasImage;
+  });
+
+  // Si no hay opciones válidas, crear opciones por defecto
+  const finalOptions = validOptions.length >= 2 ? validOptions : [
+    { letter: 'A', text: 'Opción A', image: '' },
+    { letter: 'B', text: 'Opción B', image: '' },
+    { letter: 'C', text: 'Opción C', image: '' },
+    { letter: 'D', text: 'Opción D', image: '' },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-black to-blue-900">
@@ -703,7 +725,7 @@ export default function DiagnosticTestInterface({
 
                 {/* Options */}
                 <div className="space-y-3">
-                  {options.map((option) => {
+                  {finalOptions.map((option) => {
                     const isSelected = answers[currentQuestion.id] === option.letter;
                     
                     return (

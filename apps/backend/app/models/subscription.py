@@ -71,9 +71,9 @@ class Subscription(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relaciones
-    user = relationship("User", back_populates="subscription")
-    payments = relationship("Payment", back_populates="subscription")
-    payment_method = relationship("PaymentMethod", back_populates="subscriptions")
+    #     user = relationship("User", )
+    payments = relationship("Payment", )
+    payment_method = relationship("PaymentMethod", )
 
 class Payment(Base):
     """Modelo de pagos realizados"""
@@ -119,8 +119,8 @@ class Payment(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relaciones
-    user = relationship("User", back_populates="payments")
-    subscription = relationship("Subscription", back_populates="payments")
+    #     user = relationship("User", )
+    subscription = relationship("Subscription", )
 
 class PaymentMethod(Base):
     """Métodos de pago guardados del usuario"""
@@ -155,8 +155,8 @@ class PaymentMethod(Base):
     last_used_at = Column(DateTime)
     
     # Relaciones
-    user = relationship("User", back_populates="payment_methods")
-    subscriptions = relationship("Subscription", back_populates="payment_method")
+    #     user = relationship("User", )
+    subscriptions = relationship("Subscription", )
 
 class Invoice(Base):
     """Facturas generadas"""
@@ -204,7 +204,7 @@ class Invoice(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relaciones
-    user = relationship("User", back_populates="invoices")
+    #     user = relationship("User", )
     payment = relationship("Payment")
 
 class Coupon(Base):

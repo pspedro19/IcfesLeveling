@@ -17,13 +17,13 @@ class Subject(Base):
     color = Column(String(7), default="#3b0f6f")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
-    topics = relationship("Topic", back_populates="subject", cascade="all, delete-orphan")
-    questions = relationship("Question", back_populates="subject", cascade="all, delete-orphan")
-    diagnostic_tests = relationship("DiagnosticTest", back_populates="subject")
-    study_plans = relationship("StudyPlan", back_populates="subject")
-    config = relationship("SubjectConfig", back_populates="subject", uselist=False)
-    aliases = relationship("SubjectAlias", back_populates="subject", cascade="all, delete-orphan")
+    # Relationships - Simplified without back_populates
+    topics = relationship("Topic", cascade="all, delete-orphan")
+    questions = relationship("Question", cascade="all, delete-orphan")
+    diagnostic_tests = relationship("DiagnosticTest")
+    study_plans = relationship("StudyPlan")
+    config = relationship("SubjectConfig", uselist=False)
+    aliases = relationship("SubjectAlias", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Subject(id={self.id}, name='{self.name}')>" 

@@ -1,25 +1,29 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Text, Float
+from sqlalchemy import Column, String, ForeignKey, Text, Float, Integer, DateTime
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+import uuid
 from ..core.database import Base
 
 class Topic(Base):
     __tablename__ = "topics"
 
-    id = Column(Integer, primary_key=True, index=True)
-    subject_id = Column(Integer, ForeignKey("subjects.id"), nullable=False)
-    name = Column(String(255), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    subject_id = Column(UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=False)
+    name = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
     codigo_tema = Column(String(50), unique=True, nullable=True, index=True)
-    difficulty_level = Column(String(50), nullable=True)
+    difficulty_level = Column(Integer, default=1)  # Changed to Integer for consistency
     order_index = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # IRT parameters for adaptive testing
     difficulty_parameter = Column(Float, default=0.0)
     discrimination_parameter = Column(Float, default=1.0)
     
     # Relationships
-    subject = relationship("Subject", back_populates="topics")
-    questions = relationship("Question", back_populates="topic")
+    subject = relationship("Subject", )
+    questions = relationship("Question", )
     
     def __repr__(self):
         return f"<Topic(id={self.id}, name='{self.name}')>"

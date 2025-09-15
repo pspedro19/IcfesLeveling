@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BlenderPortal from './BlenderPortal';
-import { useAudioEngine } from './AudioEngine';
-import { Eye, EyeOff, Loader2, Sparkles, Zap } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Sparkles, Zap, AlertCircle, CheckCircle, User, Shield } from 'lucide-react';
+import { authService } from '../../services/auth.service';
 
 interface LoginPortalProps {
   onLogin: (email: string, password: string) => void;

@@ -46,7 +46,7 @@ def login_simple(form_data: OAuth2PasswordRequestForm = Depends(), db: Session =
                 "email": user.email,
                 "level": user.level,
                 "rank": user.rank,
-                "premium_plan": user.premium_plan
+                "premium_plan": "free"  # Default since column doesn't exist
             }
         }
         
@@ -105,7 +105,6 @@ def create_test_users(db: Session = Depends(get_db)):
             speed=50,
             orbs=1000,
             crystals=500,
-            premium_plan="premium",
             is_active=True
         )
         
@@ -126,12 +125,32 @@ def create_test_users(db: Session = Depends(get_db)):
             speed=10,
             orbs=0,
             crystals=0,
-            premium_plan="free",
+            is_active=True
+        )
+        
+        # Crear usuario student1
+        student1_hash = get_password_hash("secret")
+        student1_user = User(
+            id=uuid.uuid4(),
+            username="student1",
+            email="student1@test.com",
+            hashed_password=student1_hash,
+            level=1,
+            experience=0,
+            rank="E",
+            hp=100,
+            mp=50,
+            power=10,
+            wisdom=10,
+            speed=10,
+            orbs=0,
+            crystals=0,
             is_active=True
         )
         
         db.add(admin_user)
         db.add(test_user)
+        db.add(student1_user)
         db.commit()
         
         return {
@@ -139,7 +158,8 @@ def create_test_users(db: Session = Depends(get_db)):
             "message": "Usuarios creados",
             "users": [
                 {"username": "admin", "password": "secret", "level": 50, "rank": "S"},
-                {"username": "test", "password": "secret", "level": 1, "rank": "E"}
+                {"username": "test", "password": "secret", "level": 1, "rank": "E"},
+                {"username": "student1", "password": "secret", "level": 1, "rank": "E"}
             ]
         }
         
@@ -159,7 +179,7 @@ def list_users(db: Session = Depends(get_db)):
                     "email": user.email,
                     "level": user.level,
                     "rank": user.rank,
-                    "premium_plan": user.premium_plan
+                    "premium_plan": "free"  # Default since column doesn't exist
                 }
                 for user in users
             ]

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "next dev -p 4001 -H 0.0.0.0",
     "dev:optimized": "NODE_OPTIONS='--max-old-space-size=8192 --max-semi-space-size=1024' next dev -p 4001 -H 0.0.0.0",
     "build": "npm run build:tokens && next build",
     "start": "next start -p 3000",
@@ -54,6 +54,7 @@
     "react-konva": "^18.2.10",
     "react-query": "^3.39.3",
     "react-three-fiber": "^6.0.13",
+    "recharts": "^3.2.0",
     "socket.io-client": "^4.7.2",
     "stripe": "^18.4.0",
     "tailwind-merge": "^2.6.0",

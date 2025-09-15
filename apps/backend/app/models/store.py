@@ -19,9 +19,9 @@ class StoreTransaction(Base):
     status = Column(String(20), default="completed")  # 'completed', 'failed', 'refunded'
     notes = Column(Text)
     
-    # Relationships
-    user = relationship("User", back_populates="store_transactions")
-    item = relationship("Item", back_populates="store_transactions")
+    # Relationships - Temporalmente comentado para arreglar SQLAlchemy
+    # user = relationship("User", )
+    item = relationship("Item", )
     
     def __repr__(self):
         return f"<StoreTransaction(id={self.id}, user_id={self.user_id}, item_id={self.item_id}, amount={self.amount_spent})>"
@@ -38,9 +38,9 @@ class UserPowerUp(Base):
     uses_remaining = Column(Integer, default=1)
     effect_data = Column(JSON, default={})
     
-    # Relationships
-    user = relationship("User", back_populates="user_power_ups")
-    item = relationship("Item", back_populates="user_power_ups")
+    # Relationships - Temporalmente comentado para arreglar SQLAlchemy
+    # user = relationship("User", )
+    item = relationship("Item", )
     
     def __repr__(self):
         return f"<UserPowerUp(id={self.id}, user_id={self.user_id}, item_id={self.item_id}, active={self.is_active})>"
@@ -74,8 +74,8 @@ class CurrencyEarning(Base):
     earned_at = Column(DateTime(timezone=True), server_default=func.now())
     metadata_json = Column(JSON, default={})
     
-    # Relationships
-    user = relationship("User", back_populates="currency_earnings")
+    # Relationships - Temporalmente comentado para arreglar SQLAlchemy
+    # user = relationship("User", )
     
     def __repr__(self):
         return f"<CurrencyEarning(id={self.id}, user_id={self.user_id}, currency={self.currency_type}, amount={self.amount})>"

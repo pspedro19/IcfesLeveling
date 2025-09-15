@@ -51,72 +51,8 @@ class StudyPlanService {
       return response;
     } catch (error) {
       console.error('Error generating YAML:', error);
-      // Return mock YAML for development
-      return this.getMockYAML(data.subject);
+      throw new Error('No se pudo generar el plan de estudio personalizado');
     }
-  }
-  
-  private getMockYAML(subject: string): string {
-    return `
-subject: ${subject}
-title: "Mazmorra de ${subject}"
-description: "Conquista los conceptos fundamentales y avanza tu dominio"
-units:
-  - name: "Fundamentos Básicos"
-    description: "Conceptos esenciales para construir una base sólida"
-    topics:
-      - name: "Introducción"
-        difficulty: 1
-        questions: 10
-        tags: ["básico", "conceptos"]
-      - name: "Teoría Fundamental"
-        difficulty: 2
-        questions: 15
-        tags: ["teoría", "importante"]
-    recommendations:
-      priority: "high"
-      weak_areas: ["conceptos básicos"]
-      study_time: "2 horas"
-    unlocked: true
-    progress: 30
-    ai_recommended: true
-    
-  - name: "Nivel Intermedio"
-    description: "Aplica los conceptos en problemas más complejos"
-    topics:
-      - name: "Aplicaciones Prácticas"
-        difficulty: 3
-        questions: 20
-        tags: ["práctica", "aplicación"]
-      - name: "Casos de Estudio"
-        difficulty: 3
-        questions: 15
-        tags: ["análisis", "casos"]
-    unlocked: true
-    progress: 0
-    
-  - name: "Dominio Avanzado"
-    description: "Desafíos para verdaderos maestros"
-    topics:
-      - name: "Problemas Complejos"
-        difficulty: 4
-        questions: 25
-        tags: ["avanzado", "complejo"]
-      - name: "Síntesis y Evaluación"
-        difficulty: 5
-        questions: 20
-        tags: ["síntesis", "crítico"]
-    recommendations:
-      priority: "low"
-      focus_topics: ["síntesis avanzada"]
-      study_time: "3 horas"
-    unlocked: false
-    progress: 0
-    
-total_questions: 105
-estimated_time: "4-5 horas"
-difficulty_curve: "progressive"
-    `.trim();
   }
 }
 

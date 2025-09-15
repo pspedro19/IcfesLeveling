@@ -1,8 +1,18 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean
+from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean, ForeignKey, Index, ARRAY
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import DECIMAL
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 import uuid
+from typing import Optional, List, Dict, Any
 from ..core.database import Base
+
+try:
+    from pgvector.sqlalchemy import Vector
+    PGVECTOR_AVAILABLE = True
+except ImportError:
+    from sqlalchemy import Text as Vector
+    PGVECTOR_AVAILABLE = False
 
 class YoutubeCatalog(Base):
     """
@@ -53,10 +63,26 @@ class YoutubeCatalog(Base):
     processing_status = Column(String(50), default='pending')  # pending, processing, completed, error
     error_message = Column(Text, nullable=True)
     
+    # Vector embeddings for semantic search
+    title_embedding = Column(Vector(1536) if PGVECTOR_AVAILABLE else Text, nullable=True)
+    description_embedding = Column(Vector(1536) if PGVECTOR_AVAILABLE else Text, nullable=True)
+    combined_embedding = Column(Vector(1536) if PGVECTOR_AVAILABLE else Text, nullable=True)
+    
+    # IRT parameters
+    irt_b = Column(Float, nullable=True)  # Difficulty parameter
+    cognitive_level = Column(String(50), default='understand', index=True)
+    
+    # Language and versioning
+    language = Column(String(10), default='es')
+    
     # Timestamps
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
     last_processed_at = Column(DateTime, nullable=True)
+    
+    # Relationships (if foreign keys exist)
+    # subject = relationship("Subject", backref="youtube_videos", foreign_keys=[subject_id])
+    # topic = relationship("Topic", backref="youtube_videos", foreign_keys=[topic_id])
     
     def __repr__(self):
         return f"<YoutubeCatalog(id={self.id}, codigo_tema='{self.codigo_tema}', title='{self.title[:50]}...')>"
@@ -122,3 +148,177 @@ class YoutubeCatalog(Base):
         if self.youtube_id:
             return f"https://www.youtube.com/watch?v={self.youtube_id}"
         return self.url
+    
+    def generate_embedding_text(self) -> str:
+        """Generate text for embedding generation"""
+        parts = [
+            self.title or "",
+            self.description or "",
+            self.tema_principal or "",
+            self.area_evaluada or "",
+            f"level_{self.nivel or 'medio'}",
+            f"cognitive_{self.cognitive_level}"
+        ]
+        return " | ".join(filter(None, parts))
+    
+    def calculate_engagement_score(self) -> float:
+        """Calculate basic engagement score from available metrics"""
+        if not self.view_count:
+            return 0.0
+        
+        # Simple engagement calculation based on likes vs views
+        if self.view_count > 0 and self.like_count:
+            like_ratio = self.like_count / self.view_count
+            return min(1.0, like_ratio * 100)  # Scale to 0-1
+        
+        return 0.5  # Default medium engagement
+    
+    @classmethod
+    def search_by_subject_topic(cls, db_session, subject_id: int = None, topic_id: int = None, limit: int = 10):
+        """Search videos by subject and/or topic"""
+        query = db_session.query(cls).filter(cls.is_processed == True)
+        
+        if subject_id:
+            query = query.filter(cls.subject_id == subject_id)
+        if topic_id:
+            query = query.filter(cls.topic_id == topic_id)
+        
+        return query.order_by(cls.relevance_score.desc()).limit(limit).all()
+
+
+class VideoStats(Base):
+    """Video engagement statistics"""
+    __tablename__ = "video_stats"
+
+    video_id = Column(Integer, ForeignKey("youtube_catalog.id", ondelete="CASCADE"), 
+                      primary_key=True)
+    
+    # 7-day rolling metrics
+    ctr_7d = Column(DECIMAL(5,4), default=0.0)
+    completion_rate_7d = Column(DECIMAL(5,4), default=0.0)
+    avg_watch_sec_7d = Column(Integer, default=0)
+    unique_views_7d = Column(Integer, default=0)
+    
+    # 30-day rolling metrics
+    ctr_30d = Column(DECIMAL(5,4), default=0.0)
+    completion_rate_30d = Column(DECIMAL(5,4), default=0.0)
+    avg_watch_sec_30d = Column(Integer, default=0)
+    unique_views_30d = Column(Integer, default=0)
+    
+    # All-time metrics
+    total_views = Column(Integer, default=0)
+    total_completions = Column(Integer, default=0)
+    avg_rating = Column(DECIMAL(3,2), default=0.0)
+    total_ratings = Column(Integer, default=0)
+    
+    # Learning effectiveness
+    avg_improvement_score = Column(DECIMAL(5,4), default=0.0)
+    helpful_votes = Column(Integer, default=0)
+    unhelpful_votes = Column(Integer, default=0)
+    
+    # Last updated
+    last_updated = Column(DateTime, server_default=func.now())
+    
+    # Relationships
+    video = relationship("YoutubeCatalog", backref="stats")
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for API responses"""
+        return {
+            "video_id": self.video_id,
+            "ctr_7d": float(self.ctr_7d) if self.ctr_7d else 0.0,
+            "completion_rate_7d": float(self.completion_rate_7d) if self.completion_rate_7d else 0.0,
+            "avg_watch_sec_7d": self.avg_watch_sec_7d,
+            "unique_views_7d": self.unique_views_7d,
+            "total_views": self.total_views,
+            "total_completions": self.total_completions,
+            "avg_rating": float(self.avg_rating) if self.avg_rating else 0.0,
+            "helpful_votes": self.helpful_votes,
+            "unhelpful_votes": self.unhelpful_votes,
+            "last_updated": self.last_updated.isoformat() if self.last_updated else None
+        }
+
+
+class StudentVideoInteraction(Base):
+    """Student video interactions for personalized recommendations"""
+    __tablename__ = "student_video_interactions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    student_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), 
+                        nullable=False, index=True)
+    video_id = Column(Integer, ForeignKey("youtube_catalog.id", ondelete="CASCADE"), 
+                      nullable=False, index=True)
+    
+    # Interaction data
+    clicked_at = Column(DateTime, server_default=func.now())
+    watch_start_time = Column(DateTime)
+    watch_end_time = Column(DateTime)
+    total_watch_seconds = Column(Integer, default=0)
+    completion_percentage = Column(DECIMAL(5,2), default=0.0)
+    
+    # Learning context
+    question_id = Column(UUID(as_uuid=True), index=True)
+    session_id = Column(UUID(as_uuid=True))
+    recommendation_source = Column(String(50), index=True)  # 'failed_question', 'topic_review', etc.
+    
+    # Feedback
+    was_helpful = Column(Boolean)
+    difficulty_rating = Column(Integer)  # 1-5
+    quality_rating = Column(Integer)  # 1-5
+    feedback_text = Column(Text)
+    
+    # Performance tracking
+    performance_before = Column(DECIMAL(5,4))
+    performance_after = Column(DECIMAL(5,4))
+    improvement_delta = Column(DECIMAL(5,4))
+    
+    # Relationships
+    student = relationship("User", backref="video_interactions")
+    video = relationship("YoutubeCatalog", backref="interactions")
+    
+    def __repr__(self):
+        return f"<StudentVideoInteraction(student={str(self.student_id)[:8]}, video={self.video_id})>"
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for API responses"""
+        return {
+            "id": str(self.id),
+            "student_id": str(self.student_id),
+            "video_id": self.video_id,
+            "clicked_at": self.clicked_at.isoformat() if self.clicked_at else None,
+            "total_watch_seconds": self.total_watch_seconds,
+            "completion_percentage": float(self.completion_percentage) if self.completion_percentage else 0.0,
+            "question_id": str(self.question_id) if self.question_id else None,
+            "recommendation_source": self.recommendation_source,
+            "was_helpful": self.was_helpful,
+            "difficulty_rating": self.difficulty_rating,
+            "quality_rating": self.quality_rating,
+            "improvement_delta": float(self.improvement_delta) if self.improvement_delta else None
+        }
+
+
+# Optimized indexes for performance
+Index(
+    'idx_youtube_catalog_subject_topic_processed',
+    YoutubeCatalog.subject_id,
+    YoutubeCatalog.topic_id,
+    YoutubeCatalog.is_processed,
+    YoutubeCatalog.processing_status
+)
+
+Index(
+    'idx_youtube_catalog_embeddings_quality',
+    YoutubeCatalog.has_embeddings,
+    YoutubeCatalog.quality_score.desc(),
+    YoutubeCatalog.relevance_score.desc()
+)
+
+# Vector similarity indexes (only if pgvector is available)
+if PGVECTOR_AVAILABLE:
+    Index(
+        'idx_youtube_catalog_combined_embedding_ivfflat',
+        YoutubeCatalog.combined_embedding,
+        postgresql_using='ivfflat',
+        postgresql_with={'lists': 100},
+        postgresql_ops={'combined_embedding': 'vector_cosine_ops'}
+    )

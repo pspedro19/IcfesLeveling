@@ -91,9 +91,8 @@ class QuestTemplate(Base):
             "special_rewards": self.special_rewards
         }
 
-class UserQuest(Base):
-    __tablename__ = "user_quests"
-    __table_args__ = {'extend_existing': True}
+class EnhancedUserQuest(Base):
+    __tablename__ = "enhanced_user_quests"  # Changed to avoid conflict with UserQuest table
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
@@ -202,7 +201,7 @@ class QuestChain(Base):
     
     # Relationships
     chain_achievement = relationship("Achievement")
-    user_chain_progress = relationship("UserQuestChain", back_populates="quest_chain", cascade="all, delete-orphan")
+    #     user_chain_progress = # relationship("relationship("UserQuestChain",", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<QuestChain(id={self.id}, name='{self.name}', type='{self.chain_type}')>"
@@ -225,7 +224,7 @@ class UserQuestChain(Base):
     
     # Relationships
     user = relationship("User")
-    quest_chain = relationship("QuestChain", back_populates="user_chain_progress")
+    quest_chain = relationship("QuestChain", )
     
     def __repr__(self):
         return f"<UserQuestChain(id={self.id}, user_id={self.user_id}, completed={self.chain_completed})>"

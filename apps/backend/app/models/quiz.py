@@ -25,9 +25,9 @@ class Quiz(Base):
     completed_at = Column(DateTime(timezone=True))
     
     # Relationships
-    user = relationship("User", back_populates="quizzes")
-    plan = relationship("StudyPlan", back_populates="quizzes")
-    quiz_answers = relationship("QuizAnswer", back_populates="quiz", cascade="all, delete-orphan")
+    #     user = relationship("User", )
+    plan = relationship("StudyPlan", )
+    #     quiz_answers = # relationship("relationship("QuizAnswer",", cascade="all, delete-orphan")
 
 class QuizAnswer(Base):
     __tablename__ = "quiz_answers"
@@ -42,5 +42,5 @@ class QuizAnswer(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
-    quiz = relationship("Quiz", back_populates="quiz_answers")
-    question = relationship("Question", back_populates="quiz_answers") 
+    quiz = relationship("Quiz", )
+    question = relationship("Question", ) 

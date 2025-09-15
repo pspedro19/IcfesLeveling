@@ -21,11 +21,11 @@ class StudyPlan(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
     # Relationships
-    user = relationship("User", back_populates="study_plans")
-    subject = relationship("Subject", back_populates="study_plans")
-    progress = relationship("PlanProgress", back_populates="plan", cascade="all, delete-orphan")
-    video_tracking = relationship("VideoTracking", back_populates="plan", cascade="all, delete-orphan")
-    quizzes = relationship("Quiz", back_populates="plan", cascade="all, delete-orphan")
+    #     user = relationship("User", )
+    subject = relationship("Subject", )
+    #     progress = # relationship("relationship("PlanProgress",", cascade="all, delete-orphan")
+    #     video_tracking = # relationship("relationship("VideoTracking",", cascade="all, delete-orphan")
+    #     quizzes = # relationship("relationship("Quiz",", cascade="all, delete-orphan")
 
 class PlanProgress(Base):
     __tablename__ = "plan_progress"
@@ -47,7 +47,7 @@ class PlanProgress(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
-    plan = relationship("StudyPlan", back_populates="progress")
+    plan = relationship("StudyPlan", )
 
 class StudyPlanTemplate(Base):
     __tablename__ = "study_plan_templates"

@@ -35,9 +35,9 @@ class Battle(Base):
     epic_rewards = Column(JSON, default=[])  # Recompensas épicas
     certificate_generated = Column(Boolean, default=False)  # Certificado de dominio
     
-    # Relationships
-    user = relationship("User", back_populates="battles")
-    battle_answers = relationship("BattleAnswer", back_populates="battle", cascade="all, delete-orphan")
+    # Relationships - Simplified without back_populates
+    user = relationship("User")
+    # battle_answers = # relationship("relationship("BattleAnswer",", cascade="all, delete-orphan")
 
 class BattleAnswer(Base):
     __tablename__ = "battle_answers"
@@ -53,22 +53,8 @@ class BattleAnswer(Base):
     critical_hit = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
-    battle = relationship("Battle", back_populates="battle_answers")
+    # Relationships - Simplified without back_populates
+    battle = relationship("Battle")
     question = relationship("Question")
 
-class Certificate(Base):
-    __tablename__ = "certificates"
-    
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    unit_number = Column(Integer, nullable=False)
-    subject_id = Column(UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=False)
-    battle_id = Column(UUID(as_uuid=True), ForeignKey("battles.id"), nullable=False)
-    certificate_data = Column(JSON, nullable=False)  # Datos del certificado
-    generated_at = Column(DateTime(timezone=True), server_default=func.now())
-    
-    # Relationships
-    user = relationship("User")
-    subject = relationship("Subject")
-    battle = relationship("Battle") 
+# Certificate class moved to certificate.py to avoid duplication 

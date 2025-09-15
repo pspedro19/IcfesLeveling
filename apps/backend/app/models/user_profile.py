@@ -16,8 +16,8 @@ class UserProfile(Base):
     assigned_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
-    user = relationship("User", back_populates="profile")
-    hero_class = relationship("HeroClass", back_populates="user_profiles")
+    # user = relationship("User", )
+    hero_class = relationship("HeroClass", )
     
     def __repr__(self):
         return f"<UserProfile(id={self.id}, user_id={self.user_id}, hero_class_id={self.hero_class_id})>"

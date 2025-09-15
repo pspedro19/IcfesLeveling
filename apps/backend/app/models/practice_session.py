@@ -56,11 +56,11 @@ class PracticeSession(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
     # Relationships
-    user = relationship("User", back_populates="practice_sessions")
+    #     user = relationship("User", )
     subject = relationship("Subject")
     topic = relationship("Topic")
-    practice_answers = relationship("PracticeAnswer", back_populates="practice_session", cascade="all, delete-orphan")
-    practice_rewards = relationship("PracticeReward", back_populates="practice_session", cascade="all, delete-orphan")
+    #     practice_answers = # relationship("relationship("PracticeAnswer",", cascade="all, delete-orphan")
+    #     practice_rewards = # relationship("relationship("PracticeReward",", cascade="all, delete-orphan")
 
     def calculate_difficulty_boost(self):
         """Calculate dynamic difficulty adjustment based on performance"""
@@ -131,9 +131,9 @@ class PracticeAnswer(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
-    practice_session = relationship("PracticeSession", back_populates="practice_answers")
+    practice_session = relationship("PracticeSession", )
     question = relationship("Question")
-    ai_explanation = relationship("AIExplanation", uselist=False, cascade="all, delete-orphan")
+    # ai_explanation = relationship("AIExplanation", uselist=False, cascade="all, delete-orphan")  # Temporarily commented out due to FK issues
 
 class UserQuestionMastery(Base):
     """
@@ -247,5 +247,5 @@ class PracticeReward(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
-    practice_session = relationship("PracticeSession", back_populates="practice_rewards")
+    practice_session = relationship("PracticeSession", )
     user = relationship("User")

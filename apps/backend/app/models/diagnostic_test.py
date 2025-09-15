@@ -36,10 +36,10 @@ class DiagnosticTest(Base):
     notification_sent = Column(Boolean, default=False)
     
     # Relationships
-    user = relationship("User", back_populates="diagnostic_tests")
+    #     user = relationship("User", )
     subject = relationship("Subject")
     original_test = relationship("DiagnosticTest", remote_side=[id])
-    answers = relationship("DiagnosticTestAnswer", back_populates="test", cascade="all, delete-orphan", foreign_keys="DiagnosticTestAnswer.diagnostic_test_id")
+    #     answers = # relationship("relationship("DiagnosticTestAnswer",", cascade="all, delete-orphan", foreign_keys="DiagnosticTestAnswer.diagnostic_test_id")
 
 class DiagnosticTestAnswer(Base):
     __tablename__ = "diagnostic_test_answers"
@@ -56,7 +56,7 @@ class DiagnosticTestAnswer(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
-    test = relationship("DiagnosticTest", back_populates="answers", foreign_keys=[diagnostic_test_id])
+    #     test = # relationship("relationship("DiagnosticTest",", foreign_keys=[diagnostic_test_id])
     question = relationship("Question")
     topic = relationship("Topic")
 

@@ -7,7 +7,8 @@ from ..core.database import get_db
 from ..core.security import get_current_user
 from ..services.boss_service import BossService
 from ..models.user import User
-from ..models.battle import Battle, Certificate
+from ..models.battle import Battle
+from ..models.certificate import Certificate
 
 router = APIRouter(prefix="/bosses", tags=["bosses"])
 

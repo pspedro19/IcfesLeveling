@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     ENVIRONMENT: str = "development"
     FRONTEND_URL: str = "http://localhost:4001"
+    PORT: int = 4000
     
     # Security
     SECRET_KEY: str = "your-super-secret-key-change-in-production"

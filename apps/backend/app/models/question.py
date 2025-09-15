@@ -95,16 +95,17 @@ class Question(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     # updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())  # Comentado: columna no existe en la tabla
     
-    # Relationships
-    topic = relationship("Topic", back_populates="questions")
-    subject = relationship("Subject", back_populates="questions")
-    battle_answers = relationship("BattleAnswer", back_populates="question", cascade="all,delete-orphan")
-    ai_explanations = relationship("AIExplanation", back_populates="question", cascade="all,delete-orphan")
-    quiz_answers = relationship("QuizAnswer", back_populates="question", cascade="all,delete-orphan")
-    diagnostic_answers = relationship("DiagnosticTestAnswer", back_populates="question")
+    # Relationships - Temporarily simplified without back_populates to avoid circular references
+    topic = relationship("Topic")
+    subject = relationship("Subject")
+    # battle_answers = # relationship("relationship("BattleAnswer",", cascade="all,delete-orphan")
+    # ai_explanations = # relationship("relationship("AIExplanation",", cascade="all,delete-orphan")
+    # ai_tutoring_sessions = # relationship("relationship("AITutoringSession",", cascade="all,delete-orphan")
+    # quiz_answers = # relationship("relationship("QuizAnswer",", cascade="all,delete-orphan")
+    # diagnostic_answers = relationship("DiagnosticTestAnswer", )
     
     # Relación con catálogo de temas ICFES - Comentado: columna no existe en la tabla
-    # topic_catalog = relationship("StudyTopicsCatalog", back_populates="questions", foreign_keys="Question.codigo_tema")
+    # topic_catalog = # relationship("relationship("StudyTopicsCatalog",", foreign_keys="Question.codigo_tema")
 
     def validate_question(self):
         """Validate question data and return errors"""

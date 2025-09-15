@@ -11,8 +11,10 @@ export default function DiagnosticTest() {
   const [selectedSubject, setSelectedSubject] = useState<any>(null);
 
   useEffect(() => {
-    // Fetch subjects from API
-    fetch('http://localhost:4000/api/v1/subjects/dynamic')
+    // Fetch subjects with IMAGE questions ONLY for testing
+    import('../lib/dynamic-config').then(({ buildApiUrl }) => 
+      fetch(buildApiUrl('/diagnostic-images-test/subjects-with-image-questions'))
+    )
       .then(res => res.json())
       .then(data => {
         setSubjects(data || []);
@@ -26,6 +28,20 @@ export default function DiagnosticTest() {
   }, []);
 
   const startDiagnostic = (subject: any) => {
+    // Check if subject is available
+    if (!subject.is_available) {
+      alert(`❌ ${subject.name} no está disponible\n\n${subject.availability_message}`);
+      return;
+    }
+    
+    // Warn if limited questions
+    if (subject.availability_status === 'limited') {
+      const confirmStart = confirm(`⚠️ ${subject.name} tiene pocas preguntas disponibles\n\n${subject.availability_message}\n\n¿Deseas continuar de todos modos?`);
+      if (!confirmStart) {
+        return;
+      }
+    }
+    
     setSelectedSubject(subject);
   };
 
@@ -109,10 +125,20 @@ export default function DiagnosticTest() {
 
           {/* Subjects Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {subjects.map((subject) => (
+            {subjects.map((subject) => {
+              const isUnavailable = !subject.is_available;
+              const isLimited = subject.availability_status === 'limited';
+              
+              return (
               <div
                 key={subject.id}
-                className="bg-black/40 backdrop-blur-sm border border-purple-500/50 hover:border-yellow-400 rounded-lg p-6 cursor-pointer transform hover:scale-105 transition-all duration-300 hover:shadow-[0_0_20px_#ffd700]"
+                className={`bg-black/40 backdrop-blur-sm border rounded-lg p-6 transition-all duration-300 ${
+                  isUnavailable 
+                    ? 'border-gray-600/50 opacity-50 cursor-not-allowed grayscale' 
+                    : isLimited
+                    ? 'border-yellow-500/50 hover:border-yellow-400 cursor-pointer transform hover:scale-105 hover:shadow-[0_0_20px_#fbbf24]'
+                    : 'border-purple-500/50 hover:border-yellow-400 cursor-pointer transform hover:scale-105 hover:shadow-[0_0_20px_#ffd700]'
+                }`}
                 onClick={() => startDiagnostic(subject)}
               >
                 <div className="text-center">
@@ -142,45 +168,90 @@ export default function DiagnosticTest() {
                   {/* Subject Details */}
                   <div className="space-y-2 text-sm text-gray-400 mb-4">
                     <div className="flex justify-between">
-                      <span>⚔️ Combates:</span>
+                      <span>🖼️ Preguntas con Imágenes:</span>
                       <span className="font-medium text-purple-300">
-                        {subject.config?.total_questions || 45}
+                        {subject.available_for_test || subject.config?.total_questions || 20}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span>⏱️ Tiempo:</span>
                       <span className="font-medium text-purple-300">
-                        {subject.config?.time_limit_minutes || 60} min
+                        {subject.config?.time_limit_minutes || 30} min
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>📊 Total disponibles:</span>
+                      <span className="font-medium text-yellow-300">
+                        {subject.image_question_count || 0}
                       </span>
                     </div>
                   </div>
                   
+                  {/* Availability Status */}
+                  <div className="mb-4">
+                    {isUnavailable ? (
+                      <div className="bg-red-900/30 border border-red-500/30 rounded-lg p-2">
+                        <p className="text-red-300 text-sm">❌ No disponible</p>
+                        <p className="text-red-400 text-xs">{subject.availability_message}</p>
+                      </div>
+                    ) : isLimited ? (
+                      <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-lg p-2">
+                        <p className="text-yellow-300 text-sm">⚠️ Disponibilidad limitada</p>
+                        <p className="text-yellow-400 text-xs">{subject.availability_message}</p>
+                      </div>
+                    ) : (
+                      <div className="bg-green-900/30 border border-green-500/30 rounded-lg p-2">
+                        <p className="text-green-300 text-sm">✅ Disponible</p>
+                        <p className="text-green-400 text-xs">{subject.availability_message}</p>
+                      </div>
+                    )}
+                  </div>
+                  
                   {/* Start Button */}
                   <button 
-                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+                    className={`w-full font-bold py-3 px-4 rounded-lg transition-all duration-300 ${
+                      isUnavailable 
+                        ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
+                        : isLimited
+                        ? 'bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white transform hover:scale-105 shadow-lg'
+                        : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white transform hover:scale-105 shadow-lg'
+                    }`}
                     onClick={(e) => {
                       e.stopPropagation();
                       startDiagnostic(subject);
                     }}
+                    disabled={isUnavailable}
                   >
-                    ⚔️ Iniciar Diagnóstico
+                    {isUnavailable ? '❌ No Disponible' : isLimited ? '⚠️ Iniciar (Pocas Preguntas)' : '⚔️ Iniciar Diagnóstico'}
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
-        {/* Success Message */}
-        <div className="text-center bg-green-900/50 rounded-lg p-6 border border-green-500">
-          <h2 className="text-green-400 font-bold text-xl mb-2">
-            ✅ ¡SISTEMA DINÁMICO DE DIAGNÓSTICO ACTIVO!
+        {/* System Status Message */}
+        <div className="text-center bg-blue-900/50 rounded-lg p-6 border border-blue-500">
+          <h2 className="text-blue-400 font-bold text-xl mb-2">
+            🖼️ ¡MODO TESTING CON PREGUNTAS DE IMÁGENES ÚNICAMENTE!
           </h2>
-          <p className="text-green-300">
-            {subjects.length} materias cargadas dinámicamente desde la base de datos.
-          </p>
-          <p className="text-green-200 text-sm mt-2">
-            🚀 Sistema inteligente con configuración dinámica y gestión de assets
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div className="bg-green-800/30 p-3 rounded">
+              <p className="text-green-300 font-semibold">Materias con Imágenes</p>
+              <p className="text-green-200">{subjects.filter(s => s.availability_status === 'available').length}</p>
+            </div>
+            <div className="bg-yellow-800/30 p-3 rounded">
+              <p className="text-yellow-300 font-semibold">Disponibilidad Limitada</p>
+              <p className="text-yellow-200">{subjects.filter(s => s.availability_status === 'limited').length}</p>
+            </div>
+            <div className="bg-blue-800/30 p-3 rounded">
+              <p className="text-blue-300 font-semibold">Total Preguntas Imagen</p>
+              <p className="text-blue-200">{subjects.reduce((sum, s) => sum + (s.image_question_count || 0), 0)}</p>
+            </div>
+          </div>
+          <p className="text-blue-200 text-sm mt-4">
+            📸 Solo se mostrarán preguntas que requieren imágenes • Máximo 20 por materia
           </p>
         </div>
       </div>

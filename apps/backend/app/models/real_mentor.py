@@ -20,7 +20,7 @@ class RealMentor(Base):
     
     # Relationships
     subject = relationship("Subject")
-    sessions = relationship("MentorSession", back_populates="mentor")
+    sessions = relationship("MentorSession", )
     
     def __repr__(self):
         return f"<RealMentor(id={self.id}, name='{self.name}')>" 

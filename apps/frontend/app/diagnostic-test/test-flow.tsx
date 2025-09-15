@@ -7,11 +7,16 @@ interface Question {
   id: string;
   question_text: string;
   pregunta_texto?: string;
+  pregunta_imagen?: string;
   options?: string[];
   opcion_a_texto?: string;
   opcion_b_texto?: string;
   opcion_c_texto?: string;
   opcion_d_texto?: string;
+  opcion_a_imagen?: string;
+  opcion_b_imagen?: string;
+  opcion_c_imagen?: string;
+  opcion_d_imagen?: string;
   difficulty: number;
   hint?: string;
 }
@@ -55,11 +60,12 @@ export default function DiagnosticTestFlow({ subjectId, subjectName, onComplete 
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
       
-      // Get questions directly from the diagnostic endpoint
-      const questionsResponse = await fetch(`${API_URL}/diagnostic-public/diagnostic-questions/${subjectId}?limit=20`);
+      // Get IMAGE-ONLY questions directly from the new diagnostic endpoint
+      const questionsResponse = await fetch(`${API_URL}/diagnostic-images-test/questions/${subjectId}?limit=20`);
       
       if (questionsResponse.ok) {
         const data = await questionsResponse.json();
+        console.log('Loaded image questions:', data);
         // Extract questions from the response
         const questionsData = data.questions || data;
         setQuestions(Array.isArray(questionsData) ? questionsData : []);
@@ -257,9 +263,25 @@ export default function DiagnosticTestFlow({ subjectId, subjectName, onComplete 
           </div>
 
           {/* Question Text */}
-          <h2 className="text-2xl font-bold text-white mb-6">
-            {questionText}
-          </h2>
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-white mb-4">
+              {questionText}
+            </h2>
+            
+            {/* Question Image */}
+            {currentQuestion.pregunta_imagen && (
+              <div className="mb-4 flex justify-center">
+                <img 
+                  src={currentQuestion.pregunta_imagen} 
+                  alt="Imagen de la pregunta"
+                  className="max-w-full max-h-96 rounded-lg shadow-lg border border-purple-500/30"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              </div>
+            )}
+          </div>
 
           {/* Hint */}
           {showHint && currentQuestion.hint && (
@@ -274,6 +296,15 @@ export default function DiagnosticTestFlow({ subjectId, subjectName, onComplete 
               const optionLetter = String.fromCharCode(65 + index); // A, B, C, D
               const isSelected = answers[currentQuestion.id] === optionLetter;
               
+              // Get option image based on index
+              const optionImages = [
+                currentQuestion.opcion_a_imagen,
+                currentQuestion.opcion_b_imagen,
+                currentQuestion.opcion_c_imagen,
+                currentQuestion.opcion_d_imagen
+              ];
+              const optionImage = optionImages[index];
+              
               return (
                 <button
                   key={index}
@@ -284,8 +315,22 @@ export default function DiagnosticTestFlow({ subjectId, subjectName, onComplete 
                       : 'bg-black/20 border-gray-600 text-gray-300 hover:bg-purple-900/20 hover:border-purple-500'
                   }`}
                 >
-                  <span className="font-bold text-lg mr-3">{optionLetter}.</span>
-                  {option}
+                  <div className="flex items-start gap-3">
+                    <span className="font-bold text-lg flex-shrink-0">{optionLetter}.</span>
+                    <div className="flex-1">
+                      <div className="text-left">{option}</div>
+                      {optionImage && (
+                        <img 
+                          src={optionImage} 
+                          alt={`Imagen opción ${optionLetter}`}
+                          className="mt-2 max-w-full max-h-32 rounded border border-purple-500/20"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      )}
+                    </div>
+                  </div>
                 </button>
               );
             })}

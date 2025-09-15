@@ -37,7 +37,7 @@ class SubjectConfig(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     # Relationships
-    subject = relationship("Subject", back_populates="config")
+    subject = relationship("Subject", )
 
 class SubjectAlias(Base):
     """Alternative names for subjects for intelligent mapping"""
@@ -50,7 +50,7 @@ class SubjectAlias(Base):
     language = Column(String(10), default='es')
     
     # Relationships
-    subject = relationship("Subject", back_populates="aliases")
+    subject = relationship("Subject", )
 
 class AssetConfiguration(Base):
     """Dynamic asset management"""

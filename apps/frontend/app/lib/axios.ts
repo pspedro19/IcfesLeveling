@@ -1,15 +1,21 @@
 // apps/frontend/app/lib/axios.ts
 import axios, { AxiosError, AxiosInstance } from 'axios';
+import { getDynamicConfig } from './dynamic-config';
 
-// API base URL from environment or default - FIXED to avoid undefined
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-const FULL_API_URL = `${API_BASE_URL}/api/v1`;
+// Get dynamic configuration
+const dynamicConfig = getDynamicConfig();
+const API_BASE_URL = dynamicConfig.apiUrl;
+const FULL_API_URL = API_BASE_URL;
 
-console.log('🔧 Axios Config:', {
-  API_BASE_URL,
-  FULL_API_URL,
-  ENV: process.env.NODE_ENV
-});
+// Log configuration only in development and client-side
+if (dynamicConfig.isDevelopment && !dynamicConfig.isServer) {
+  console.log('🔧 Axios Dynamic Config:', {
+    API_BASE_URL,
+    FULL_API_URL,
+    ENV: process.env.NODE_ENV,
+    AutoDetected: !process.env.NEXT_PUBLIC_API_URL
+  });
+}
 
 // Create axios instance with proper configuration
 const api: AxiosInstance = axios.create({

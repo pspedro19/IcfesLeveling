@@ -19,7 +19,8 @@ export default function PortalDelDespertar() {
     const fetchSubjects = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:4000/api/v1/subjects/dynamic');
+        const { buildApiUrl } = await import('../lib/dynamic-config');
+        const response = await fetch(buildApiUrl('/diagnostic-public/subjects'));
         if (!response.ok) {
           throw new Error('Failed to fetch subjects');
         }

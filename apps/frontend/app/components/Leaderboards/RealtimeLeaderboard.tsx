@@ -124,17 +124,42 @@ export default function RealtimeLeaderboard({
   const fetchLeaderboard = async () => {
     setIsLoading(true);
     try {
-      // Mock data for now
-      const mockData = generateMockLeaderboard();
-      setEntries(mockData);
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const token = localStorage.getItem('access_token');
       
-      // Find user's rank
-      const userEntry = mockData.find(e => e.userId === user?.id);
-      if (userEntry) {
-        setUserRank(userEntry.rank);
+      const params = new URLSearchParams({
+        category,
+        subject,
+        limit: limit.toString()
+      });
+      
+      const response = await fetch(`${API_URL}/api/v1/leaderboard?${params}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch leaderboard');
+      }
+      
+      const leaderboardData = await response.json();
+      setEntries(leaderboardData.entries || []);
+      
+      // Find user's rank if user is logged in
+      if (user?.id) {
+        const userEntry = leaderboardData.entries?.find(e => e.userId === user.id);
+        if (userEntry) {
+          setUserRank(userEntry.rank);
+        } else if (leaderboardData.userRank) {
+          setUserRank(leaderboardData.userRank);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch leaderboard:', error);
+      // Set empty data instead of mock data
+      setEntries([]);
     } finally {
       setIsLoading(false);
     }
@@ -195,24 +220,6 @@ export default function RealtimeLeaderboard({
     }
   };
   
-  const generateMockLeaderboard = (): LeaderboardEntry[] => {
-    const classes = ['Assassin', 'Mage', 'Warrior', 'Healer'];
-    const guilds = ['Shadow Hunters', 'Math Warriors', 'Knowledge Seekers', null];
-    
-    return Array.from({ length: 30 }, (_, i) => ({
-      rank: i + 1,
-      userId: i === 5 ? (user?.id || 'user-123') : `user-${i}`,
-      username: i === 5 ? (user?.name || 'Tú') : `Hunter${i + 1}`,
-      level: Math.floor(Math.random() * 50) + 10,
-      score: Math.floor(5000 - i * 150 + Math.random() * 100),
-      accuracy: Math.floor(85 - i * 2 + Math.random() * 10),
-      questionsAnswered: Math.floor(1000 - i * 30 + Math.random() * 50),
-      streakDays: Math.floor(Math.random() * 30) + 1,
-      guildName: guilds[Math.floor(Math.random() * guilds.length)] || undefined,
-      heroClass: classes[Math.floor(Math.random() * classes.length)],
-      isOnline: Math.random() > 0.5
-    }));
-  };
   
   const getRankIcon = (rank: number) => {
     switch (rank) {

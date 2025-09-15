@@ -35,6 +35,7 @@ import StudentWeaknessHeatmap from '@/components/Teacher/StudentWeaknessHeatmap'
 import DistractorAnalysis from '@/components/Teacher/DistractorAnalysis';
 import ExportService from '@/components/Teacher/ExportService';
 import StudentRiskAlerts from '@/components/Teacher/StudentRiskAlerts';
+import AdvancedClassAnalytics from '@/components/Teacher/AdvancedClassAnalytics';
 
 interface TeacherClass {
   id: string;
@@ -124,95 +125,65 @@ export default function TeacherDashboard() {
     const loadTeacherData = async () => {
       setLoading(true);
       try {
-        // Mock data - replace with API calls
-        const mockProfile: TeacherProfile = {
-          id: 'teacher-1',
-          name: 'Prof. María González',
-          email: 'maria.gonzalez@colegio.edu',
-          institution: 'Colegio San Martín',
-          specialization: 'Matemáticas y Ciencias',
-          totalClasses: 4,
-          totalStudents: 112
-        };
-
-        const mockClasses: TeacherClass[] = [
-          {
-            id: 'class-1',
-            name: 'Matemáticas 11°A',
-            code: 'MAT11A',
-            subject: 'Matemáticas',
-            gradeLevel: '11',
-            totalStudents: 28,
-            activeStudents: 24,
-            avgMastery: 74.2,
-            progressDelta: 8.7,
-            lastActivity: new Date().toISOString()
-          },
-          {
-            id: 'class-2',
-            name: 'Física 10°B',
-            code: 'FIS10B',
-            subject: 'Física',
-            gradeLevel: '10',
-            totalStudents: 30,
-            activeStudents: 27,
-            avgMastery: 68.5,
-            progressDelta: 5.3,
-            lastActivity: new Date().toISOString()
-          },
-          {
-            id: 'class-3',
-            name: 'Química 11°C',
-            code: 'QUI11C',
-            subject: 'Química',
-            gradeLevel: '11',
-            totalStudents: 26,
-            activeStudents: 22,
-            avgMastery: 71.8,
-            progressDelta: -2.1,
-            lastActivity: new Date().toISOString()
-          },
-          {
-            id: 'class-4',
-            name: 'Matemáticas 10°A',
-            code: 'MAT10A',
-            subject: 'Matemáticas',
-            gradeLevel: '10',
-            totalStudents: 28,
-            activeStudents: 26,
-            avgMastery: 79.3,
-            progressDelta: 12.4,
-            lastActivity: new Date().toISOString()
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+        
+        // Load teacher profile
+        const profileResponse = await fetch(`${API_URL}/api/v1/teacher/profile`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            'Content-Type': 'application/json'
           }
-        ];
-
-        const mockNotifications = [
-          {
-            id: 1,
-            type: 'alert',
-            title: '3 estudiantes en riesgo',
-            message: 'En Matemáticas 11°A hay estudiantes que requieren atención',
-            timestamp: new Date(),
-            read: false
-          },
-          {
-            id: 2,
-            type: 'success',
-            title: 'Mejora en Física 10°B',
-            message: 'El promedio de la clase subió 5.3% este mes',
-            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-            read: false
-          }
-        ];
-
-        setProfile(mockProfile);
-        setClasses(mockClasses);
-        setNotifications(mockNotifications);
-        if (mockClasses.length > 0) {
-          setSelectedClass(mockClasses[0].id);
+        });
+        
+        if (!profileResponse.ok) {
+          throw new Error('Failed to load teacher profile');
         }
+        
+        const teacherProfile = await profileResponse.json();
+        setProfile(teacherProfile);
+        
+        // Load teacher's classes
+        const classesResponse = await fetch(`${API_URL}/api/v1/teacher/classes`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!classesResponse.ok) {
+          throw new Error('Failed to load classes');
+        }
+        
+        const teacherClasses = await classesResponse.json();
+        setClasses(teacherClasses);
+        
+        if (teacherClasses.length > 0) {
+          setSelectedClass(teacherClasses[0].id);
+        }
+        
+        // Load notifications
+        const notificationsResponse = await fetch(`${API_URL}/api/v1/teacher/notifications`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (notificationsResponse.ok) {
+          const teacherNotifications = await notificationsResponse.json();
+          setNotifications(teacherNotifications);
+        } else {
+          // Notifications are optional, just log the error
+          console.warn('Could not load notifications');
+          setNotifications([]);
+        }
+        
       } catch (error) {
         console.error('Error loading teacher data:', error);
+        // Set empty data instead of mock data
+        setProfile(null);
+        setClasses([]);
+        setNotifications([]);
       } finally {
         setLoading(false);
       }
@@ -622,7 +593,37 @@ export default function TeacherDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400"></div>
+        <motion.div
+          className="flex flex-col items-center gap-4"
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <div className="relative">
+            <div className="w-16 h-16 border-4 border-purple-500/30 rounded-full animate-spin">
+              <div className="absolute top-0 left-0 w-16 h-16 border-4 border-transparent border-t-purple-500 rounded-full animate-spin"></div>
+            </div>
+            <BookOpen className="absolute inset-0 w-8 h-8 m-auto text-purple-400" />
+          </div>
+          <p className="text-white font-semibold">Cargando datos del profesor...</p>
+        </motion.div>
+      </div>
+    );
+  }
+  
+  // Show error state if no profile data could be loaded
+  if (!profile && !loading) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-400 mb-4">Error al cargar datos</h2>
+          <p className="text-gray-400 mb-6">No se pudieron cargar los datos del profesor</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+          >
+            Intentar de nuevo
+          </button>
+        </div>
       </div>
     );
   }

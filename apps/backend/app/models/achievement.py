@@ -22,7 +22,7 @@ class Achievement(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
-    user_achievements = relationship("UserAchievement", back_populates="achievement", cascade="all, delete-orphan")
+    #     user_achievements = # relationship("relationship("UserAchievement",", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Achievement(id={self.id}, title='{self.title}', category='{self.category}')>"
@@ -53,9 +53,9 @@ class UserAchievement(Base):
     progress_data = Column(JSON)  # Store detailed progress information
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
-    user = relationship("User", back_populates="user_achievements")
-    achievement = relationship("Achievement", back_populates="user_achievements")
+    # Relationships - Temporalmente comentado para arreglar SQLAlchemy
+    # user = relationship("User", )
+    achievement = relationship("Achievement", )
     
     def __repr__(self):
         return f"<UserAchievement(user_id={self.user_id}, achievement_id={self.achievement_id}, unlocked={self.is_unlocked})>"

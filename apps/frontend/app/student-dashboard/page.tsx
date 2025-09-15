@@ -18,7 +18,8 @@ import {
   Shield,
   ChevronRight,
   Filter,
-  RefreshCw
+  RefreshCw,
+  Activity
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/useAuthStore';
 import IRTMetricsPanel from '@/components/Student/IRTMetricsPanel';
@@ -31,6 +32,8 @@ import RealtimeNotifications from '@/components/Student/RealtimeNotifications';
 import { studentDashboardService } from '@/services/studentDashboard.service';
 import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import { useCache } from '@/hooks/useCache';
+import AdvancedProgressChart from '@/components/Student/AdvancedProgressChart';
+import RealTimeMetricsPanel from '@/components/Student/RealTimeMetricsPanel';
 
 interface DashboardStats {
   currentLevel: number;
@@ -60,7 +63,7 @@ interface DashboardStats {
 
 export default function StudentDashboardPage() {
   const { user } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<'overview' | 'metrics' | 'errors' | 'recommendations'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'metrics' | 'errors' | 'recommendations' | 'realtime' | 'progress'>('overview');
   const [timeFilter, setTimeFilter] = useState<'7d' | '30d' | '90d'>('30d');
   
   // Use cache for dashboard data
@@ -321,7 +324,9 @@ export default function StudentDashboardPage() {
           <div className="flex items-center gap-2 bg-gray-900/80 rounded-xl p-2">
             {[
               { key: 'overview', label: 'Resumen', icon: <BarChart3 className="w-5 h-5" /> },
-              { key: 'metrics', label: 'Métricas IRT', icon: <TrendingUp className="w-5 h-5" /> },
+              { key: 'progress', label: 'Progreso Avanzado', icon: <TrendingUp className="w-5 h-5" /> },
+              { key: 'realtime', label: 'Métricas Tiempo Real', icon: <Activity className="w-5 h-5" /> },
+              { key: 'metrics', label: 'Métricas IRT', icon: <Target className="w-5 h-5" /> },
               { key: 'errors', label: 'Análisis de Errores', icon: <Target className="w-5 h-5" /> },
               { key: 'recommendations', label: 'Recomendaciones', icon: <BookOpen className="w-5 h-5" /> }
             ].map(tab => (
@@ -446,6 +451,19 @@ export default function StudentDashboardPage() {
             </div>
           )}
           
+          {activeTab === 'progress' && (
+            <AdvancedProgressChart 
+              timeFilter={timeFilter}
+              userId={user?.id}
+            />
+          )}
+
+          {activeTab === 'realtime' && (
+            <RealTimeMetricsPanel 
+              userId={user?.id}
+            />
+          )}
+
           {activeTab === 'metrics' && stats && (
             <div className="space-y-6">
               <IRTMetricsPanel 

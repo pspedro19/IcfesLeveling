@@ -24,5 +24,5 @@ class VideoTracking(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
     # Relationships
-    user = relationship("User", back_populates="video_tracking")
-    plan = relationship("StudyPlan", back_populates="video_tracking") 
+    #     user = relationship("User", )
+    plan = relationship("StudyPlan", ) 

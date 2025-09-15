@@ -4,7 +4,8 @@ from typing import List, Dict, Optional
 import uuid
 from datetime import datetime
 
-from ..models.battle import Battle, BattleAnswer, Certificate
+from ..models.battle import Battle, BattleAnswer
+from ..models.certificate import Certificate
 from ..models.study_plan import StudyPlan, PlanProgress
 from ..models.question import Question
 from ..models.user import User

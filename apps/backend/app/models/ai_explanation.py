@@ -17,6 +17,6 @@ class AIExplanation(Base):
     response_time_ms = Column(Integer)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
-    user = relationship("User", back_populates="ai_explanations")
-    question = relationship("Question", back_populates="ai_explanations") 
+    # Relationships - Temporalmente comentado para arreglar SQLAlchemy
+    #     user = relationship("User", )
+    # question = relationship("Question", ) 

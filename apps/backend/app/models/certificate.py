@@ -18,7 +18,7 @@ class Certificate(Base):
     generated_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
-    user = relationship("User", back_populates="certificates")
+    #     user = relationship("User", )
     subject = relationship("Subject")
     battle = relationship("Battle")
     
