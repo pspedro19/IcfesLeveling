@@ -24,7 +24,7 @@ import {
   GraduationCap,
   Crown
 } from 'lucide-react';
-import { routes } from '@/routes';
+import { routes } from '../../routes';
 import { authService } from '../../services/auth.service';
 
 interface NavItem {

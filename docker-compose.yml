@@ -24,6 +24,22 @@ services:
     networks:
       - icfes_network
 
+  # pgAdmin
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: icfes_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@icfes.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - icfes_network
+
   # Redis Cache
   redis:
     image: redis:7-alpine
@@ -85,7 +101,7 @@ services:
       - ACCESS_TOKEN_EXPIRE_MINUTES=30
       - ENVIRONMENT=development
       - DEBUG=true
-      - ALLOWED_ORIGINS=http://localhost:4001,http://127.0.0.1:4001,http://localhost:4000,http://127.0.0.1:4000,http://localhost:4002,http://127.0.0.1:4002,http://138.68.236.99:4001,http://138.68.236.99:4000,http://138.68.236.99:4002
+      - ALLOWED_ORIGINS=http://localhost:4001,http://127.0.0.1:4001,http://localhost:4000,http://127.0.0.1:4000,http://localhost:4002,http://127.0.0.1:4002,http://${HOST_IP:-143.110.195.148}:4001,http://${HOST_IP:-143.110.195.148}:4000,http://${HOST_IP:-143.110.195.148}:4002
       - AUTO_IMPORT_QUESTIONS=true
       - QUESTIONS_EXCEL_PATH=/seed_data/questions.xlsx
       - IMPORT_CLEAR_EXISTING=true
@@ -192,8 +208,8 @@ services:
     ports:
       - "4001:4001"
     environment:
-      - NEXT_PUBLIC_API_URL=http://138.68.236.99:4000
-      - NEXT_PUBLIC_WS_URL=ws://138.68.236.99:4002
+      - NEXT_PUBLIC_API_URL=http://${HOST_IP:-143.110.195.148}:4000
+      - NEXT_PUBLIC_WS_URL=ws://${HOST_IP:-143.110.195.148}:4002
       - NODE_ENV=development
       - PORT=4001
       - HOSTNAME=0.0.0.0

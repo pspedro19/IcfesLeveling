@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     FRONTEND_URL: str = "http://localhost:4001"
     PORT: int = 4000
+    DEFAULT_TIMEZONE: str = "America/Bogota"
     
     # Security
     SECRET_KEY: str = "your-super-secret-key-change-in-production"

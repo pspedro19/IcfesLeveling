@@ -12,14 +12,14 @@ class Topic(Base):
     subject_id = Column(UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=False)
     name = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
-    codigo_tema = Column(String(50), unique=True, nullable=True, index=True)
+    # codigo_tema = Column(String(50), unique=True, nullable=True, index=True)  # Column doesn't exist in current table
     difficulty_level = Column(Integer, default=1)  # Changed to Integer for consistency
-    order_index = Column(Integer, default=0)
+    # order_index = Column(Integer, default=0)  # Column doesn't exist in current table
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
-    # IRT parameters for adaptive testing
-    difficulty_parameter = Column(Float, default=0.0)
-    discrimination_parameter = Column(Float, default=1.0)
+
+    # IRT parameters for adaptive testing (Commented: columns don't exist in current table)
+    # difficulty_parameter = Column(Float, default=0.0)  # Column doesn't exist in current table
+    # discrimination_parameter = Column(Float, default=1.0)  # Column doesn't exist in current table
     
     # Relationships
     subject = relationship("Subject", )
@@ -34,7 +34,7 @@ class Topic(Base):
             "subject_id": self.subject_id,
             "name": self.name,
             "description": self.description,
-            "codigo_tema": self.codigo_tema,
+            # "codigo_tema": self.codigo_tema,  # Field doesn't exist in current table
             "difficulty_level": self.difficulty_level,
-            "order_index": self.order_index
+            # "order_index": self.order_index  # Field doesn't exist in current table
         }

@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { devtools } from 'zustand/middleware';
-import { User, HeroClass } from '@/types/auth';
-import { authService } from '@/services/auth.service';
+import { User, HeroClass } from '../types/auth';
+import { authService } from '../services/auth.service';
 
 interface AuthState {
   // State

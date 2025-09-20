@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getImageUrl } from '@/lib/config';
+import { getImageUrl } from '../../lib/config';
 import { 
   Clock, 
   ChevronLeft, 

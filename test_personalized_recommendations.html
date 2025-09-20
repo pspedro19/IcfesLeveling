@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Test de Recomendaciones Personalizadas - ICFES</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .test-panel {
+            background: rgba(255,255,255,0.2);
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #4CAF50;
+        }
+        .generic {
+            border-left-color: #2196F3;
+        }
+        .personalized {
+            border-left-color: #4CAF50;
+        }
+        .video-item {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin: 5px;
+        }
+        .success { background: #4CAF50; color: white; }
+        .info { background: #2196F3; color: white; }
+        .warning { background: #FF9800; color: white; }
+        .personalized-badge { background: #4CAF50; color: white; }
+        .generic-badge { background: #2196F3; color: white; }
+        h1 { text-align: center; font-size: 2.5em; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .weakness-tag {
+            background: #FF5722;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            margin: 2px;
+            display: inline-block;
+        }
+        .reason-tag {
+            background: #4CAF50;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            margin: 2px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Test de Recomendaciones Personalizadas</h1>
+        <p style="text-align: center; font-size: 18px;">Comparando videos genéricos vs. personalizados basados en debilidades</p>
+
+        <div class="comparison">
+            <!-- Videos Genéricos -->
+            <div class="test-panel generic">
+                <h2>📚 Videos Genéricos</h2>
+                <div class="status generic-badge">Sin personalización</div>
+                <p><strong>Descripción:</strong> Videos generales por materia</p>
+                <div id="generic-results">🔄 Cargando...</div>
+            </div>
+
+            <!-- Videos Personalizados -->
+            <div class="test-panel personalized">
+                <h2>🎯 Videos Personalizados</h2>
+                <div class="status personalized-badge">Basado en debilidades</div>
+                <p><strong>Descripción:</strong> Videos específicos para reforzar debilidades identificadas</p>
+                <div id="personalized-results">🔄 Cargando...</div>
+            </div>
+        </div>
+
+        <div class="test-panel">
+            <h2>📊 Análisis Comparativo</h2>
+            <div id="analysis-results">
+                <p>Ejecuta las pruebas para ver el análisis comparativo...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function testRecommendations() {
+            const subjectId = '550e8400-e29b-41d4-a716-446655440001'; // Matemáticas
+            const testId = '1b6be52b-eec7-ee46-4949-f06dcd661404'; // Test existente
+            const apiUrl = 'http://localhost:4000/api/v1/diagnostic-public/study-plan/units/by-subject';
+
+            try {
+                // Test 1: Videos genéricos (sin test_id)
+                console.log('🔍 Testing generic recommendations...');
+                const genericResponse = await fetch(`${apiUrl}/${subjectId}`);
+                const genericData = await genericResponse.json();
+
+                // Test 2: Videos personalizados (con test_id)
+                console.log('🎯 Testing personalized recommendations...');
+                const personalizedResponse = await fetch(`${apiUrl}/${subjectId}?test_id=${testId}`);
+                const personalizedData = await personalizedResponse.json();
+
+                // Mostrar resultados genéricos
+                displayGenericResults(genericData);
+
+                // Mostrar resultados personalizados
+                displayPersonalizedResults(personalizedData);
+
+                // Análisis comparativo
+                displayAnalysis(genericData, personalizedData);
+
+            } catch (error) {
+                console.error('Error testing recommendations:', error);
+                document.getElementById('generic-results').innerHTML = '❌ Error al cargar datos';
+                document.getElementById('personalized-results').innerHTML = '❌ Error al cargar datos';
+            }
+        }
+
+        function displayGenericResults(data) {
+            const container = document.getElementById('generic-results');
+            let html = `
+                <div class="status info">Personalized: ${data.personalized ? 'Sí' : 'No'}</div>
+                <p><strong>Videos encontrados:</strong> ${data.videos_found}</p>
+                <p><strong>Mensaje:</strong> ${data.personalization_message}</p>
+                <h4>Videos:</h4>
+            `;
+
+            data.units.slice(0, 3).forEach(unit => {
+                html += `<div class="video-item">
+                    <strong>📖 ${unit.title}</strong><br>
+                    <small>Videos: ${unit.videos.length}</small><br>`;
+
+                unit.videos.slice(0, 2).forEach(video => {
+                    html += `
+                        <div style="margin: 8px 0; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 4px;">
+                            🎬 ${video.title}<br>
+                            <span class="reason-tag">${video.tema_principal}</span>
+                            ${video.recommendation_reason ? `<br><small style="color: #ccc;">${video.recommendation_reason}</small>` : ''}
+                        </div>
+                    `;
+                });
+
+                html += `</div>`;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function displayPersonalizedResults(data) {
+            const container = document.getElementById('personalized-results');
+            let html = `
+                <div class="status success">Personalized: ${data.personalized ? 'Sí' : 'No'}</div>
+                <p><strong>Test ID:</strong> ${data.test_id || 'N/A'}</p>
+                <p><strong>Videos encontrados:</strong> ${data.videos_found}</p>
+                <p><strong>Mensaje:</strong> ${data.personalization_message}</p>
+            `;
+
+            if (data.identified_weaknesses && data.identified_weaknesses.length > 0) {
+                html += `<p><strong>Debilidades identificadas:</strong><br>`;
+                data.identified_weaknesses.forEach(weakness => {
+                    html += `<span class="weakness-tag">${weakness}</span>`;
+                });
+                html += `</p>`;
+            }
+
+            html += `<h4>Videos Personalizados:</h4>`;
+
+            data.units.slice(0, 3).forEach(unit => {
+                html += `<div class="video-item">
+                    <strong>🎯 ${unit.title}</strong><br>
+                    <small>Videos: ${unit.videos.length}</small><br>`;
+
+                unit.videos.slice(0, 2).forEach(video => {
+                    html += `
+                        <div style="margin: 8px 0; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 4px;">
+                            🎬 ${video.title}<br>
+                            <span class="reason-tag">${video.tema_principal}</span>
+                            ${video.recommendation_reason ? `<br><small style="color: #4CAF50;">${video.recommendation_reason}</small>` : ''}
+                        </div>
+                    `;
+                });
+
+                html += `</div>`;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function displayAnalysis(genericData, personalizedData) {
+            const container = document.getElementById('analysis-results');
+
+            const hasPersonalization = personalizedData.personalized === true;
+            const weaknessCount = personalizedData.identified_weaknesses ? personalizedData.identified_weaknesses.length : 0;
+
+            let html = `
+                <h3>📈 Resultados del Análisis</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <h4>📚 Videos Genéricos</h4>
+                        <ul>
+                            <li>Total videos: ${genericData.videos_found}</li>
+                            <li>Personalizado: ${genericData.personalized ? 'Sí' : 'No'}</li>
+                            <li>Unidades: ${genericData.total_units}</li>
+                            <li>Enfoque: General por materia</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4>🎯 Videos Personalizados</h4>
+                        <ul>
+                            <li>Total videos: ${personalizedData.videos_found}</li>
+                            <li>Personalizado: ${personalizedData.personalized ? 'Sí' : 'No'}</li>
+                            <li>Debilidades identificadas: ${weaknessCount}</li>
+                            <li>Enfoque: Específico por debilidades</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="status ${hasPersonalization ? 'success' : 'warning'}">
+                    ${hasPersonalization
+                        ? '✅ SISTEMA DE PERSONALIZACIÓN FUNCIONANDO'
+                        : '⚠️ Sistema de personalización no activo'}
+                </div>
+
+                <h4>🔍 Conclusiones:</h4>
+                <ul>
+                    <li>${hasPersonalization ? '✅' : '❌'} El sistema detecta cuando se proporciona un test_id</li>
+                    <li>${weaknessCount > 0 ? '✅' : '❌'} Se identifican debilidades específicas (${weaknessCount} encontradas)</li>
+                    <li>${personalizedData.recommendation_basis ? '✅' : '❌'} Se proporciona justificación de recomendaciones</li>
+                    <li>${personalizedData.units && personalizedData.units.length > 0 ? '✅' : '❌'} Se generan unidades temáticas específicas</li>
+                </ul>
+
+                ${hasPersonalization ?
+                    '<p style="color: #4CAF50;"><strong>🎉 Los videos SÍ se relacionan con los temas de mejora identificados en el diagnóstico.</strong></p>' :
+                    '<p style="color: #FF9800;"><strong>⚠️ El sistema no está conectando adecuadamente las debilidades con los videos.</strong></p>'
+                }
+            `;
+
+            container.innerHTML = html;
+        }
+
+        // Ejecutar test al cargar la página
+        window.onload = testRecommendations;
+    </script>
+</body>
+</html>

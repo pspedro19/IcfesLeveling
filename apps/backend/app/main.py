@@ -14,7 +14,7 @@ from .core.database import engine, Base
 # from .middleware.guest_limits import GuestLimitsMiddleware  # Comentado temporalmente
 # from .middleware.media_rate_limit import media_rate_limit_middleware  # TEMPORALMENTE COMENTADO
 # Temporary fix: comment out problematic imports due to numpy/pandas/scipy issues
-from .routes import auth, auth_simple, questions, battles, ai, leaderboard, quests, personality, diagnostic, diagnostic_public, diagnostic_simple, diagnostic_public_fix, diagnostic_test_fix, subjects_fix, study_plans, study_plans_simple, videos, video_recommendations, quizzes, bosses, analytics, monthly_reassessment, premium_simple as premium, guilds, achievements, store, analytics_advanced, questions_cached, users_cached, battles_cached, ai_tips, recommendations, intelligent_video_recommendations, personalized_study_plan_api, images_api, subjects_with_count, image_required_questions, diagnostic_images_test, verified_image_diagnostic, dynamic_images_api  # , admin, video_tracking, exercise_tracking, rank_reevaluation, advanced_health, video_progress_api, yml_plans, dynamic_subjects, dynamic_study_plan, diagnostic_adaptive, boss_battle_diagnostic, media, diagnostic_api, rank_management, training_zone (temporarily disabled due to asyncpg dependency)
+from .routes import auth, auth_simple, questions, battles, ai, leaderboard, quests, personality, diagnostic, diagnostic_public, diagnostic_simple, diagnostic_public_fix, diagnostic_test_fix, subjects_fix, study_plans, study_plans_simple, videos, video_recommendations, quizzes, bosses, analytics, monthly_reassessment, premium_simple as premium, guilds, achievements, store, analytics_advanced, questions_cached, users_cached, battles_cached, ai_tips, recommendations, intelligent_video_recommendations, personalized_study_plan_api, images_api, subjects_with_count, image_required_questions, diagnostic_images_test, verified_image_diagnostic, dynamic_images_api, student_dashboard  # , admin, video_tracking, exercise_tracking, rank_reevaluation, advanced_health, video_progress_api, yml_plans, dynamic_subjects, dynamic_study_plan, diagnostic_adaptive, boss_battle_diagnostic, media, diagnostic_api, rank_management, training_zone (temporarily disabled due to asyncpg dependency)
 from .routes.icfes import recommendations as icfes_recommendations
 from .routes import icfes_catalog
 
@@ -468,7 +468,7 @@ from .routes import youtube_api
 app.include_router(youtube_api.router)
 
 # Importar y registrar el enhanced video recommendation router
-from .routers import video_recommendations as enhanced_video_recommendations
+from .routes import video_recommendations as enhanced_video_recommendations
 app.include_router(enhanced_video_recommendations.router, prefix="/api/v1/enhanced-video-recommendations")
 
 # Register secure media service endpoint
@@ -480,6 +480,9 @@ app.include_router(images_api.router)  # Question images serving endpoint
 # Register integrated study plan API
 from .routes import integrated_study_plan_api
 app.include_router(integrated_study_plan_api.router)  # Integrated study plan system with real videos
+
+# Register student dashboard API
+app.include_router(student_dashboard.router)  # Student dashboard endpoints
 
 # Rutas de health check
 @app.get("/")

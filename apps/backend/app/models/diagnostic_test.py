@@ -51,8 +51,8 @@ class DiagnosticTestAnswer(Base):
     is_correct = Column(Boolean, nullable=False)
     response_time_ms = Column(Integer, default=0)
     topic_id = Column(UUID(as_uuid=True), ForeignKey("topics.id"), nullable=True)
-    hints_used = Column(Integer, default=0)  # Number of hints requested for this question
-    hint_levels_requested = Column(JSON, default=[])  # Array of hint levels requested [1,2,3]
+    # hints_used = Column(Integer, default=0)  # Number of hints requested for this question - Column doesn't exist in current table
+    # hint_levels_requested = Column(JSON, default=[])  # Array of hint levels requested [1,2,3] - Column doesn't exist in current table
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships

@@ -12,7 +12,7 @@ class User(Base):
     username = Column(String(50), unique=True, nullable=False)
     email = Column(String(255), unique=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
-    # display_name = Column(String(100), default="")  # Commented out: column does not exist in the table
+    display_name = Column(String(100), default="")  # Display name for user
     # avatar_url = Column(String(500))  # No existe en la tabla
     level = Column(Integer, default=1)
     experience = Column(Integer, default=0)

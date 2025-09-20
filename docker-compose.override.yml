@@ -1,0 +1,72 @@
+# ICFES LEVELING - Override para configuración automática
+# Este archivo extiende docker-compose.yml con configuración de inicialización automática
+
+version: '3.8'
+
+services:
+  # Servicio de inicialización automática
+  init-system:
+    image: alpine:latest
+    container_name: icfes_init_system
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - .:/root/IcfesLeveling
+    working_dir: /root/IcfesLeveling
+    command: |
+      sh -c "
+        apk add --no-cache bash curl jq &&
+        chmod +x /root/IcfesLeveling/init-system.sh &&
+        chmod +x /root/IcfesLeveling/scripts/setup-complete-system.sh &&
+        /root/IcfesLeveling/init-system.sh
+      "
+    networks:
+      - icfes_network
+    restart: "no"
+
+  # Override del backend para asegurar configuración correcta
+  backend:
+    environment:
+      # Configuración de importación automática
+      - AUTO_IMPORT_QUESTIONS=true
+      - QUESTIONS_EXCEL_PATH=/app/allquestions/ICFES_BASE_DATOS_COMPLETA_RUTAS_ACTUALIZADAS.xlsx
+      - IMPORT_CLEAR_EXISTING=false
+      - ICFES_CATALOG_CSV_PATH=/seed_data/topics_catalog.csv
+
+      # URLs dinámicas mejoradas
+      - ALLOWED_ORIGINS=http://localhost:4001,http://127.0.0.1:4001,http://localhost:4000,http://127.0.0.1:4000,http://localhost:4002,http://127.0.0.1:4002,http://${HOST_IP:-143.110.195.148}:4001,http://${HOST_IP:-143.110.195.148}:4000,http://${HOST_IP:-143.110.195.148}:4002,https://${HOST_IP:-143.110.195.148}:4001,https://${HOST_IP:-143.110.195.148}:4000
+
+      # Configuración de logging
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=%(asctime)s - %(name)s - %(levelname)s - %(message)s
+
+    # Agregar volúmenes adicionales para scripts
+    volumes:
+      - ./apps/backend:/app
+      - ./logs:/app/logs
+      - ./database/seed_data:/app/seed_data
+      - ./database/seed_data/load_all_data.py:/app/seed_data/load_all_data.py:ro
+      - ./database/allquestions:/app/allquestions
+      - ./scripts:/app/scripts:ro  # Scripts de configuración
+
+  # Override del PostgreSQL para configuración mejorada
+  postgres:
+    environment:
+      # Configuración de logging
+      - POSTGRES_LOG_STATEMENT=all
+      - POSTGRES_LOG_MIN_DURATION_STATEMENT=1000
+
+    # Volumen adicional para respaldos automáticos
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+      - ./database/allquestions:/data
+      - ./database/backups:/backups  # Directorio para respaldos
+
+# Volúmenes adicionales
+volumes:
+  backup_data:
+    driver: local

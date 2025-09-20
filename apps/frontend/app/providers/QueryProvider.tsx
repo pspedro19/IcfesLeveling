@@ -3,7 +3,7 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from 'react-query';
 // import { ReactQueryDevtools } from 'react-query/devtools'; // Comentado temporalmente
-import { errorHandler } from '@/lib/error-handler';
+import { errorHandler } from '../../lib/error-handler';
 
 // Create a client
 const queryClient = new QueryClient({

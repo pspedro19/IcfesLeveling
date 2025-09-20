@@ -53,33 +53,33 @@ class Question(Base):
     # average_response_time = Column(Integer, default=0)  # in milliseconds - Comentado: columna no existe en la tabla
     # last_used_at = Column(DateTime(timezone=True))  # Comentado: columna no existe en la tabla
     
-    # CAMPOS ICFES - Competencias y componentes  
-    competencia = Column(String(150), nullable=True)  # ICFES competency
-    componente = Column(String(100), nullable=True)  # ICFES component
-    proceso_cognitivo = Column(String(50), nullable=True)  # Cognitive process
-    tipo_conocimiento = Column(String(50), nullable=True)  # Knowledge type
-    
+    # CAMPOS ICFES - Competencias y componentes (Comentados: no existen en la tabla actual)
+    # competencia = Column(String(150), nullable=True)  # ICFES competency
+    # componente = Column(String(100), nullable=True)  # ICFES component
+    # proceso_cognitivo = Column(String(50), nullable=True)  # Cognitive process
+    # tipo_conocimiento = Column(String(50), nullable=True)  # Knowledge type
+
     # Parámetros IRT para adaptatividad
-    indice_discriminacion = Column(Float)  # Discrimination index
-    parametro_irt_a = Column(Float)  # Discriminación - IRT parameter A
-    parametro_irt_b = Column(Float)  # Dificultad - IRT parameter B 
-    parametro_irt_c = Column(Float)  # Pseudo-adivinanza - IRT parameter C
-    
-    # Información pedagógica ICFES
-    afirmacion = Column(Text, nullable=True)  # ICFES statement/affirmation
-    evidencia = Column(Text, nullable=True)  # ICFES evidence
-    nivel_desempeno_esperado = Column(String(30), nullable=True)  # Expected performance level
-    tiempo_estimado = Column(Integer, nullable=True)  # Estimated time in seconds
-    
+    indice_discriminacion = Column(Float, default=0.5)  # Discrimination index
+    parametro_irt_a = Column(Float, default=1.0)  # Discriminación - IRT parameter A
+    parametro_irt_b = Column(Float, default=0.0)  # Dificultad - IRT parameter B
+    parametro_irt_c = Column(Float, default=0.25)  # Pseudo-adivinanza - IRT parameter C
+
+    # Información pedagógica ICFES (Comentados: no existen en la tabla actual)
+    # afirmacion = Column(Text, nullable=True)  # ICFES statement/affirmation
+    # evidencia = Column(Text, nullable=True)  # ICFES evidence
+    # nivel_desempeno_esperado = Column(String(30), nullable=True)  # Expected performance level
+    # tiempo_estimado = Column(Integer, nullable=True)  # Estimated time in seconds
+
     # Gamification and XP system
     puntos_xp = Column(Integer, default=10, nullable=True)  # XP points from Puntos_XP CSV field
-    
-    # Sistema de ayuda gradual
-    pista_1 = Column(Text, nullable=True)  # Primera pista (conceptual)
-    pista_2 = Column(Text, nullable=True)  # Segunda pista (procedimental)
-    pista_3 = Column(Text, nullable=True)  # Tercera pista (específica)
-    explicacion_respuesta = Column(Text, nullable=True)  # Explicación detallada de la respuesta
-    error_comun = Column(Text, nullable=True)  # Error común identificado
+
+    # Sistema de ayuda gradual (Comentados: no existen en la tabla actual)
+    # pista_1 = Column(Text, nullable=True)  # Primera pista (conceptual)
+    # pista_2 = Column(Text, nullable=True)  # Segunda pista (procedimental)
+    # pista_3 = Column(Text, nullable=True)  # Tercera pista (específica)
+    # explicacion_respuesta = Column(Text, nullable=True)  # Explicación detallada de la respuesta
+    # error_comun = Column(Text, nullable=True)  # Error común identificado
     
     # Análisis de distractores
     # distractor_a_concepto = Column(String(100))  # Comentado: columna no existe en la tabla

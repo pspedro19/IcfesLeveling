@@ -81,7 +81,7 @@ const nextConfig = {
         headers: [
           {
             key: 'X-Frame-Options',
-            value: 'DENY',
+            value: 'SAMEORIGIN',
           },
           {
             key: 'X-Content-Type-Options',
@@ -89,10 +89,28 @@ const nextConfig = {
           },
         ],
       },
+      {
+        source: '/(.*)\\.(css)',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'text/css',
+          },
+        ],
+      },
+      {
+        source: '/(.*)\\.(js)',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/javascript',
+          },
+        ],
+      },
     ];
   },
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000',
     NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:4002',
   },
 }

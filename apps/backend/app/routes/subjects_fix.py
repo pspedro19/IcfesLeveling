@@ -9,6 +9,78 @@ from ..models.question import Question
 
 router = APIRouter(prefix="/api/v1", tags=["subjects-fix"])
 
+@router.get("/subjects")
+async def get_subjects():
+    """Get all subjects - main endpoint for frontend"""
+    # Return the known subject data based on previous DB analysis
+    return [
+        {
+            "id": "550e8400-e29b-41d4-a716-446655440003",
+            "name": "Ciencias Naturales",
+            "question_count": 258,
+            "is_enabled": True,
+            "icon": "ciencias_naturales",
+            "description": "Ciencias Naturales - 258 preguntas disponibles",
+            "color": "#10B981",
+            "image": "/images/subjects/ciencias_naturales.png",
+            "topics": ["Biología", "Química", "Física", "Ecología"],
+            "difficulty_levels": ["Básico", "Intermedio", "Avanzado"],
+            "estimated_time": 30
+        },
+        {
+            "id": "550e8400-e29b-41d4-a716-446655440004",
+            "name": "Ciencias Sociales",
+            "question_count": 153,
+            "is_enabled": True,
+            "icon": "ciencias_sociales",
+            "description": "Ciencias Sociales - 153 preguntas disponibles",
+            "color": "#8B5CF6",
+            "image": "/images/subjects/ciencias_sociales.png",
+            "topics": ["Historia", "Geografía", "Economía", "Política"],
+            "difficulty_levels": ["Básico", "Intermedio", "Avanzado"],
+            "estimated_time": 30
+        },
+        {
+            "id": "550e8400-e29b-41d4-a716-446655440001",
+            "name": "Matemáticas",
+            "question_count": 1,
+            "is_enabled": False,
+            "icon": "matematicas",
+            "description": "Matemáticas - 1 pregunta disponible (insuficiente)",
+            "color": "#EF4444",
+            "image": "/images/subjects/matematicas.png",
+            "topics": ["Álgebra", "Geometría", "Cálculo", "Estadística"],
+            "difficulty_levels": ["Básico", "Intermedio", "Avanzado"],
+            "estimated_time": 30
+        },
+        {
+            "id": "550e8400-e29b-41d4-a716-446655440002",
+            "name": "Lenguaje",
+            "question_count": 0,
+            "is_enabled": False,
+            "icon": "lenguaje",
+            "description": "Lenguaje - No hay preguntas disponibles",
+            "color": "#F59E0B",
+            "image": "/images/subjects/lenguaje.png",
+            "topics": ["Comprensión Lectora", "Gramática", "Literatura", "Redacción"],
+            "difficulty_levels": ["Básico", "Intermedio", "Avanzado"],
+            "estimated_time": 30
+        },
+        {
+            "id": "550e8400-e29b-41d4-a716-446655440005",
+            "name": "Inglés",
+            "question_count": 0,
+            "is_enabled": False,
+            "icon": "ingles",
+            "description": "Inglés - No hay preguntas disponibles",
+            "color": "#3B82F6",
+            "image": "/images/subjects/ingles.png",
+            "topics": ["Reading", "Grammar", "Vocabulary", "Listening"],
+            "difficulty_levels": ["Básico", "Intermedio", "Avanzado"],
+            "estimated_time": 30
+        }
+    ]
+
 @router.get("/subjects/dynamic")
 async def get_subjects_dynamic():
     """Get all subjects with question counts for dynamic UI"""
@@ -16,42 +88,42 @@ async def get_subjects_dynamic():
     return [
         {
             "id": "550e8400-e29b-41d4-a716-446655440003",
-            "name": "Ciencias Naturales", 
-            "question_count": 258, 
-            "is_enabled": True, 
-            "icon": "ciencias_naturales", 
+            "name": "Ciencias Naturales",
+            "question_count": 258,
+            "is_enabled": True,
+            "icon": "ciencias_naturales",
             "description": "Ciencias Naturales - 258 preguntas disponibles"
         },
         {
             "id": "550e8400-e29b-41d4-a716-446655440004",
-            "name": "Ciencias Sociales", 
-            "question_count": 153, 
-            "is_enabled": True, 
-            "icon": "ciencias_sociales", 
+            "name": "Ciencias Sociales",
+            "question_count": 153,
+            "is_enabled": True,
+            "icon": "ciencias_sociales",
             "description": "Ciencias Sociales - 153 preguntas disponibles"
         },
         {
             "id": "550e8400-e29b-41d4-a716-446655440001",
-            "name": "Matemáticas", 
-            "question_count": 1, 
-            "is_enabled": False, 
-            "icon": "matematicas", 
+            "name": "Matemáticas",
+            "question_count": 1,
+            "is_enabled": False,
+            "icon": "matematicas",
             "description": "Matemáticas - 1 pregunta disponible (insuficiente)"
         },
         {
             "id": "550e8400-e29b-41d4-a716-446655440002",
-            "name": "Lenguaje", 
-            "question_count": 0, 
-            "is_enabled": False, 
-            "icon": "lenguaje", 
+            "name": "Lenguaje",
+            "question_count": 0,
+            "is_enabled": False,
+            "icon": "lenguaje",
             "description": "Lenguaje - No hay preguntas disponibles"
         },
         {
             "id": "550e8400-e29b-41d4-a716-446655440005",
-            "name": "Inglés", 
-            "question_count": 0, 
-            "is_enabled": False, 
-            "icon": "ingles", 
+            "name": "Inglés",
+            "question_count": 0,
+            "is_enabled": False,
+            "icon": "ingles",
             "description": "Inglés - No hay preguntas disponibles"
         }
     ]

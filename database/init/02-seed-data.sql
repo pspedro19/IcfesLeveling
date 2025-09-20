@@ -25,8 +25,8 @@ INSERT INTO topics (id, subject_id, name, description, difficulty_level) VALUES
 ('660e8400-e29b-41d4-a716-446655440009', '550e8400-e29b-41d4-a716-446655440003', 'Química Orgánica', 'Compuestos del carbono', 2),
 ('660e8400-e29b-41d4-a716-446655440010', '550e8400-e29b-41d4-a716-446655440003', 'Biología Celular', 'Estructura y función celular', 3);
 
--- Insert questions (preguntas)
-INSERT INTO questions (id, topic_id, subject_id, question_text, difficulty, correct_answer, options, explanation, hint, tags) VALUES
+-- Insert questions (preguntas) - DISABLED: Using real ICFES data instead
+-- INSERT INTO questions (id, topic_id, subject_id, question_text, difficulty, correct_answer, options, explanation, hint, tags) VALUES
 -- Matemáticas - Álgebra
 ('770e8400-e29b-41d4-a716-446655440001', '660e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440001', 
 'Si 2x + 3 = 11, ¿cuál es el valor de x?', 1, 'A', 

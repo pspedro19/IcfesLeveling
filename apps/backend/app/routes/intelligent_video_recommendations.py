@@ -10,7 +10,7 @@ from pydantic import BaseModel
 import logging
 
 from ..core.database import get_db
-from ..core.auth import get_current_user
+from ..core.security import get_current_user
 from ..models.user import User
 from ..services.intelligent_video_recommendation_service import (
     IntelligentVideoRecommendationService, 

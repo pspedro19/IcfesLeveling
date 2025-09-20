@@ -46,6 +46,7 @@ export default function StudyPlanView() {
 
   const planId = searchParams.get('plan_id');
   const subjectId = searchParams.get('subject');
+  const testId = searchParams.get('test_id');
 
   const fetchStudyPlan = useCallback(async () => {
     try {
@@ -65,9 +66,16 @@ export default function StudyPlanView() {
       
       // Si no hay plan_id o falla, obtener unidades por materia
       if (subjectId) {
-        const response = await fetch(`${API_URL}/api/v1/diagnostic-public/study-plan/units/by-subject/${subjectId}`);
+        // Construir URL con test_id si está disponible para recomendaciones personalizadas
+        const url = testId
+          ? `${API_URL}/api/v1/diagnostic-public/study-plan/units/by-subject/${subjectId}?test_id=${testId}`
+          : `${API_URL}/api/v1/diagnostic-public/study-plan/units/by-subject/${subjectId}`;
+
+        console.log(`🎯 Fetching study plan: ${url}`);
+        const response = await fetch(url);
         if (response.ok) {
           const data = await response.json();
+          console.log('📊 Study plan response:', data);
           setPlan({ units: data.units, summary: data });
           setLoading(false);
           return;
@@ -81,7 +89,7 @@ export default function StudyPlanView() {
       setError('Error al cargar el plan de estudio');
       setLoading(false);
     }
-  }, [planId, subjectId]);
+  }, [planId, subjectId, testId]);
 
   useEffect(() => {
     fetchStudyPlan();
@@ -113,7 +121,7 @@ export default function StudyPlanView() {
       // Convertir URL de YouTube a formato embed
       const videoId = url.includes('v=') ? url.split('v=')[1]?.split('&')[0] : url.split('/').pop();
       if (!videoId) return '';
-      return `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`;
+      return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&fs=1&cc_load_policy=1`;
     } catch (error) {
       console.error('Error processing YouTube URL:', error);
       return '';
@@ -230,7 +238,17 @@ export default function StudyPlanView() {
               </h1>
               <p className="text-purple-300">
                 Basado en tu diagnóstico - {plan?.units?.length || 0} unidades disponibles
+                {plan?.summary?.personalized && (
+                  <span className="ml-2 px-2 py-1 bg-green-600/50 text-green-200 rounded-full text-xs">
+                    🎯 Personalizado
+                  </span>
+                )}
               </p>
+              {plan?.summary?.personalization_message && (
+                <p className="text-blue-300 text-sm mt-1">
+                  {plan.summary.personalization_message}
+                </p>
+              )}
             </div>
             <div className="flex gap-4">
               <div className="bg-purple-900/50 px-4 py-2 rounded-lg">
@@ -303,12 +321,15 @@ export default function StudyPlanView() {
             {currentUnit && (
               <div className="bg-black/30 backdrop-blur-sm rounded-lg border border-purple-500/30 p-6">
                 <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-yellow-400 mb-2">
-                    {currentUnit.title}
+                  <h2 className="text-2xl font-bold text-yellow-400 mb-2 flex items-center gap-3">
+                    🎯 {currentUnit.title}
                   </h2>
                   <p className="text-purple-300">
                     {currentUnit.description}
                   </p>
+                  <div className="mt-2 text-sm text-blue-400">
+                    Tema específico: Videos relacionados con {currentUnit.title.toLowerCase()}
+                  </div>
                 </div>
 
                 {/* Videos */}
@@ -357,6 +378,16 @@ export default function StudyPlanView() {
                                   <Trophy className="w-4 h-4" />
                                   {video?.xp || 0} XP
                                 </span>
+                                {video?.tema_principal && (
+                                  <span className="text-blue-400 flex items-center gap-1 bg-blue-900/30 px-2 py-1 rounded">
+                                    🎯 {video.tema_principal}
+                                  </span>
+                                )}
+                                {video?.recommendation_reason && (
+                                  <span className="text-green-400 text-xs bg-green-900/30 px-2 py-1 rounded">
+                                    💡 {video.recommendation_reason}
+                                  </span>
+                                )}
                                 {isCompleted && (
                                   <span className="text-green-400 text-xs">
                                     ✓ Completado

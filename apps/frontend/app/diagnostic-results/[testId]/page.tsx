@@ -51,6 +51,11 @@ interface CompetencyDetail {
   percentage: number;
   questions_correct: number;
   questions_total: number;
+  description?: string;
+  nivel?: string;
+  icon?: string;
+  priority?: string;
+  irt_ability?: number;
 }
 
 interface PerformanceStats {
@@ -65,6 +70,24 @@ export default function DiagnosticResultsPage() {
   const [results, setResults] = useState<DiagnosticResultsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Map subject names to UUIDs
+  const getSubjectId = (subjectName: string): string => {
+    const subjectMapping: Record<string, string> = {
+      'Diagnóstico de Matemáticas': '550e8400-e29b-41d4-a716-446655440001',
+      'Matemáticas': '550e8400-e29b-41d4-a716-446655440001',
+      'Diagnóstico de Lenguaje': '550e8400-e29b-41d4-a716-446655440002',
+      'Lenguaje': '550e8400-e29b-41d4-a716-446655440002',
+      'Diagnóstico de Ciencias Naturales': '550e8400-e29b-41d4-a716-446655440003',
+      'Ciencias Naturales': '550e8400-e29b-41d4-a716-446655440003',
+      'Diagnóstico de Ciencias Sociales': '550e8400-e29b-41d4-a716-446655440004',
+      'Ciencias Sociales': '550e8400-e29b-41d4-a716-446655440004',
+      'Diagnóstico de Inglés': '550e8400-e29b-41d4-a716-446655440005',
+      'Inglés': '550e8400-e29b-41d4-a716-446655440005'
+    };
+
+    return subjectMapping[subjectName] || '550e8400-e29b-41d4-a716-446655440001'; // Default to Matemáticas
+  };
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -256,18 +279,33 @@ export default function DiagnosticResultsPage() {
               <div className="space-y-4">
                 {results.competencies_mastered.length > 0 ? (
                   results.competencies_mastered.map((comp, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-gray-900">{comp.name}</p>
-                        <p className="text-sm text-gray-600">{comp.type}</p>
+                    <div key={index} className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+                      <div className="flex items-center gap-3">
+                        {comp.icon && <span className="text-lg">{comp.icon}</span>}
+                        <div>
+                          <p className="font-medium text-gray-900">{comp.name}</p>
+                          {comp.description && (
+                            <p className="text-sm text-gray-600">{comp.description}</p>
+                          )}
+                          {comp.nivel && (
+                            <Badge variant="outline" className="text-xs mt-1">
+                              Nivel: {comp.nivel}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       <div className="text-right">
                         <Badge className={getScoreBadgeColor(comp.percentage)}>
-                          {comp.percentage}%
+                          {Math.round(comp.percentage)}%
                         </Badge>
                         <p className="text-xs text-gray-500">
                           {comp.questions_correct}/{comp.questions_total}
                         </p>
+                        {comp.irt_ability && (
+                          <p className="text-xs text-blue-600">
+                            IRT: {comp.irt_ability.toFixed(2)}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))
@@ -292,18 +330,43 @@ export default function DiagnosticResultsPage() {
               <div className="space-y-4">
                 {results.areas_for_improvement.length > 0 ? (
                   results.areas_for_improvement.map((area, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-gray-900">{area.name}</p>
-                        <p className="text-sm text-gray-600">{area.type}</p>
+                    <div key={index} className="flex items-center justify-between p-4 bg-red-50 rounded-lg border border-red-200">
+                      <div className="flex items-center gap-3">
+                        {area.icon && <span className="text-lg">{area.icon}</span>}
+                        <div>
+                          <p className="font-medium text-gray-900">{area.name}</p>
+                          {area.description && (
+                            <p className="text-sm text-gray-600">{area.description}</p>
+                          )}
+                          <div className="flex gap-2 mt-1">
+                            {area.nivel && (
+                              <Badge variant="outline" className="text-xs">
+                                Nivel: {area.nivel}
+                              </Badge>
+                            )}
+                            {area.priority && (
+                              <Badge
+                                variant={area.priority === 'alta' ? 'destructive' : 'secondary'}
+                                className="text-xs"
+                              >
+                                Prioridad: {area.priority}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
                       </div>
                       <div className="text-right">
                         <Badge className={getScoreBadgeColor(area.percentage)}>
-                          {area.percentage}%
+                          {Math.round(area.percentage)}%
                         </Badge>
                         <p className="text-xs text-gray-500">
                           {area.questions_correct}/{area.questions_total}
                         </p>
+                        {area.irt_ability && (
+                          <p className="text-xs text-blue-600">
+                            IRT: {area.irt_ability.toFixed(2)}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))
@@ -484,7 +547,7 @@ export default function DiagnosticResultsPage() {
             <Link href="/diagnostic-test">Tomar Otro Diagnóstico</Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href={`/study-plan-view?plan_id=${testId}`}>Ver Plan de Estudio</Link>
+            <Link href={`/study-plan-view?subject=${getSubjectId(results?.subject || '')}&test_id=${testId}`}>Ver Plan de Estudio</Link>
           </Button>
         </div>
       </div>

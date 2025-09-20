@@ -1,5 +1,5 @@
-import { apiClient, tokenManager } from '@/lib/axios';
-import { UserResponse, LoginResponse } from '@/types/auth';
+import { apiClient, tokenManager } from '../lib/axios';
+import { UserResponse, LoginResponse } from '../types/auth';
 
 export interface LoginCredentials {
   username: string;
