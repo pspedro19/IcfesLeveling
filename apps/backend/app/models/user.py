@@ -24,8 +24,8 @@ class User(Base):
     speed = Column(Integer, default=10)
     orbs = Column(Integer, default=1000)
     crystals = Column(Integer, default=0)
-    # streak_days = Column(Integer, default=0)  # Commented out: column does not exist in the table
-    # last_login = Column(DateTime(timezone=True))  # No existe en la tabla
+    streak_days = Column(Integer, default=0)  # ENABLED: Track user login streaks
+    last_login = Column(DateTime(timezone=True))  # ENABLED: Track last login for streak calculation
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     

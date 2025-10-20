@@ -21,13 +21,37 @@ import {
   Award
 } from 'lucide-react';
 
+interface TopicDetail {
+  topic_id: string;
+  topic_name: string;
+  score: number;
+  correct: number;
+  total: number;
+}
+
+interface AnalysisData {
+  weak_topics?: TopicDetail[];
+  strong_topics?: TopicDetail[];
+  requires_attention?: string[];
+  mastered?: string[];
+  topic_breakdown?: any[];
+}
+
+interface RecommendationsData {
+  focus_areas?: string[];
+  estimated_study_time?: number;
+  priority_level?: string;
+}
+
 interface DiagnosticResults {
   score?: number;
   percentage?: number;
   strengths?: string[];
   weaknesses?: string[];
-  recommendations?: string[];
+  recommendations?: string[] | RecommendationsData;
+  analysis?: AnalysisData;
   subject?: string;
+  subject_name?: string;
   subject_id?: string;
   test_id?: string;
   total_questions?: number;
@@ -46,15 +70,37 @@ export default function DiagnosticTestResults() {
   const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
-    // Load results from session storage
+    // CRITICAL FIX: Load REAL results from backend via sessionStorage
     const storedResults = sessionStorage.getItem('diagnostic_results');
     if (storedResults) {
-      setResults(JSON.parse(storedResults));
+      const data = JSON.parse(storedResults);
+      console.log('✅ Loaded real diagnostic results:', data);
+
+      // Transform backend response to component format
+      const transformedResults: DiagnosticResults = {
+        score: data.score,
+        percentage: data.score, // Backend returns score as percentage
+        subject: data.subject_name || data.subject,
+        subject_name: data.subject_name,
+        subject_id: data.subject_id,
+        test_id: data.test_id,
+        total_questions: data.total_questions,
+        correct_answers: data.correct_answers,
+        time_spent: data.time_spent_seconds,
+        analysis: data.analysis,
+        recommendations: data.recommendations,
+        // Convert analysis data to legacy format for display compatibility
+        strengths: data.analysis?.mastered || [],
+        weaknesses: data.analysis?.requires_attention || []
+      };
+
+      setResults(transformedResults);
     } else {
       // Redirect if no results
+      console.warn('No diagnostic results found in sessionStorage');
       router.push('/diagnostic-test');
     }
-  }, []);
+  }, [router]);
 
   const createStudyPlan = async () => {
     if (!results || creatingPlan) return;
@@ -68,12 +114,13 @@ export default function DiagnosticTestResults() {
         sessionStorage.setItem('diagnostic_score', String(results.percentage || 65));
       }
       
-      // Navigate directly to the beautiful Khan Academy style study plan view
+      // Navigate to Claude AI study plan with videos
       setPlanCreated(true);
       
       setTimeout(() => {
-        const subjectId = results?.subject_id || '2a9c9371-b931-41d4-8d3e-ce5aae91a5c3';
-        router.push(`/study-plan-view?subject=${subjectId}`);
+        const subjectId = results?.subject_id || '550e8400-e29b-41d4-a716-446655440001';
+        const testId = results?.test_id || `diagnostic-${Date.now()}`;
+        router.push(`/claude-study-plan?subject_id=${subjectId}&test_id=${testId}`);
       }, 1500);
       
     } catch (error) {
@@ -113,32 +160,42 @@ export default function DiagnosticTestResults() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-black to-blue-900 relative overflow-hidden">
-      {/* Animated Background */}
+      {/* Animated Background - FIXED: Use client-only rendering to avoid SSR mismatch */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-purple-900/20 via-transparent to-transparent"></div>
-        {[...Array(20)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute rounded-full bg-purple-500/10 blur-xl"
-            initial={{
-              x: Math.random() * window.innerWidth,
-              y: Math.random() * window.innerHeight,
-            }}
-            animate={{
-              x: Math.random() * window.innerWidth,
-              y: Math.random() * window.innerHeight,
-            }}
-            transition={{
-              duration: Math.random() * 20 + 10,
-              repeat: Infinity,
-              repeatType: 'reverse',
-            }}
-            style={{
-              width: Math.random() * 300 + 100,
-              height: Math.random() * 300 + 100,
-            }}
-          />
-        ))}
+        {typeof window !== 'undefined' && [...Array(20)].map((_, i) => {
+          const randomX1 = Math.random() * window.innerWidth;
+          const randomY1 = Math.random() * window.innerHeight;
+          const randomX2 = Math.random() * window.innerWidth;
+          const randomY2 = Math.random() * window.innerHeight;
+          const randomDuration = Math.random() * 20 + 10;
+          const randomWidth = Math.random() * 300 + 100;
+          const randomHeight = Math.random() * 300 + 100;
+
+          return (
+            <motion.div
+              key={i}
+              className="absolute rounded-full bg-purple-500/10 blur-xl"
+              initial={{
+                x: randomX1,
+                y: randomY1,
+              }}
+              animate={{
+                x: randomX2,
+                y: randomY2,
+              }}
+              transition={{
+                duration: randomDuration,
+                repeat: Infinity,
+                repeatType: 'reverse',
+              }}
+              style={{
+                width: randomWidth,
+                height: randomHeight,
+              }}
+            />
+          );
+        })}
       </div>
 
       <div className="relative z-10 container mx-auto px-4 py-8">
@@ -152,7 +209,7 @@ export default function DiagnosticTestResults() {
             🏆 Resultados del Diagnóstico
           </h1>
           <p className="text-xl text-purple-300">
-            {results.subject} - Análisis Completo
+            {results.subject_name || results.subject} - Análisis Completo REAL
           </p>
         </motion.div>
 
@@ -288,7 +345,7 @@ export default function DiagnosticTestResults() {
 
             {/* Strengths and Weaknesses */}
             <div className="grid md:grid-cols-2 gap-6 mb-8">
-              {/* Strengths */}
+              {/* Strengths - REAL DATA from backend */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -297,11 +354,11 @@ export default function DiagnosticTestResults() {
               >
                 <div className="flex items-center gap-2 mb-4">
                   <CheckCircle className="w-6 h-6 text-green-400" />
-                  <h3 className="text-xl font-bold text-green-400">Fortalezas</h3>
+                  <h3 className="text-xl font-bold text-green-400">Temas Dominados (≥70%)</h3>
                 </div>
                 <ul className="space-y-2">
-                  {(results.strengths && results.strengths.length > 0) ? (
-                    results.strengths.map((strength, index) => (
+                  {(results.analysis?.strong_topics && results.analysis.strong_topics.length > 0) ? (
+                    results.analysis.strong_topics.map((topic, index) => (
                       <motion.li
                         key={index}
                         initial={{ opacity: 0, x: -20 }}
@@ -310,18 +367,20 @@ export default function DiagnosticTestResults() {
                         className="flex items-start gap-2 text-green-300"
                       >
                         <Sparkles className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                        <span>{strength}</span>
+                        <span>
+                          ✓ <strong>{topic.topic_name}</strong> - {topic.score.toFixed(0)}% ({topic.correct}/{topic.total})
+                        </span>
                       </motion.li>
                     ))
                   ) : (
                     <li className="text-green-300">
-                      {percentage >= 70 ? 'Buen dominio general del tema' : 'Continúa practicando para mejorar'}
+                      {percentage >= 70 ? 'Buen dominio general del tema' : 'Continúa practicando para identificar fortalezas'}
                     </li>
                   )}
                 </ul>
               </motion.div>
 
-              {/* Weaknesses */}
+              {/* Weaknesses - REAL DATA from backend */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -330,11 +389,11 @@ export default function DiagnosticTestResults() {
               >
                 <div className="flex items-center gap-2 mb-4">
                   <AlertCircle className="w-6 h-6 text-red-400" />
-                  <h3 className="text-xl font-bold text-red-400">Áreas de Mejora</h3>
+                  <h3 className="text-xl font-bold text-red-400">Requieren Atención (&lt;60%)</h3>
                 </div>
                 <ul className="space-y-2">
-                  {(results.weaknesses && results.weaknesses.length > 0) ? (
-                    results.weaknesses.map((weakness, index) => (
+                  {(results.analysis?.weak_topics && results.analysis.weak_topics.length > 0) ? (
+                    results.analysis.weak_topics.map((topic, index) => (
                       <motion.li
                         key={index}
                         initial={{ opacity: 0, x: -20 }}
@@ -343,20 +402,22 @@ export default function DiagnosticTestResults() {
                         className="flex items-start gap-2 text-red-300"
                       >
                         <Target className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                        <span>{weakness}</span>
+                        <span>
+                          • <strong>{topic.topic_name}</strong> - {topic.score.toFixed(0)}% ({topic.correct}/{topic.total})
+                        </span>
                       </motion.li>
                     ))
                   ) : (
                     <li className="text-red-300">
-                      {percentage < 50 ? 'Necesitas reforzar conceptos básicos' : 'Sigue practicando para perfeccionar'}
+                      {percentage < 50 ? 'Necesitas reforzar conceptos básicos' : 'No se detectaron áreas críticas - ¡Sigue así!'}
                     </li>
                   )}
                 </ul>
               </motion.div>
             </div>
 
-            {/* Recommendations */}
-            {results.recommendations && results.recommendations.length > 0 && (
+            {/* Recommendations - REAL DATA from backend */}
+            {results.recommendations && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -365,22 +426,60 @@ export default function DiagnosticTestResults() {
               >
                 <div className="flex items-center gap-2 mb-4">
                   <Brain className="w-6 h-6 text-purple-400" />
-                  <h3 className="text-xl font-bold text-purple-400">Recomendaciones</h3>
+                  <h3 className="text-xl font-bold text-purple-400">Recomendaciones Personalizadas</h3>
                 </div>
-                <ul className="space-y-2">
-                  {results.recommendations.map((rec, index) => (
-                    <motion.li
-                      key={index}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 1.3 + index * 0.1 }}
-                      className="flex items-start gap-2 text-purple-300"
-                    >
-                      <ChevronRight className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                      <span>{rec}</span>
-                    </motion.li>
-                  ))}
-                </ul>
+                {typeof results.recommendations === 'object' && 'focus_areas' in results.recommendations ? (
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-purple-200 font-semibold mb-2">📚 Áreas de enfoque:</p>
+                      <ul className="space-y-1 ml-4">
+                        {results.recommendations.focus_areas?.map((area, index) => (
+                          <motion.li
+                            key={index}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 1.3 + index * 0.1 }}
+                            className="flex items-start gap-2 text-purple-300"
+                          >
+                            <ChevronRight className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                            <span>{area}</span>
+                          </motion.li>
+                        ))}
+                      </ul>
+                    </div>
+                    {results.recommendations.estimated_study_time && (
+                      <p className="text-purple-300">
+                        ⏱️ Tiempo estimado de estudio: <strong>{results.recommendations.estimated_study_time} horas/semana</strong>
+                      </p>
+                    )}
+                    {results.recommendations.priority_level && (
+                      <p className="text-purple-300">
+                        🎯 Prioridad: <strong className={
+                          results.recommendations.priority_level === 'HIGH' ? 'text-red-400' :
+                          results.recommendations.priority_level === 'MEDIUM' ? 'text-yellow-400' :
+                          'text-green-400'
+                        }>{results.recommendations.priority_level}</strong>
+                      </p>
+                    )}
+                  </div>
+                ) : Array.isArray(results.recommendations) && results.recommendations.length > 0 ? (
+                  <ul className="space-y-2">
+                    {results.recommendations.map((rec, index) => (
+                      <motion.li
+                        key={index}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 1.3 + index * 0.1 }}
+                        className="flex items-start gap-2 text-purple-300"
+                      >
+                        <ChevronRight className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                        <span>{rec}</span>
+                      </motion.li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-purple-300">Continúa practicando regularmente para mejorar tu rendimiento.</p>
+                )}
               </motion.div>
             )}
 

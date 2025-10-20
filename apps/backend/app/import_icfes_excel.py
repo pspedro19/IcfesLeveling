@@ -39,29 +39,32 @@ class ICFESExcelImporter:
         self.warnings = []
 
     def _load_subjects_mapping(self) -> Dict[str, str]:
-        """Mapear áreas evaluadas a subjects existentes"""
+        """Mapear áreas evaluadas a subjects existentes - Case insensitive"""
         subjects = self.db.query(Subject).all()
         mapping = {}
-        
+
         # Mapeo directo - Excel "Área_Evaluada" -> Database Subject Name
         area_to_subject = {
-            'Matemáticas': 'Matemáticas',
-            'Lenguaje': 'Lenguaje', 
-            'Lectura Crítica': 'Lenguaje',  # ICFES Excel uses "Lectura Crítica" but DB has "Lenguaje"
-            'Ciencias Naturales': 'Ciencias Naturales',
-            'Ciencias Sociales': 'Ciencias Sociales',
-            'Inglés': 'Inglés',
-            'Matematicas': 'Matemáticas',  # Variante sin tilde
-            'Ciencias': 'Ciencias Naturales',  # Abreviado
-            'Sociales': 'Ciencias Sociales',  # Abreviado
-            'English': 'Inglés',  # Variante en inglés
+            'matemáticas': 'Matemáticas',
+            'matematicas': 'Matemáticas',  # Sin tilde
+            'lenguaje': 'Lenguaje',
+            'lectura crítica': 'Lenguaje',  # ICFES Excel uses "Lectura Crítica" but DB has "Lenguaje"
+            'lectura critica': 'Lenguaje',  # Variante sin tilde
+            'ciencias naturales': 'Ciencias Naturales',
+            'ciencias': 'Ciencias Naturales',  # Abreviado
+            'ciencias sociales': 'Ciencias Sociales',
+            'sociales': 'Ciencias Sociales',  # Abreviado
+            'inglés': 'Inglés',
+            'ingles': 'Inglés',  # Sin tilde
+            'english': 'Inglés',  # Variante en inglés
         }
-        
+
+        # Create mapping with lowercase keys for case-insensitive lookup
         for subject in subjects:
             for area, subject_name in area_to_subject.items():
                 if subject.name == subject_name:
-                    mapping[area] = str(subject.id)
-        
+                    mapping[area.lower()] = str(subject.id)
+
         logger.info(f"Subjects mapping loaded: {mapping}")
         return mapping
 
@@ -340,9 +343,9 @@ class ICFESExcelImporter:
         if respuesta_correcta and respuesta_correcta not in options:
             errors.append("Respuesta correcta no coincide con las opciones disponibles")
         
-        # Validar área evaluada
+        # Validar área evaluada (case-insensitive)
         area_evaluada = row.get(resolved_columns.get('area_evaluada', ''), '')
-        if pd.isna(area_evaluada) or str(area_evaluada).strip() not in self.subjects_mapping:
+        if pd.isna(area_evaluada) or str(area_evaluada).strip().lower() not in self.subjects_mapping:
             errors.append(f"Área evaluada '{area_evaluada}' no está mapeada a un subject")
         
         return errors
@@ -461,9 +464,9 @@ class ICFESExcelImporter:
                         self.imported_questions += 1
                         continue
                     
-                    # Mapear subject
+                    # Mapear subject (case-insensitive)
                     area_evaluada = str(row[resolved_columns['area_evaluada']]).strip()
-                    subject_id = self.subjects_mapping.get(area_evaluada)
+                    subject_id = self.subjects_mapping.get(area_evaluada.lower())
                     if not subject_id:
                         self.errors.append(f"Fila {index + 2}: Área evaluada '{area_evaluada}' no mapeada")
                         continue
@@ -533,13 +536,13 @@ class ICFESExcelImporter:
                         afirmacion=self._safe_get_string(row, 'Afirmación'),
                         evidencia=self._safe_get_string(row, 'Evidencia'),
                         nivel_desempeno_esperado=self._safe_get_string(row, 'Nivel_Desempeño_Esperado'),
-                        tiempo_estimado=self._safe_get_int(row, 'Tiempo_Estimado'),
-                        # Sistema de ayuda gradual  
-                        pista_1=self._safe_get_string(row, 'Pista_1'),
-                        pista_2=self._safe_get_string(row, 'Pista_2'),
-                        pista_3=self._safe_get_string(row, 'Pista_3'),
-                        explicacion_respuesta=self._safe_get_string(row, 'Explicación_Respuesta'),
-                        error_comun=self._safe_get_string(row, 'Error_Común')
+                        tiempo_estimado=self._safe_get_int(row, 'Tiempo_Estimado')
+                        # Sistema de ayuda gradual - COMENTADO: columnas no existen en el modelo
+                        # pista_1=self._safe_get_string(row, 'Pista_1'),
+                        # pista_2=self._safe_get_string(row, 'Pista_2'),
+                        # pista_3=self._safe_get_string(row, 'Pista_3'),
+                        # explicacion_respuesta=self._safe_get_string(row, 'Explicación_Respuesta'),
+                        # error_comun=self._safe_get_string(row, 'Error_Común')
                     )
                     
                     # Validar pregunta

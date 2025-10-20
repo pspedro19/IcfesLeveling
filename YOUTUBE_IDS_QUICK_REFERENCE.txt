@@ -1,0 +1,91 @@
+================================================================================
+YOUTUBE VIDEO IDs - QUICK REFERENCE CARD
+================================================================================
+
+TOTAL VIDEO IDs: 257 (238 in catalogs + 19 hardcoded)
+STATUS: ✅ ALL VALID FORMAT | ⚠️ 1 PLACEHOLDER TO REPLACE
+
+================================================================================
+SAMPLE CATALOG VIDEO IDs (Valid Educational Content)
+================================================================================
+
+Subject: Matemáticas (550e8400-e29b-41d4-a716-446655440001)
+------------------------------------------------------------
+TeqRLdEnkxQ - Álgebra Básica
+2Vv-BfVoq4g - Geometría  
+wKJ9KzGQq0w - Estadística
+WUvTyaaNkzM - Cálculo
+iDulhoQ2pro - Trigonometría
+
+Subject: Ciencias Naturales
+------------------------------------------------------------
+PTrOSGYC6BU - Estructura celular
+YefwfJ8IpEI - Respiración celular
+mYcznTcpKdU - Leyes de Mendel
+X2Z-0e5maKw - Fotosíntesis
+yzkohlVwaB8 - Transporte celular
+
+================================================================================
+⚠️ HARDCODED IDs - ACTION REQUIRED
+================================================================================
+
+RICK ROLL PLACEHOLDER (Replace immediately!)
+------------------------------------------------------------
+dQw4w9WgXcQ - Rick Astley "Never Gonna Give You Up"
+
+Found in:
+  - apps/backend/enhanced_app.py (line 259)
+  - apps/backend/app/services/intelligent_video_recommendation_engine.py
+  - apps/backend/app/services/video_service.py
+  - apps/frontend/app/video-player/page.tsx
+
+HARDCODED IN diagnostic_public.py (Move to database)
+------------------------------------------------------------
+Math: keb_HRF7zcY, f2OKFNhGgqs, FwslsWP4C9E, CfW845LNObM, yBw67Fb31Cs
+Lang: 6ycOGMOvD5s, HtZ4Qs_AwgU, Ww6OEQptuJM, RFZiRNpKFeg, wYp92-3LPqg
+Sci:  Hmwvj9X4GNY, Q_q284W0_ZU, 6QGPBl5E8GQ, 8XpO8dMCrbY, CBezq1fFUEA
+
+================================================================================
+FILE LOCATIONS
+================================================================================
+
+Catalog CSVs:
+  /root/IcfesLeveling/database/init/youtube_catalog_extendido_enriquecido.csv
+  /root/IcfesLeveling/diagnostico/data/youtube_catalog_export.csv
+
+Code files with hardcoded IDs:
+  /root/IcfesLeveling/apps/backend/enhanced_app.py
+  /root/IcfesLeveling/apps/backend/app/routes/diagnostic_public.py
+  /root/IcfesLeveling/apps/backend/app/services/video_service.py
+  /root/IcfesLeveling/apps/frontend/app/video-player/page.tsx
+
+================================================================================
+VALIDATION COMMANDS
+================================================================================
+
+Run full validation:
+  python3 /root/IcfesLeveling/scripts/utils/validate_youtube_ids.py
+
+Test a specific video:
+  open "https://www.youtube.com/watch?v=PTrOSGYC6BU"
+
+Extract all IDs from catalog:
+  cut -d';' -f5 database/init/youtube_catalog_extendido_enriquecido.csv | \
+    grep -oP '(?<=watch\?v=)[a-zA-Z0-9_-]{11}'
+
+================================================================================
+STATISTICS
+================================================================================
+
+✅ Valid IDs:     238 (100% of catalog)
+❌ Invalid IDs:   0
+⚠️  Placeholders: 1 (dQw4w9WgXcQ)
+🔧 Hardcoded:     19 (should move to DB)
+
+================================================================================
+
+For detailed report: YOUTUBE_VIDEO_ID_INVESTIGATION_REPORT.md
+For examples:       YOUTUBE_IDS_CONCRETE_EXAMPLES.md
+Validation script:  scripts/utils/validate_youtube_ids.py
+
+Last Updated: 2025-10-20

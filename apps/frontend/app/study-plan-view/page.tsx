@@ -6,6 +6,7 @@ import { Play, Clock, Trophy, CheckCircle, BookOpen, Target, Calendar, TrendingU
 
 interface Video {
   id: string;
+  youtube_id?: string;  // YouTube video ID for direct embedding
   title: string;
   url: string;
   duration_minutes?: number;
@@ -115,10 +116,17 @@ export default function StudyPlanView() {
     }
   };
 
-  const getYouTubeEmbedUrl = (url: string) => {
-    if (!url) return '';
+  const getYouTubeEmbedUrl = (video: Video | null) => {
+    if (!video) return '';
     try {
-      // Convertir URL de YouTube a formato embed
+      // Prefer youtube_id if available (more reliable)
+      if (video.youtube_id) {
+        return `https://www.youtube.com/embed/${video.youtube_id}?rel=0&modestbranding=1&fs=1&cc_load_policy=1`;
+      }
+
+      // Fallback to extracting from URL
+      const url = video.url || '';
+      if (!url) return '';
       const videoId = url.includes('v=') ? url.split('v=')[1]?.split('&')[0] : url.split('/').pop();
       if (!videoId) return '';
       return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&fs=1&cc_load_policy=1`;
@@ -516,7 +524,7 @@ export default function StudyPlanView() {
             <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
               <iframe
                 className="absolute top-0 left-0 w-full h-full"
-                src={getYouTubeEmbedUrl(selectedVideo?.url || '')}
+                src={getYouTubeEmbedUrl(selectedVideo)}
                 title={selectedVideo?.title || 'Video'}
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"

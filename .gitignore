@@ -45,6 +45,7 @@ logs/
 
 # Python
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 *.so
@@ -52,6 +53,7 @@ __pycache__/
 venv/
 env/
 ENV/
+*.pyc
 
 # Database
 *.db
@@ -74,3 +76,30 @@ Thumbs.db
 *.bak
 *.backup
 *~
+
+# Temporary test/analysis files
+test_*.html
+test_*.py
+*_test.html
+validate_*.py
+verify_*.py
+analyze_*.py
+cookies.txt
+*.sql
+icfes_*.sql
+*_report.json
+
+# Documentation moved to docs/
+/*_REPORT.md
+/*_GUIDE.md
+/*_README.md
+/*_IMPLEMENTED.md
+/*_STATUS.md
+/*_SUMMARY.md
+/*_PLAN.md
+/*_ANALYSIS.md
+/*_DEMO.html
+WORKING_DEMO.html
+FINAL_*.html
+ALL_*.html
+SYSTEM_*.html

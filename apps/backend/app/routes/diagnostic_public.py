@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
+from sqlalchemy import func
+from typing import List, Dict, Any, Optional
 from datetime import datetime
 import random
 import uuid
+from pydantic import BaseModel
 
 # Competencias específicas por materia según marco ICFES
 COMPETENCIAS_POR_MATERIA = {
@@ -217,6 +219,20 @@ from ..services.diagnostic_service import DiagnosticService
 from ..services.diagnostic_analytics_service import DiagnosticAnalyticsService
 
 router = APIRouter(prefix="/diagnostic-public", tags=["diagnostic-public"])
+
+# Request models
+class DiagnosticStartRequest(BaseModel):
+    subject_id: str
+    user_id: Optional[str] = None
+
+class DiagnosticAnswerRequest(BaseModel):
+    test_id: str
+    question_id: str
+    user_answer: str
+    response_time_ms: int = 0
+
+class DiagnosticCompleteRequest(BaseModel):
+    test_id: str
 
 def detectar_materia_del_test(test_id: str, answers: List[DiagnosticTestAnswer], question_lookup: Dict, db: Session) -> str:
     """
@@ -811,11 +827,12 @@ def get_smart_video_recommendations_by_weaknesses(db: Session, subject_id: str, 
 
     for topic in weakness_topics[:6]:  # Top 6 weakness areas (increased from 3)
         topic_query = text("""
-            SELECT id, title, url, duration_minutes, topic, xp_reward, difficulty_level, channel_name
+            SELECT id, youtube_id, title, youtube_url, duration_minutes, channel_name, quality_score, difficulty_level
             FROM youtube_catalog
             WHERE subject_id = :subject_id
-            AND (topic ILIKE :topic OR title ILIKE :topic_pattern)
-            ORDER BY xp_reward DESC
+            AND is_active = TRUE
+            AND (title ILIKE :topic_pattern OR :topic = ANY(topics_covered))
+            ORDER BY quality_score DESC, duration_minutes ASC
             LIMIT 3
         """)
 
@@ -828,13 +845,14 @@ def get_smart_video_recommendations_by_weaknesses(db: Session, subject_id: str, 
         for video_row in videos:
             video_recommendations.append({
                 'id': str(video_row[0]),
-                'title': video_row[1],
-                'url': video_row[2],
-                'duration_minutes': video_row[3] or 15,
-                'topic': video_row[4],
-                'xp': video_row[5] or 100,
-                'difficulty_level': video_row[6] or 5,
-                'channel': video_row[7] or 'ICFES Prep',
+                'youtube_id': video_row[1],  # CRITICAL: Include youtube_id for embedding
+                'title': video_row[2],
+                'url': video_row[3],
+                'duration_minutes': video_row[4] or 15,
+                'topic': topic,  # Use the matched topic
+                'xp': (video_row[4] or 15) * 10,  # Calculate XP from duration
+                'difficulty_level': video_row[7] or 'intermediate',
+                'channel': video_row[5] or 'ICFES Prep',
                 'recommendation_reason': f'Recomendado para reforzar {topic}'
             })
 
@@ -3018,11 +3036,12 @@ async def get_study_plan_units_by_subject(
                     # Fallback to general query if no smart recommendations
                     video_query = text("""
                         SELECT
-                            id, title, url, channel_name, topic,
-                            duration_minutes, xp_reward, difficulty_level
+                            id, youtube_id, title, youtube_url, channel_name,
+                            duration_minutes, quality_score, difficulty_level
                         FROM youtube_catalog
                         WHERE subject_id = :subject_id
-                        ORDER BY difficulty_level ASC, xp_reward DESC
+                        AND is_active = TRUE
+                        ORDER BY quality_score DESC, duration_minutes ASC
                         LIMIT 20
                     """)
                     videos_result = db.execute(video_query, {"subject_id": str(subject_id)}).fetchall()
@@ -3032,11 +3051,12 @@ async def get_study_plan_units_by_subject(
                 # Use direct query to get all videos for this subject
                 video_query = text("""
                     SELECT
-                        id, title, url, channel_name, topic,
-                        duration_minutes, xp_reward, difficulty_level
+                        id, youtube_id, title, youtube_url, channel_name,
+                        duration_minutes, quality_score, difficulty_level
                     FROM youtube_catalog
                     WHERE subject_id = :subject_id
-                    ORDER BY difficulty_level ASC, xp_reward DESC
+                    AND is_active = TRUE
+                    ORDER BY quality_score DESC, duration_minutes ASC
                 """)
                 videos_result = db.execute(video_query, {"subject_id": str(subject_id)}).fetchall()
         except Exception as db_error:
@@ -3052,10 +3072,22 @@ async def get_study_plan_units_by_subject(
             # Handle demo videos (from generate_demo_videos_for_subject) vs real youtube_catalog videos
             if isinstance(row, tuple) and len(row) == 9:
                 # Demo video format: (id, video_id, title, url, channel, tema_principal, duration_seconds, quality_score, educational_value)
+                # Extract YouTube ID from URL for embedding
+                url = row[3] or ""
+                youtube_id = ""
+                if url:
+                    if 'v=' in url:
+                        youtube_id = url.split('v=')[1].split('&')[0]
+                    elif 'youtu.be/' in url:
+                        youtube_id = url.split('youtu.be/')[1].split('?')[0]
+                    elif row[1]:  # Fallback to video_id field if it's a valid YouTube ID
+                        youtube_id = str(row[1])
+
                 video_data = {
                     "id": str(row[0]),
+                    "youtube_id": youtube_id,  # CRITICAL: Include youtube_id for frontend embedding
                     "title": row[2] or "Video sin título",  # title is at index 2
-                    "url": row[3] or "",  # url is at index 3
+                    "url": url,  # url is at index 3
                     "duration_minutes": max(1, (row[6] or 600) // 60),  # convert duration_seconds to minutes
                     "xp": 100 + (len(row[2] or "") * 2),  # calculate XP based on title length
                     "channel": row[4] or "Canal desconocido",  # channel is at index 4
@@ -3063,16 +3095,17 @@ async def get_study_plan_units_by_subject(
                     "recommendation_reason": f"Recomendado para reforzar {row[5] or 'conocimientos generales'}" if test_id else "Video del tema"
                 }
             else:
-                # Real youtube_catalog format: (id, title, url, channel_name, topic, duration_minutes, xp_reward, difficulty_level)
+                # Real youtube_catalog format: (id, youtube_id, title, youtube_url, channel_name, duration_minutes, quality_score, difficulty_level)
                 video_data = {
                     "id": str(row[0]),
-                    "title": row[1] or "Video sin título",
-                    "url": row[2] or "",
+                    "youtube_id": row[1] or "",  # CRITICAL: youtube_id for embedding
+                    "title": row[2] or "Video sin título",
+                    "url": row[3] or "",
                     "duration_minutes": row[5] or 15,  # duration_minutes from youtube_catalog
-                    "xp": row[6] or 100,  # xp_reward from youtube_catalog
-                    "channel": row[3] or "Canal desconocido",  # channel_name
-                    "tema_principal": row[4] or "Tema general",  # topic
-                    "recommendation_reason": f"Recomendado para reforzar {row[4] or 'conocimientos generales'}" if test_id else "Video del tema"
+                    "xp": (row[5] or 15) * 10,  # Calculate XP from duration
+                    "channel": row[4] or "Canal desconocido",  # channel_name
+                    "tema_principal": row[2] or "Tema general",  # Use title as topic since topic column doesn't exist
+                    "recommendation_reason": f"Recomendado para reforzar conocimientos" if test_id else "Video del tema"
                 }
             
             all_videos.append(video_data)
@@ -3277,8 +3310,292 @@ async def get_study_plan_units_by_subject_fallback(
         
         print(f"✅ Generated subject-based plan: {len(units)} units, {total_videos_count} videos")
         return response
-        
+
     except Exception as e:
         logger.error(f"❌ Error generating subject-based study plan: {e}")
         print(f"Error in fallback endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================================================================================
+# CRITICAL ENDPOINTS - DIAGNOSTIC TEST PERSISTENCE
+# Added: 2025-10-20 - Solution to persistence issue
+# ==================================================================================
+
+@router.post("/diagnostic/start")
+async def start_diagnostic_test(
+    request: DiagnosticStartRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Start a diagnostic test and create a database record.
+    Returns test_id and 20 random questions.
+
+    CRITICAL FIX: This endpoint persists the test in DB instead of only sessionStorage.
+    Accepts JSON body with subject_id and optional user_id.
+    """
+    try:
+        subject_id = request.subject_id
+        user_id = request.user_id
+
+        print(f"🚀 Starting diagnostic test for subject: {subject_id}")
+
+        # If no user_id provided, use anonymous user
+        if not user_id:
+            user_id = "00000000-0000-0000-0000-000000000000"  # Anonymous user
+
+        # Create diagnostic test record
+        test = DiagnosticTest(
+            id=uuid.uuid4(),
+            user_id=user_id,
+            subject_id=subject_id,
+            status='in_progress',
+            started_at=datetime.utcnow(),
+            test_type='real_icfes'
+        )
+        db.add(test)
+        db.commit()
+        db.refresh(test)
+
+        print(f"✅ Created diagnostic test with ID: {test.id}")
+
+        # Get 20 random questions for this subject
+        # FIXED: Don't filter by images - get any questions
+        questions = db.query(Question).filter(
+            Question.subject_id == subject_id
+        ).order_by(func.random()).limit(20).all()
+
+        if not questions:
+            print(f"⚠️ No questions found for subject: {subject_id}")
+            raise HTTPException(
+                status_code=404,
+                detail=f"No questions available for this subject. Please check the database."
+            )
+
+        # Format questions for response
+        questions_data = []
+        for q in questions:
+            questions_data.append({
+                "id": str(q.id),
+                "pregunta_texto": q.pregunta_texto or q.question_text,
+                "pregunta_imagen": q.pregunta_imagen,
+                "opcion_a_texto": q.opcion_a_texto,
+                "opcion_b_texto": q.opcion_b_texto,
+                "opcion_c_texto": q.opcion_c_texto,
+                "opcion_d_texto": q.opcion_d_texto,
+                "opcion_a_imagen": q.opcion_a_imagen,
+                "opcion_b_imagen": q.opcion_b_imagen,
+                "opcion_c_imagen": q.opcion_c_imagen,
+                "opcion_d_imagen": q.opcion_d_imagen,
+                "topic_id": str(q.topic_id) if q.topic_id else None,
+                "difficulty": q.difficulty or 5
+            })
+
+        print(f"✅ Retrieved {len(questions_data)} questions")
+
+        return {
+            "success": True,
+            "test_id": str(test.id),
+            "subject_id": subject_id,
+            "questions": questions_data,
+            "total_questions": len(questions_data),
+            "message": "Diagnostic test started successfully. Responses will be persisted."
+        }
+
+    except Exception as e:
+        print(f"❌ Error starting diagnostic test: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error starting test: {str(e)}")
+
+
+@router.post("/diagnostic/answer")
+async def save_diagnostic_answer(
+    request: DiagnosticAnswerRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Save a single answer from the diagnostic test.
+
+    CRITICAL FIX: This endpoint persists each answer in DB in real-time.
+    Accepts JSON body with test_id, question_id, user_answer, response_time_ms.
+    """
+    try:
+        test_id = request.test_id
+        question_id = request.question_id
+        user_answer = request.user_answer
+        response_time_ms = request.response_time_ms
+
+        print(f"💾 Saving answer for test: {test_id}, question: {question_id}")
+
+        # Get question to check correct answer
+        question = db.query(Question).filter(Question.id == question_id).first()
+        if not question:
+            raise HTTPException(status_code=404, detail="Question not found")
+
+        # Check if answer is correct
+        correct_answer = question.respuesta_correcta or question.correct_answer
+        is_correct = (user_answer.upper() == correct_answer.upper())
+
+        # Create answer record
+        answer = DiagnosticTestAnswer(
+            id=uuid.uuid4(),
+            diagnostic_test_id=test_id,
+            question_id=question_id,
+            user_answer=user_answer,
+            is_correct=is_correct,
+            response_time_ms=response_time_ms,
+            topic_id=question.topic_id
+        )
+        db.add(answer)
+
+        # Update test statistics
+        test = db.query(DiagnosticTest).filter(DiagnosticTest.id == test_id).first()
+        if test:
+            test.questions_answered += 1
+            if is_correct:
+                test.correct_answers += 1
+            test.time_spent_seconds += (response_time_ms // 1000)
+
+        db.commit()
+
+        print(f"✅ Answer saved. Correct: {is_correct}")
+
+        return {
+            "success": True,
+            "is_correct": is_correct,
+            "correct_answer": correct_answer,
+            "message": "Answer saved successfully"
+        }
+
+    except Exception as e:
+        print(f"❌ Error saving answer: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error saving answer: {str(e)}")
+
+
+@router.post("/diagnostic/complete")
+async def complete_diagnostic_test(
+    request: DiagnosticCompleteRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Complete a diagnostic test and calculate comprehensive analysis.
+
+    CRITICAL FIX: This endpoint calculates REAL analysis based on saved answers,
+    not mock data. Identifies actual weak/strong topics.
+    Accepts JSON body with test_id.
+    """
+    try:
+        test_id = request.test_id
+        print(f"🎯 Completing diagnostic test: {test_id}")
+
+        # Get test
+        test = db.query(DiagnosticTest).filter(DiagnosticTest.id == test_id).first()
+        if not test:
+            raise HTTPException(status_code=404, detail="Test not found")
+
+        # Get all answers for this test
+        answers = db.query(DiagnosticTestAnswer).filter(
+            DiagnosticTestAnswer.diagnostic_test_id == test_id
+        ).all()
+
+        if not answers:
+            raise HTTPException(status_code=400, detail="No answers found for this test")
+
+        # Calculate overall score
+        total_questions = len(answers)
+        correct_answers = sum(1 for a in answers if a.is_correct)
+        score_percentage = (correct_answers / total_questions) * 100
+
+        # Analyze by topic
+        topic_performance = {}
+        for answer in answers:
+            if not answer.topic_id:
+                continue
+
+            topic_id = str(answer.topic_id)
+            if topic_id not in topic_performance:
+                topic = db.query(Topic).filter(Topic.id == answer.topic_id).first()
+                topic_performance[topic_id] = {
+                    'topic_id': topic_id,
+                    'topic_name': topic.name if topic else 'Unknown',
+                    'correct': 0,
+                    'total': 0,
+                    'percentage': 0
+                }
+
+            topic_performance[topic_id]['total'] += 1
+            if answer.is_correct:
+                topic_performance[topic_id]['correct'] += 1
+
+        # Calculate percentages
+        for topic_id in topic_performance:
+            perf = topic_performance[topic_id]
+            perf['percentage'] = (perf['correct'] / perf['total']) * 100 if perf['total'] > 0 else 0
+
+        # Identify weak topics (< 60%) and strong topics (>= 70%)
+        weak_topics = []
+        strong_topics = []
+
+        for topic_data in topic_performance.values():
+            topic_info = {
+                'topic_id': topic_data['topic_id'],
+                'topic_name': topic_data['topic_name'],
+                'score': round(topic_data['percentage'], 1),
+                'correct': topic_data['correct'],
+                'total': topic_data['total']
+            }
+
+            if topic_data['percentage'] < 60:
+                weak_topics.append(topic_info)
+            elif topic_data['percentage'] >= 70:
+                strong_topics.append(topic_info)
+
+        # Sort by score
+        weak_topics.sort(key=lambda x: x['score'])
+        strong_topics.sort(key=lambda x: x['score'], reverse=True)
+
+        # Update test record
+        test.status = 'completed'
+        test.completed_at = datetime.utcnow()
+        test.score_percentage = score_percentage
+        test.correct_answers = correct_answers
+        test.questions_answered = total_questions
+        test.strengths = [t['topic_name'] for t in strong_topics[:3]]
+        test.weaknesses = [t['topic_name'] for t in weak_topics[:3]]
+        test.score_by_topic = {k: v['percentage'] for k, v in topic_performance.items()}
+
+        db.commit()
+
+        print(f"✅ Test completed. Score: {score_percentage:.1f}%")
+        print(f"   Weak topics: {len(weak_topics)}, Strong topics: {len(strong_topics)}")
+
+        # Generate comprehensive response
+        return {
+            "success": True,
+            "test_id": test_id,
+            "score": round(score_percentage, 1),
+            "total_questions": total_questions,
+            "correct_answers": correct_answers,
+            "incorrect_answers": total_questions - correct_answers,
+            "time_spent_seconds": test.time_spent_seconds,
+            "analysis": {
+                "weak_topics": weak_topics,
+                "strong_topics": strong_topics,
+                "requires_attention": [t['topic_name'] for t in weak_topics],
+                "mastered": [t['topic_name'] for t in strong_topics],
+                "topic_breakdown": list(topic_performance.values())
+            },
+            "recommendations": {
+                "focus_areas": [t['topic_name'] for t in weak_topics[:3]],
+                "estimated_study_time": len(weak_topics) * 2,  # 2 hours per weak topic
+                "priority_level": "HIGH" if score_percentage < 60 else "MEDIUM" if score_percentage < 80 else "LOW"
+            },
+            "message": f"Test completed successfully. Score: {score_percentage:.1f}%",
+            "completed_at": test.completed_at.isoformat()
+        }
+
+    except Exception as e:
+        print(f"❌ Error completing diagnostic test: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error completing test: {str(e)}")

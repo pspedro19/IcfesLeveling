@@ -1,299 +1,488 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { 
+  BookOpen, 
+  Sword, 
+  Crown, 
+  Shield, 
+  Trophy, 
+  Zap, 
+  Star,
+  Lock,
+  Play,
+  Target,
+  Clock,
+  Award
+} from 'lucide-react';
+import MainNavigation from '../components/Navigation/MainNavigation';
 
-// 🎮 HUB CENTRAL - Torre del Ascenso ICFES
-export default function HubCentral() {
+interface User {
+  id: string;
+  username: string;
+  level: number;
+  rank: string;
+  experience: number;
+  hp: number;
+  mp: number;
+}
+
+interface GameArea {
+  id: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  icon: any;
+  path: string;
+  levelRequired: number;
+  rankRequired?: string[];
+  isSpecialEvent?: boolean;
+  comingSoon?: boolean;
+  gradient: string;
+  borderColor: string;
+  rewards: string[];
+}
+
+export default function HubCentralPage() {
   const router = useRouter();
-  const [hunterLevel] = useState(15);
-  const [currentRank] = useState('C');
-  const [experience] = useState(1500);
-  const [experienceToNext] = useState(2000);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [hoveredArea, setHoveredArea] = useState<string | null>(null);
 
-  // Estado de progreso simulado
-  const [subjectsProgress] = useState({
-    matematicas: { level: 45, mastery: 0.65, unlocked: true },
-    fisica: { level: 30, mastery: 0.45, unlocked: true },
-    quimica: { level: 25, mastery: 0.40, unlocked: false },
-    biologia: { level: 35, mastery: 0.55, unlocked: false },
-    espanol: { level: 50, mastery: 0.75, unlocked: true }
-  });
+  useEffect(() => {
+    // Load user data
+    const userData = localStorage.getItem('currentUser') || localStorage.getItem('user');
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        setCurrentUser({
+          id: user.id,
+          username: user.username,
+          level: user.level || 1,
+          rank: user.rank || 'E',
+          experience: user.experience || 0,
+          hp: user.hp || 100,
+          mp: user.mp || 50
+        });
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    }
+  }, []);
 
-  const zones = [
+  const gameAreas: GameArea[] = [
     {
-      id: 'portal-despertar',
-      name: 'Portal del Despertar',
-      description: 'Diagnóstico inicial ICFES - Descubre tu potencial',
-      icon: '🌟',
-      color: '#FFD700',
-      status: 'available',
-      level: 'Obligatorio',
-      route: '/portal-despertar'
+      id: 'despertar',
+      title: '⚡ Portal del Despertar',
+      subtitle: 'Diagnóstico Inicial',
+      description: 'Descubre tu nivel actual y áreas de mejora con nuestro diagnóstico inteligente.',
+      icon: Zap,
+      path: '/portal-despertar',
+      levelRequired: 1,
+      gradient: 'from-yellow-600 to-orange-600',
+      borderColor: 'border-yellow-500/50',
+      rewards: ['Desbloquea tu potencial', 'Plan de estudio personalizado', '200 XP inicial']
     },
     {
       id: 'biblioteca',
-      name: 'Biblioteca de los Ancestros',
-      description: 'Videos y recursos de estudio por competencia',
-      icon: '📚',
-      color: '#4ECDC4',
-      status: hunterLevel >= 5 ? 'available' : 'locked',
-      level: 'Req: Nivel 5',
-      route: '/biblioteca'
+      title: '📚 Biblioteca de los Ancestros',
+      subtitle: 'Req: Nivel 5',
+      description: 'Videos y recursos de estudio organizados por competencia ICFES. Contenido curado por expertos.',
+      icon: BookOpen,
+      path: '/biblioteca-ancestral',
+      levelRequired: 5,
+      gradient: 'from-purple-600 to-blue-600',
+      borderColor: 'border-purple-500/50',
+      rewards: ['193 videos educativos', 'Planes de Claude AI', '150 XP por video']
     },
     {
       id: 'arena',
-      name: 'Arena del Conocimiento',
-      description: 'Práctica intensiva con preguntas tipo ICFES',
-      icon: '⚔️',
-      color: '#FF6B35',
-      status: hunterLevel >= 10 ? 'available' : 'locked',
-      level: 'Req: Nivel 10',
-      route: '/arena'
+      title: '⚔️ Arena del Conocimiento',
+      subtitle: 'Req: Nivel 10',
+      description: 'Práctica intensiva con preguntas tipo ICFES. Combate contra enemigos usando tu conocimiento.',
+      icon: Sword,
+      path: '/arena-conocimiento',
+      levelRequired: 10,
+      gradient: 'from-red-600 to-pink-600',
+      borderColor: 'border-red-500/50',
+      rewards: ['1,058 preguntas reales', 'Sistema de combate', '300 XP por batalla']
     },
     {
       id: 'santuario',
-      name: 'Santuario de la Sabiduría',
-      description: 'Reportes PDF y consolidación de conocimiento',
-      icon: '🏛️',
-      color: '#96CEB4',
-      status: hunterLevel >= 20 ? 'available' : 'locked',
-      level: 'Req: Nivel 20',
-      route: '/santuario'
+      title: '🏛️ Santuario de la Sabiduría',
+      subtitle: 'Req: Nivel 20',
+      description: 'Reportes PDF personalizados y consolidación de conocimiento. Análisis avanzado de progreso.',
+      icon: Crown,
+      path: '/santuario-sabiduria',
+      levelRequired: 20,
+      gradient: 'from-gold-600 to-yellow-600',
+      borderColor: 'border-gold-500/50',
+      rewards: ['Reportes PDF', 'Análisis avanzado', '500 XP por reporte']
     },
     {
       id: 'mazmorra',
-      name: 'Mazmorra del Tiempo',
-      description: 'Simulacros cronometrados bajo presión',
-      icon: '⏱️',
-      color: '#8B5CF6',
-      status: 'special',
-      level: 'Evento Especial',
-      route: '/mazmorra'
+      title: '⏱️ Mazmorra del Tiempo',
+      subtitle: 'Evento Especial',
+      description: 'Simulacros cronometrados bajo presión. Pon a prueba tu velocidad y precisión.',
+      icon: Shield,
+      path: '/mazmorra-tiempo',
+      levelRequired: 15,
+      isSpecialEvent: true,
+      gradient: 'from-indigo-600 to-purple-600',
+      borderColor: 'border-indigo-500/50',
+      rewards: ['Simulacros ICFES', 'Presión temporal', '400 XP por simulacro']
     },
     {
-      id: 'torre-monarcas',
-      name: 'Torre de los Monarcas',
-      description: 'Desafíos avanzados para Rango A/S',
-      icon: '👑',
-      color: '#F59E0B',
-      status: currentRank >= 'A' ? 'available' : 'locked',
-      level: 'Solo Rango A/S',
-      route: '/torre-monarcas'
+      id: 'torre',
+      title: '👑 Torre de los Monarcas',
+      subtitle: 'Solo Rango A/S',
+      description: 'Desafíos avanzados exclusivos para los hunters de élite. Contenido de máxima dificultad.',
+      icon: Trophy,
+      path: '/torre-monarcas',
+      levelRequired: 50,
+      rankRequired: ['A', 'S', 'SS', 'SSS'],
+      gradient: 'from-pink-600 to-red-600',
+      borderColor: 'border-pink-500/50',
+      rewards: ['Desafíos élite', 'Rango SSS', '1000 XP por desafío']
     }
   ];
 
-  const ranks = {
-    'E': { name: 'Aspirante a Cazador', color: '#FFEAA7', icon: '🔰' },
-    'D': { name: 'Cazador Novato', color: '#96CEB4', icon: '⚔️' },
-    'C': { name: 'Cazador Competente', color: '#45B7D1', icon: '🛡️' },
-    'B': { name: 'Cazador Avanzado', color: '#4ECDC4', icon: '⚡' },
-    'A': { name: 'Cazador Elite', color: '#FF6B35', icon: '🔥' },
-    'S': { name: 'Monarca del Conocimiento', color: '#FFD700', icon: '👑' }
+  const isAreaUnlocked = (area: GameArea) => {
+    if (!currentUser) return false;
+    
+    // Check level requirement
+    if (currentUser.level < area.levelRequired) return false;
+    
+    // Check rank requirement if exists
+    if (area.rankRequired && !area.rankRequired.includes(currentUser.rank)) return false;
+    
+    return true;
   };
 
-  const handleZoneClick = (zone: any) => {
-    if (zone.status === 'available') {
-      router.push(zone.route);
-    } else if (zone.status === 'locked') {
-      alert(`🔒 Esta zona está bloqueada. ${zone.level}`);
-    } else if (zone.status === 'special') {
-      alert(`⭐ Evento especial próximamente!`);
+  const handleAreaClick = (area: GameArea) => {
+    if (!isAreaUnlocked(area)) {
+      const requirements = [
+        `Nivel ${area.levelRequired}`,
+        ...(area.rankRequired ? [`Rango ${area.rankRequired.join(' o ')}`] : [])
+      ];
+      
+      alert(`🔒 Área Bloqueada\n\n${area.title}\n\nRequisitos:\n${requirements.map(r => `• ${r}`).join('\n')}\n\nTu progreso actual:\n• Nivel ${currentUser?.level || 0}\n• Rango ${currentUser?.rank || 'E'}\n\n¡Sigue entrenando para desbloquear esta área!`);
+      return;
     }
+    
+    if (area.comingSoon) {
+      alert(`⭐ Próximamente\n\n${area.title}\n\nEsta área estará disponible en una futura actualización.\n\n¡Mantente atento a las novedades!`);
+      return;
+    }
+    
+    router.push(area.path);
   };
 
-  const handleDashboardClick = () => {
-    router.push('/student-dashboard');
+  const getRankColor = (rank: string) => {
+    const colors = {
+      'E': 'text-gray-400',
+      'D': 'text-green-400', 
+      'C': 'text-blue-400',
+      'B': 'text-purple-400',
+      'A': 'text-yellow-400',
+      'S': 'text-red-400',
+      'SS': 'text-pink-400',
+      'SSS': 'text-gold-400'
+    };
+    return colors[rank] || 'text-gray-400';
   };
 
-  const progressPercentage = (experience / experienceToNext) * 100;
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gold-400 mx-auto mb-4"></div>
+          <h2 className="text-2xl font-bold mb-2">Cargando Hunter Profile...</h2>
+          <p className="text-purple-200">Inicializando sistema de entrenamiento</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white">
-      {/* Header con Torre Central */}
-      <div className="relative overflow-hidden bg-gradient-to-b from-black/30 to-transparent">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <div className="text-8xl mb-4">🏰</div>
-            <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-gold-400 to-purple-400 bg-clip-text text-transparent">
-              TORRE DEL ASCENSO ICFES
+      <MainNavigation currentUser={currentUser} />
+      
+      {/* Main Content */}
+      <div className="pt-20 lg:pt-24 pb-8">
+        <div className="container mx-auto px-4">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-12"
+          >
+            <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-gold-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
+              🎮 Hub Central
             </h1>
-            <p className="text-xl text-gray-300 mb-8">
-              Hub Central - El camino hacia la maestría académica
+            <p className="text-xl text-purple-200 mb-6">
+              Bienvenido, <span className={`font-bold ${getRankColor(currentUser.rank)}`}>
+                Hunter {currentUser.username}
+              </span>
             </p>
-
-            {/* Panel del Cazador */}
-            <div className="bg-black/40 backdrop-blur-sm rounded-xl p-6 max-w-2xl mx-auto border border-purple-500/30">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-4">
-                  <div className="text-4xl">{ranks[currentRank as keyof typeof ranks]?.icon}</div>
-                  <div className="text-left">
-                    <div className="text-2xl font-bold" style={{color: ranks[currentRank as keyof typeof ranks]?.color}}>
-                      Rango {currentRank} - Nivel {hunterLevel}
-                    </div>
-                    <div className="text-gray-400">{ranks[currentRank as keyof typeof ranks]?.name}</div>
-                  </div>
+            
+            {/* User Stats Bar */}
+            <div className="max-w-4xl mx-auto bg-black/30 rounded-xl p-6 border border-purple-500/30">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div>
+                  <div className="text-2xl font-bold text-white">{currentUser.level}</div>
+                  <div className="text-purple-300 text-sm">Nivel</div>
                 </div>
-                <button
-                  onClick={handleDashboardClick}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-bold transition-colors"
-                >
-                  📊 Dashboard
-                </button>
+                <div>
+                  <div className={`text-2xl font-bold ${getRankColor(currentUser.rank)}`}>{currentUser.rank}</div>
+                  <div className="text-purple-300 text-sm">Rango</div>
               </div>
-
-              {/* Barra de Experiencia */}
-              <div className="mb-4">
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Experiencia</span>
-                  <span>{experience} / {experienceToNext} XP</span>
+                <div>
+                  <div className="text-2xl font-bold text-gold-400">{currentUser.experience}</div>
+                  <div className="text-purple-300 text-sm">XP Total</div>
                 </div>
-                <div className="w-full bg-gray-700 rounded-full h-3">
-                  <div 
-                    className="bg-gradient-to-r from-gold-400 to-yellow-500 h-3 rounded-full transition-all duration-300"
-                    style={{width: `${progressPercentage}%`}}
-                  ></div>
+                <div>
+                  <div className="text-2xl font-bold text-green-400">{currentUser.hp}</div>
+                  <div className="text-purple-300 text-sm">HP</div>
                 </div>
-              </div>
-
-              {/* Progreso por Materias - Mini Torres */}
-              <div className="grid grid-cols-5 gap-2">
-                {Object.entries(subjectsProgress).map(([subject, progress]) => {
-                  const icons = {
-                    matematicas: '🔢',
-                    fisica: '⚛️', 
-                    quimica: '🧪',
-                    biologia: '🧬',
-                    espanol: '📚'
-                  };
-                  
-                  return (
-                    <div key={subject} className="text-center">
-                      <div className={`text-2xl mb-1 ${progress.unlocked ? '' : 'grayscale opacity-50'}`}>
-                        {icons[subject as keyof typeof icons]}
-                      </div>
-                      <div className="text-xs font-bold">{Math.round(progress.mastery * 100)}%</div>
-                      <div className="w-full bg-gray-700 rounded-full h-1">
-                        <div 
-                          className={`h-1 rounded-full transition-all duration-300 ${
-                            progress.unlocked 
-                              ? 'bg-gradient-to-r from-green-400 to-blue-500' 
-                              : 'bg-gray-500'
-                          }`}
-                          style={{width: `${progress.mastery * 100}%`}}
-                        ></div>
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
             </div>
-          </div>
-        </div>
-      </div>
+          </motion.div>
 
-      {/* Grid de Zonas */}
-      <div className="container mx-auto px-4 py-12">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4 text-gold-400">
-            🗺️ Zonas de Entrenamiento
-          </h2>
-          <p className="text-lg text-gray-300">
-            Cada zona te desafiará de manera diferente. ¡Escoge sabiamente tu próximo destino!
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-          {zones.map((zone) => {
-            const isLocked = zone.status === 'locked';
-            const isSpecial = zone.status === 'special';
+          {/* Game Areas Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {gameAreas.map((area, index) => {
+              const isUnlocked = isAreaUnlocked(area);
+              const Icon = area.icon;
             
             return (
-              <div
-                key={zone.id}
-                className={`group relative rounded-xl p-6 border transition-all duration-300 cursor-pointer ${
-                  isLocked 
-                    ? 'bg-gray-800/40 border-gray-600/30 opacity-60' 
-                    : isSpecial
-                    ? 'bg-gradient-to-br from-purple-800/40 to-pink-800/40 border-purple-500/50 hover:border-purple-400/70'
-                    : 'bg-black/40 backdrop-blur-sm border-purple-500/30 hover:border-gold-400/50 hover:transform hover:scale-105'
-                }`}
-                onClick={() => handleZoneClick(zone)}
-                style={{boxShadow: !isLocked ? `0 0 20px ${zone.color}20` : undefined}}
-              >
-                {/* Lock Overlay */}
-                {isLocked && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-xl">
-                    <div className="text-center">
-                      <div className="text-4xl mb-2">🔒</div>
-                      <div className="text-sm font-bold">BLOQUEADO</div>
+                <motion.div
+                  key={area.id}
+                  initial={{ opacity: 0, y: 50 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className={`relative group cursor-pointer ${
+                    isUnlocked ? 'hover:scale-105' : 'hover:scale-102'
+                  } transition-all duration-300`}
+                  onClick={() => handleAreaClick(area)}
+                  onMouseEnter={() => setHoveredArea(area.id)}
+                  onMouseLeave={() => setHoveredArea(null)}
+                >
+                  <div className={`bg-gradient-to-br ${area.gradient}/20 rounded-xl p-6 border-2 ${
+                    isUnlocked ? area.borderColor : 'border-gray-600/30'
+                  } backdrop-blur-sm relative overflow-hidden ${
+                    !isUnlocked ? 'opacity-60' : ''
+                  }`}>
+                    
+                    {/* Background Pattern */}
+                    <div className="absolute inset-0 opacity-10">
+                      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent" />
                     </div>
+                    
+                    {/* Lock Overlay */}
+                    {!isUnlocked && (
+                      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                        <div className="text-center">
+                          <Lock className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                          <div className="text-white font-bold">Nivel {area.levelRequired}</div>
+                          {area.rankRequired && (
+                            <div className="text-gray-300 text-sm">Rango {area.rankRequired.join('/')}</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Special Event Badge */}
+                    {area.isSpecialEvent && isUnlocked && (
+                      <div className="absolute top-3 right-3 bg-yellow-500 text-black px-2 py-1 rounded-full text-xs font-bold animate-pulse">
+                        EVENTO
                   </div>
                 )}
 
-                {/* Special Glow */}
-                {isSpecial && (
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-purple-500/20 animate-pulse"></div>
+                    {/* Coming Soon Badge */}
+                    {area.comingSoon && (
+                      <div className="absolute top-3 right-3 bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+                        PRÓXIMAMENTE
+                      </div>
                 )}
 
                 {/* Content */}
                 <div className="relative z-10">
-                  <div className="text-center mb-4">
-                    <div className="text-5xl mb-2">{zone.icon}</div>
-                    <h3 className="text-xl font-bold mb-2" style={{color: zone.color}}>
-                      {zone.name}
+                      {/* Icon */}
+                      <div className={`w-16 h-16 rounded-full bg-gradient-to-r ${area.gradient} flex items-center justify-center mb-4 mx-auto ${
+                        isUnlocked ? 'shadow-lg shadow-purple-500/25' : 'grayscale'
+                      }`}>
+                        <Icon className="w-8 h-8 text-white" />
+                      </div>
+                      
+                      {/* Title */}
+                      <h3 className="text-xl font-bold text-center mb-2 text-white">
+                        {area.title}
                     </h3>
-                    <div className="text-sm text-gray-400 mb-2">
-                      {zone.level}
+                      
+                      {/* Subtitle */}
+                      <p className={`text-center text-sm mb-3 ${
+                        isUnlocked ? 'text-purple-300' : 'text-gray-400'
+                      }`}>
+                        {area.subtitle}
+                      </p>
+                      
+                      {/* Description */}
+                      <p className={`text-center text-sm mb-4 leading-relaxed ${
+                        isUnlocked ? 'text-purple-100' : 'text-gray-500'
+                      }`}>
+                        {area.description}
+                      </p>
+                      
+                      {/* Rewards */}
+                      {isUnlocked && (
+                        <div className="space-y-1 mb-4">
+                          {area.rewards.map((reward, idx) => (
+                            <div key={idx} className="text-xs text-gold-300 flex items-center gap-1">
+                              <Star className="w-3 h-3" />
+                              {reward}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Action Button */}
+                      <div className="text-center">
+                        {isUnlocked ? (
+                          <button className={`bg-gradient-to-r ${area.gradient} hover:shadow-lg hover:shadow-purple-500/25 px-6 py-3 rounded-lg font-bold text-white transition-all transform hover:scale-105`}>
+                            🚀 Entrar
+                          </button>
+                        ) : area.comingSoon ? (
+                          <button className="bg-gray-600 px-6 py-3 rounded-lg font-bold text-gray-300 cursor-not-allowed">
+                            ⭐ Próximamente
+                          </button>
+                        ) : (
+                          <button className="bg-gray-700 px-6 py-3 rounded-lg font-bold text-gray-400 cursor-not-allowed">
+                            🔒 Bloqueado
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  <p className="text-sm text-gray-300 text-center mb-4 leading-relaxed">
-                    {zone.description}
-                  </p>
+                  {/* Hover Effect */}
+                  {hoveredArea === area.id && isUnlocked && (
+                    <motion.div
+                      layoutId="area-glow"
+                      className={`absolute inset-0 bg-gradient-to-br ${area.gradient}/10 rounded-xl blur-xl -z-10`}
+                      transition={{ type: "spring", damping: 30, stiffness: 200 }}
+                    />
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
 
-                  <button 
-                    className={`w-full py-2 rounded-lg font-bold text-sm transition-all duration-300 ${
-                      isLocked
-                        ? 'bg-gray-600 cursor-not-allowed'
-                        : isSpecial
-                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700'
-                        : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700'
-                    }`}
-                    disabled={isLocked}
-                  >
-                    {isLocked ? '🔒 Bloqueado' : isSpecial ? '⭐ Próximamente' : '🚀 Entrar'}
-                  </button>
+          {/* Progress Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+            className="mt-12 max-w-4xl mx-auto"
+          >
+            <div className="bg-black/30 rounded-xl p-6 border border-purple-500/30">
+              <h2 className="text-2xl font-bold text-center mb-6 text-gold-400">
+                📊 Tu Progreso Hunter
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Level Progress */}
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-white mb-2">{currentUser.level}</div>
+                  <div className="text-purple-300 mb-3">Nivel Actual</div>
+                  <div className="w-full bg-gray-700 rounded-full h-3">
+                    <div 
+                      className="bg-gradient-to-r from-purple-500 to-gold-500 h-3 rounded-full transition-all"
+                      style={{ width: `${(currentUser.experience % 1000) / 10}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-purple-200 mt-2">
+                    {currentUser.experience % 1000}/1000 XP al siguiente nivel
+                  </div>
+                </div>
+                
+                {/* Unlocked Areas */}
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-400 mb-2">
+                    {gameAreas.filter(area => isAreaUnlocked(area)).length}
+                  </div>
+                  <div className="text-purple-300 mb-3">Áreas Desbloqueadas</div>
+                  <div className="text-sm text-green-300">
+                    {gameAreas.filter(area => isAreaUnlocked(area)).map(area => area.title.split(' ')[1]).join(', ')}
+                  </div>
+                </div>
+                
+                {/* Next Unlock */}
+                <div className="text-center">
+                  {(() => {
+                    const nextArea = gameAreas.find(area => !isAreaUnlocked(area) && !area.comingSoon);
+                    if (nextArea) {
+                      return (
+                        <>
+                          <div className="text-3xl font-bold text-yellow-400 mb-2">{nextArea.levelRequired}</div>
+                          <div className="text-purple-300 mb-3">Próximo Desbloqueo</div>
+                          <div className="text-sm text-yellow-300">
+                            {nextArea.title.split(' ')[1]} en nivel {nextArea.levelRequired}
+                          </div>
+                        </>
+                      );
+                    } else {
+                      return (
+                        <>
+                          <div className="text-3xl font-bold text-gold-400 mb-2">👑</div>
+                          <div className="text-purple-300 mb-3">Estado</div>
+                          <div className="text-sm text-gold-300">
+                            ¡Todas las áreas desbloqueadas!
+                          </div>
+                        </>
+                      );
+                    }
+                  })()}
                 </div>
               </div>
-            );
-          })}
         </div>
+          </motion.div>
 
-        {/* Call to Action */}
-        <div className="mt-16 text-center">
-          <div className="bg-gradient-to-r from-gold-500/20 to-purple-500/20 rounded-xl p-8 max-w-4xl mx-auto border border-gold-400/30">
-            <h3 className="text-3xl font-bold mb-4 text-gold-400">
-              🎯 ¿Listo para tu próximo desafío?
-            </h3>
-            <p className="text-lg text-gray-300 mb-6">
-              Cada zona conquistada te acerca más a convertirte en un verdadero Monarca del Conocimiento ICFES.
-            </p>
-            <div className="flex flex-wrap justify-center gap-4">
-              <button
-                onClick={() => router.push('/portal-despertar')}
-                className="px-8 py-3 bg-gradient-to-r from-gold-500 to-yellow-500 hover:from-gold-600 hover:to-yellow-600 rounded-lg font-bold text-black transition-all duration-300 hover:shadow-lg"
-              >
-                🌟 Comenzar Despertar
-              </button>
+          {/* Quick Actions */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.0 }}
+            className="mt-8 text-center"
+          >
+            <h3 className="text-xl font-bold text-purple-300 mb-4">Acciones Rápidas</h3>
+            <div className="flex justify-center gap-4 flex-wrap">
               <button
                 onClick={() => router.push('/diagnostic-test')}
-                className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 rounded-lg font-bold transition-all duration-300 hover:shadow-lg"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 flex items-center gap-2"
               >
-                📝 Test Rápido
+                <Target className="w-5 h-5" />
+                Diagnóstico Rápido
+              </button>
+              
+              <button
+                onClick={() => router.push('/simple-recommendations')}
+                className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 flex items-center gap-2"
+              >
+                <Play className="w-5 h-5" />
+                Ver Recomendaciones
+              </button>
+              
+              <button
+                onClick={() => router.push('/study-plans')}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 flex items-center gap-2"
+              >
+                <BookOpen className="w-5 h-5" />
+                Mis Planes
               </button>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </div>

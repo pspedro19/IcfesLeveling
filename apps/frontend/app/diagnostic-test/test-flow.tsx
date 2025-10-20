@@ -37,6 +37,9 @@ export default function DiagnosticTestFlow({ subjectId, subjectName, onComplete 
   const [showHint, setShowHint] = useState(false);
   const [timeLeft, setTimeLeft] = useState(60 * 60); // 60 minutes in seconds
   const [testStarted, setTestStarted] = useState(false);
+  // CRITICAL FIX: Add test_id tracking for persistence
+  const [testId, setTestId] = useState<string | null>(null);
+  const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
 
   useEffect(() => {
     loadQuestions();
@@ -56,43 +59,90 @@ export default function DiagnosticTestFlow({ subjectId, subjectName, onComplete 
   const loadQuestions = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      
-      // Get IMAGE-ONLY questions directly from the new diagnostic endpoint
-      const questionsResponse = await fetch(`${API_URL}/diagnostic-images-test/questions/${subjectId}?limit=20`);
-      
-      if (questionsResponse.ok) {
-        const data = await questionsResponse.json();
-        console.log('Loaded image questions:', data);
-        // Extract questions from the response
-        const questionsData = data.questions || data;
-        setQuestions(Array.isArray(questionsData) ? questionsData : []);
-        setTestStarted(true);
-      } else {
-        throw new Error('No se pudieron cargar las preguntas');
+
+      console.log('🚀 Starting diagnostic test for subject:', subjectId);
+
+      // CRITICAL FIX: Call POST /diagnostic/start to persist test in DB
+      const startResponse = await fetch(`${API_URL}/diagnostic-public/diagnostic/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject_id: subjectId,
+          user_id: null // Anonymous for now
+        })
+      });
+
+      if (!startResponse.ok) {
+        const errorData = await startResponse.json().catch(() => ({ detail: 'Error desconocido' }));
+        throw new Error(errorData.detail || 'No se pudo iniciar el test');
       }
+
+      const data = await startResponse.json();
+      console.log('✅ Test started successfully:', data);
+
+      // Validate that we received questions
+      if (!data.questions || data.questions.length === 0) {
+        throw new Error('No se recibieron preguntas del servidor. Por favor intenta de nuevo.');
+      }
+
+      // Save test_id for subsequent calls
+      setTestId(data.test_id);
+      setQuestions(data.questions);
+      setTestStarted(true);
+      setQuestionStartTime(Date.now());
+
+      console.log(`✅ Loaded ${data.questions.length} questions`);
     } catch (err) {
-      console.error('Error loading questions:', err);
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      console.error('❌ Error loading questions:', err);
+      setError(err instanceof Error ? err.message : 'Error desconocido al cargar preguntas');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAnswer = (answer: string) => {
+  const handleAnswer = async (answer: string) => {
     const currentQuestion = questions[currentQuestionIndex];
+
+    // Update local state
     setAnswers(prev => ({
       ...prev,
       [currentQuestion.id]: answer
     }));
-    
+
+    // CRITICAL FIX: Save answer to backend immediately
+    const responseTime = Date.now() - questionStartTime;
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const saveResponse = await fetch(`${API_URL}/diagnostic-public/diagnostic/answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          test_id: testId,
+          question_id: currentQuestion.id,
+          user_answer: answer,
+          response_time_ms: responseTime
+        })
+      });
+
+      if (saveResponse.ok) {
+        const data = await saveResponse.json();
+        console.log(`✅ Answer saved: ${data.is_correct ? 'Correct ✓' : 'Incorrect ✗'}`);
+      }
+    } catch (err) {
+      console.error('Error saving answer:', err);
+      // Don't block user flow if save fails
+    }
+
     // Auto-advance to next question
     if (currentQuestionIndex < questions.length - 1) {
       setTimeout(() => {
         setCurrentQuestionIndex(prev => prev + 1);
         setShowHint(false);
+        setQuestionStartTime(Date.now()); // Reset timer for next question
       }, 300);
     }
   };
@@ -112,31 +162,42 @@ export default function DiagnosticTestFlow({ subjectId, subjectName, onComplete 
   };
 
   const handleSubmit = async () => {
-    const correctAnswers = questions.filter(q => {
-      const userAnswer = answers[q.id];
-      return userAnswer === 'B'; // All our test questions have 'B' as correct answer
-    }).length;
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
-    const score = Math.round((correctAnswers / questions.length) * 100);
-    
-    const results = {
-      total_questions: questions.length,
-      correct_answers: correctAnswers,
-      score_percentage: score,
-      time_spent: 3600 - timeLeft,
-      answers: answers
-    };
+      // CRITICAL FIX: Complete test in backend and get REAL analysis
+      const completeResponse = await fetch(`${API_URL}/diagnostic-public/diagnostic/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          test_id: testId
+        })
+      });
 
-    if (onComplete) {
-      onComplete(results);
-    } else {
-      alert(`
-🎯 Test Completado!
-📊 Resultado: ${score}%
-✅ Respuestas Correctas: ${correctAnswers}/${questions.length}
-⏱️ Tiempo: ${Math.floor((3600 - timeLeft) / 60)} minutos
-      `);
-      router.push('/');
+      if (completeResponse.ok) {
+        const results = await completeResponse.json();
+        console.log('✅ Test completed successfully:', results);
+
+        // Save to sessionStorage for results page
+        sessionStorage.setItem('diagnostic_results', JSON.stringify({
+          test_id: testId,
+          score: results.score,
+          analysis: results.analysis,
+          recommendations: results.recommendations,
+          total_questions: results.total_questions,
+          correct_answers: results.correct_answers,
+          subject_id: subjectId,
+          subject_name: subjectName
+        }));
+
+        // Redirect to results page with real data
+        router.push(`/diagnostic-test/results?test_id=${testId}`);
+      } else {
+        throw new Error('No se pudo completar el test');
+      }
+    } catch (err) {
+      console.error('Error completing test:', err);
+      alert('Error al finalizar el test. Por favor intenta de nuevo.');
     }
   };
 
@@ -191,9 +252,23 @@ export default function DiagnosticTestFlow({ subjectId, subjectName, onComplete 
     );
   }
 
+  // CRITICAL FIX: Add safety check for currentQuestion
   const currentQuestion = questions[currentQuestionIndex];
+
+  // If no current question, show loading or error
+  if (!currentQuestion) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 to-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-purple-500 mx-auto mb-4"></div>
+          <p className="text-white text-xl">Cargando pregunta...</p>
+        </div>
+      </div>
+    );
+  }
+
   const questionText = currentQuestion.pregunta_texto || currentQuestion.question_text;
-  const options = currentQuestion.options || [
+  const options = [
     currentQuestion.opcion_a_texto || 'Opción A',
     currentQuestion.opcion_b_texto || 'Opción B',
     currentQuestion.opcion_c_texto || 'Opción C',
@@ -349,13 +424,20 @@ export default function DiagnosticTestFlow({ subjectId, subjectName, onComplete 
 
           <div className="flex gap-2">
             {Array.from({ length: Math.min(5, questions.length) }, (_, i) => {
-              const qIndex = Math.max(0, Math.min(currentQuestionIndex - 2 + i, questions.length - 1));
+              // FIXED: Calculate unique indices to avoid duplicate keys
+              const baseIndex = Math.max(0, currentQuestionIndex - 2);
+              const qIndex = Math.min(baseIndex + i, questions.length - 1);
               const isCurrentIndex = qIndex === currentQuestionIndex;
               const hasAnswer = !!answers[questions[qIndex]?.id];
-              
+
+              // Skip if this creates a duplicate index (e.g., at the end of the test)
+              if (i > 0 && qIndex === Math.min(baseIndex + i - 1, questions.length - 1)) {
+                return null;
+              }
+
               return (
                 <button
-                  key={qIndex}
+                  key={`question-nav-${qIndex}`}
                   onClick={() => setCurrentQuestionIndex(qIndex)}
                   className={`w-10 h-10 rounded-full font-bold ${
                     isCurrentIndex

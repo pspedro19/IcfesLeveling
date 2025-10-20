@@ -14,7 +14,7 @@ from .core.database import engine, Base
 # from .middleware.guest_limits import GuestLimitsMiddleware  # Comentado temporalmente
 # from .middleware.media_rate_limit import media_rate_limit_middleware  # TEMPORALMENTE COMENTADO
 # Temporary fix: comment out problematic imports due to numpy/pandas/scipy issues
-from .routes import auth, auth_simple, questions, battles, ai, leaderboard, quests, personality, diagnostic, diagnostic_public, diagnostic_simple, diagnostic_public_fix, diagnostic_test_fix, subjects_fix, study_plans, study_plans_simple, videos, video_recommendations, quizzes, bosses, analytics, monthly_reassessment, premium_simple as premium, guilds, achievements, store, analytics_advanced, questions_cached, users_cached, battles_cached, ai_tips, recommendations, intelligent_video_recommendations, personalized_study_plan_api, images_api, subjects_with_count, image_required_questions, diagnostic_images_test, verified_image_diagnostic, dynamic_images_api, student_dashboard  # , admin, video_tracking, exercise_tracking, rank_reevaluation, advanced_health, video_progress_api, yml_plans, dynamic_subjects, dynamic_study_plan, diagnostic_adaptive, boss_battle_diagnostic, media, diagnostic_api, rank_management, training_zone (temporarily disabled due to asyncpg dependency)
+from .routes import auth, auth_simple, questions, battles, ai, leaderboard, quests, personality, diagnostic, diagnostic_public, diagnostic_simple, diagnostic_public_fix, diagnostic_test_fix, subjects_fix, study_plans, study_plans_simple, videos, video_recommendations, quizzes, bosses, analytics, monthly_reassessment, premium_simple as premium, guilds, achievements, store, analytics_advanced, questions_cached, users_cached, battles_cached, ai_tips, recommendations, intelligent_video_recommendations, personalized_study_plan_api, images_api, subjects_with_count, image_required_questions, diagnostic_images_test, verified_image_diagnostic, dynamic_images_api, student_dashboard, simple_recommendations, simple_study_plan_generator, claude_study_plan_generator, dynamic_subjects  # , admin, video_tracking, exercise_tracking, rank_reevaluation, advanced_health, video_progress_api, yml_plans, dynamic_study_plan, diagnostic_adaptive, boss_battle_diagnostic, media, diagnostic_api, rank_management, training_zone (temporarily disabled due to asyncpg dependency)
 from .routes.icfes import recommendations as icfes_recommendations
 from .routes import icfes_catalog
 
@@ -412,6 +412,8 @@ app.include_router(diagnostic.router, prefix="/api/v1")
 app.include_router(diagnostic.router, prefix="/api/v1/agnostic")
 app.include_router(diagnostic_public.router)  # Sin prefijo /api/v1 para acceso directo
 app.include_router(diagnostic_public.router, prefix="/api/v1")  # Con prefijo /api/v1 para frontend
+app.include_router(simple_study_plan_generator.router)  # Simple study plan generator with built-in prefix
+app.include_router(claude_study_plan_generator.router)  # Claude AI-powered study plan generator
 app.include_router(diagnostic_simple.router)  # Ruta simple para testing
 app.include_router(diagnostic_public_fix.router)  # Public routes fix
 app.include_router(diagnostic_test_fix.router)  # Fixed diagnostic endpoints
@@ -453,7 +455,7 @@ app.include_router(personalized_study_plan_api.router)  # Personalized Study Pla
 # app.include_router(yml_plans.router)  # TEMPORALMENTE COMENTADO
 # app.include_router(video_progress_api.router)  # TEMPORALMENTE COMENTADO
 # app.include_router(advanced_health.router)  # TEMPORALMENTE COMENTADO
-# app.include_router(dynamic_subjects.router)  # TEMPORALMENTE COMENTADO
+app.include_router(dynamic_subjects.router)  # Re-enabled for subject assets endpoint
 # app.include_router(dynamic_study_plan.router)  # TEMPORALMENTE COMENTADO
 
 # Enhanced diagnostic system with adaptive features
@@ -483,6 +485,7 @@ app.include_router(integrated_study_plan_api.router)  # Integrated study plan sy
 
 # Register student dashboard API
 app.include_router(student_dashboard.router)  # Student dashboard endpoints
+app.include_router(simple_recommendations.router, prefix="/api/v1")  # Simple recommendations with videos
 
 # Rutas de health check
 @app.get("/")

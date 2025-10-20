@@ -50,30 +50,34 @@ export default function DynamicSubjectIcon({
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (subjectId) {
-      loadSubjectAssets(subjectId);
-    }
+    // DISABLED: Dynamic assets endpoint not implemented yet
+    // Just use fallback icons for now
+    // if (subjectId) {
+    //   loadSubjectAssets(subjectId);
+    // }
   }, [subjectId]);
 
   const loadSubjectAssets = async (id: string) => {
-    setLoading(true);
-    setError(false);
-    
-    try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      const response = await fetch(`${API_URL}/api/v1/subjects/${id}/assets`);
-      if (response.ok) {
-        const assetData = await response.json();
-        setAssets(assetData);
-      } else {
-        setError(true);
-      }
-    } catch (err) {
-      console.warn('Failed to load dynamic subject assets:', err);
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
+    // DISABLED: Dynamic assets endpoint not implemented yet
+    // setLoading(true);
+    // setError(false);
+
+    // try {
+    //   // Call backend API directly
+    //   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    //   const response = await fetch(`${API_URL}/api/v1/subjects/${id}/assets`);
+    //   if (response.ok) {
+    //     const assetData = await response.json();
+    //     setAssets(assetData);
+    //   } else {
+    //     setError(true);
+    //   }
+    // } catch (err) {
+    //   console.warn('Failed to load dynamic subject assets:', err);
+    //   setError(true);
+    // } finally {
+    //   setLoading(false);
+    // }
   };
 
   const getFallbackIcon = () => {
@@ -143,29 +147,31 @@ export function useSubjectAssets(subjectId?: string) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (subjectId) {
-      loadAssets(subjectId);
-    }
+    // DISABLED: Dynamic assets endpoint not implemented yet
+    // if (subjectId) {
+    //   loadAssets(subjectId);
+    // }
   }, [subjectId]);
 
   const loadAssets = async (id: string) => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      const response = await fetch(`${API_URL}/api/v1/subjects/${id}/assets`);
-      if (response.ok) {
-        const data = await response.json();
-        setAssets(data);
-      } else {
-        throw new Error('Failed to load assets');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
+    // DISABLED: Dynamic assets endpoint not implemented yet
+    // setLoading(true);
+    // setError(null);
+    //
+    // try {
+    //   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    //   const response = await fetch(`${API_URL}/api/v1/subjects/${id}/assets`);
+    //   if (response.ok) {
+    //     const data = await response.json();
+    //     setAssets(data);
+    //   } else {
+    //     throw new Error('Failed to load assets');
+    //   }
+    // } catch (err) {
+    //   setError(err instanceof Error ? err.message : 'Unknown error');
+    // } finally {
+    //   setLoading(false);
+    // }
   };
 
   return { assets, loading, error, refetch: () => subjectId && loadAssets(subjectId) };

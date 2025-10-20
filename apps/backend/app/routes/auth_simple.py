@@ -88,78 +88,88 @@ def test_password(password: str = "secret", db: Session = Depends(get_db)):
 def create_test_users(db: Session = Depends(get_db)):
     """Crear usuarios de prueba con hashes correctos"""
     try:
-        # Crear usuario admin
-        admin_hash = get_password_hash("secret")
-        admin_user = User(
-            id=uuid.uuid4(),
-            username="admin",
-            email="admin@test.com",
-            hashed_password=admin_hash,
-            level=50,
-            experience=10000,
-            rank="S",
-            hp=200,
-            mp=150,
-            power=50,
-            wisdom=50,
-            speed=50,
-            orbs=1000,
-            crystals=500,
-            is_active=True
-        )
+        users_created = []
         
-        # Crear usuario test
-        test_hash = get_password_hash("secret")
-        test_user = User(
-            id=uuid.uuid4(),
-            username="test",
-            email="test@test.com",
-            hashed_password=test_hash,
-            level=1,
-            experience=0,
-            rank="E",
-            hp=100,
-            mp=50,
-            power=10,
-            wisdom=10,
-            speed=10,
-            orbs=0,
-            crystals=0,
-            is_active=True
-        )
+        # Check and create admin user if not exists
+        if not db.query(User).filter(User.username == "admin").first():
+            admin_hash = get_password_hash("secret")
+            admin_user = User(
+                id=uuid.uuid4(),
+                username="admin",
+                email="admin@test.com",
+                hashed_password=admin_hash,
+                level=50,
+                experience=10000,
+                rank="S",
+                hp=200,
+                mp=150,
+                power=50,
+                wisdom=50,
+                speed=50,
+                orbs=1000,
+                crystals=500,
+                is_active=True
+            )
+            db.add(admin_user)
+            users_created.append("admin")
         
-        # Crear usuario student1
-        student1_hash = get_password_hash("secret")
-        student1_user = User(
-            id=uuid.uuid4(),
-            username="student1",
-            email="student1@test.com",
-            hashed_password=student1_hash,
-            level=1,
-            experience=0,
-            rank="E",
-            hp=100,
-            mp=50,
-            power=10,
-            wisdom=10,
-            speed=10,
-            orbs=0,
-            crystals=0,
-            is_active=True
-        )
+        # Check and create test user if not exists
+        if not db.query(User).filter(User.username == "test").first():
+            test_hash = get_password_hash("secret")
+            test_user = User(
+                id=uuid.uuid4(),
+                username="test",
+                email="test@test.com",
+                hashed_password=test_hash,
+                level=1,
+                experience=0,
+                rank="E",
+                hp=100,
+                mp=50,
+                power=10,
+                wisdom=10,
+                speed=10,
+                orbs=0,
+                crystals=0,
+                is_active=True
+            )
+            db.add(test_user)
+            users_created.append("test")
         
-        db.add(admin_user)
-        db.add(test_user)
-        db.add(student1_user)
-        db.commit()
+        # Check and create student1 user if not exists
+        if not db.query(User).filter(User.username == "student1").first():
+            student1_hash = get_password_hash("secret")
+            student1_user = User(
+                id=uuid.uuid4(),
+                username="student1",
+                email="student1@test.com",
+                hashed_password=student1_hash,
+                level=5,
+                experience=0,
+                rank="D",
+                hp=100,
+                mp=50,
+                power=10,
+                wisdom=10,
+                speed=10,
+                orbs=0,
+                crystals=0,
+                is_active=True
+            )
+            db.add(student1_user)
+            users_created.append("student1")
+        
+        if users_created:
+            db.commit()
         
         return {
             "status": "success",
-            "message": "Usuarios creados",
-            "users": [
+            "message": f"Usuarios creados: {', '.join(users_created) if users_created else 'ninguno (ya existían)'}",
+            "users_created": users_created,
+            "available_users": [
                 {"username": "admin", "password": "secret", "level": 50, "rank": "S"},
                 {"username": "test", "password": "secret", "level": 1, "rank": "E"},
-                {"username": "student1", "password": "secret", "level": 1, "rank": "E"}
+                {"username": "student1", "password": "secret", "level": 5, "rank": "D"}
             ]
         }
         
@@ -184,5 +194,33 @@ def list_users(db: Session = Depends(get_db)):
                 for user in users
             ]
         }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+@router.post("/reset-test-users")
+def reset_test_users(db: Session = Depends(get_db)):
+    """Reset test users passwords"""
+    try:
+        # Update existing users with correct password hashes
+        admin_user = db.query(User).filter(User.username == "admin").first()
+        if admin_user:
+            admin_user.hashed_password = get_password_hash("secret")
+        
+        test_user = db.query(User).filter(User.username == "test").first()
+        if test_user:
+            test_user.hashed_password = get_password_hash("secret")
+            
+        student1_user = db.query(User).filter(User.username == "student1").first()
+        if student1_user:
+            student1_user.hashed_password = get_password_hash("secret")
+        
+        db.commit()
+        
+        return {
+            "status": "success",
+            "message": "Test users passwords reset to 'secret'",
+            "users_updated": ["admin", "test", "student1"]
+        }
+        
     except Exception as e:
         return {"status": "error", "error": str(e)}

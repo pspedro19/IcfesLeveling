@@ -96,8 +96,8 @@ export default function RootLayout({
                   <ParticleBackground />
                 </div>
                 
-                {/* Navigation - Temporarily disabled */}
-                {/* <MainNavigation /> */}
+                {/* Navigation - ENABLED */}
+                <MainNavigation />
                 
                 {/* Main Content */}
                 <div className="relative z-10">

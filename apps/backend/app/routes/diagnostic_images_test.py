@@ -137,25 +137,25 @@ async def get_image_questions_for_subject(
             question_data = {
                 "id": str(q.id),
                 "pregunta_texto": q.pregunta_texto,
-                "opcion_a": q.opcion_a,
-                "opcion_b": q.opcion_b,
-                "opcion_c": q.opcion_c,
-                "opcion_d": q.opcion_d,
-                "respuesta_correcta": q.respuesta_correcta,
-                "dificultad": q.dificultad or 1,
+                "opcion_a_texto": q.opcion_a_texto,
+                "opcion_b_texto": q.opcion_b_texto,
+                "opcion_c_texto": q.opcion_c_texto,
+                "opcion_d_texto": q.opcion_d_texto,
+                "respuesta_correcta": q.respuesta_correcta.upper() if q.respuesta_correcta else None,
+                "difficulty": q.difficulty or 1,
                 "tiempo_estimado": q.tiempo_estimado or 60,
                 "puntos_xp": q.puntos_xp or 10,
-                
+
                 # Image URLs
                 "pregunta_imagen": q.pregunta_imagen if q.pregunta_imagen and q.pregunta_imagen.strip() and q.pregunta_imagen != "No Aplica" else None,
                 "opcion_a_imagen": q.opcion_a_imagen if q.opcion_a_imagen and q.opcion_a_imagen.strip() and q.opcion_a_imagen != "No Aplica" else None,
                 "opcion_b_imagen": q.opcion_b_imagen if q.opcion_b_imagen and q.opcion_b_imagen.strip() and q.opcion_b_imagen != "No Aplica" else None,
                 "opcion_c_imagen": q.opcion_c_imagen if q.opcion_c_imagen and q.opcion_c_imagen.strip() and q.opcion_c_imagen != "No Aplica" else None,
                 "opcion_d_imagen": q.opcion_d_imagen if q.opcion_d_imagen and q.opcion_d_imagen.strip() and q.opcion_d_imagen != "No Aplica" else None,
-                
+
                 # Metadata for testing
                 "subject_name": subject.name,
-                "requiere_imagen": q.requiere_imagen,
+                "requiere_imagen": bool(q.pregunta_imagen or q.opcion_a_imagen or q.opcion_b_imagen or q.opcion_c_imagen or q.opcion_d_imagen),
                 "has_main_image": bool(q.pregunta_imagen and q.pregunta_imagen.strip() and q.pregunta_imagen != "No Aplica"),
                 "has_option_images": any([
                     q.opcion_a_imagen and q.opcion_a_imagen.strip() and q.opcion_a_imagen != "No Aplica",

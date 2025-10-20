@@ -41,20 +41,21 @@ const nextConfig = {
     ],
   },
   webpack: (config, { dev, isServer }) => {
-    // Memory optimization
-    config.optimization = {
-      ...config.optimization,
-      splitChunks: {
-        chunks: 'all',
-        cacheGroups: {
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all',
-          },
-        },
-      },
-    };
+    // Memory optimization - REMOVED custom splitChunks to fix MIME type error
+    // Next.js 14 has excellent automatic chunk splitting, no need for custom config
+    // config.optimization = {
+    //   ...config.optimization,
+    //   splitChunks: {
+    //     chunks: 'all',
+    //     cacheGroups: {
+    //       vendor: {
+    //         test: /[\\/]node_modules[\\/]/,
+    //         name: 'vendor-libs',
+    //         chunks: 'all',
+    //       },
+    //     },
+    //   },
+    // };
 
     // Reduce memory usage in development
     if (dev) {
