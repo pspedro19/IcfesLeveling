@@ -1,10 +1,28 @@
 'use client';
 
-import { useDynamicSubjects } from '../../components/DynamicSubjectIcon';
-import DynamicSubjectIcon from '../../components/DynamicSubjectIcon';
+import { useState, useEffect } from 'react';
+import SubjectIcon from '../components/SubjectIcon';
 
 export default function WorkingDiagnostic() {
-  const { subjects, loading, error } = useDynamicSubjects();
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    import('../lib/dynamic-config').then(({ buildApiUrl }) =>
+      fetch(buildApiUrl('/api/subjects'))
+    )
+      .then(res => res.json())
+      .then(data => {
+        setSubjects(data || []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Error fetching subjects:', err);
+        setError('No se pudieron cargar las materias');
+        setLoading(false);
+      });
+  }, []);
 
   const handleStartTest = (subject: any) => {
     console.log('🎯 Starting test for:', subject.name);
@@ -184,8 +202,7 @@ En una aplicación completa, esto te llevaría al test real.`);
                   justifyContent: 'center',
                   boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
                 }}>
-                  <DynamicSubjectIcon 
-                    subjectId={subject.id}
+                  <SubjectIcon
                     subjectName={subject.name}
                     size={48}
                     className="text-white"

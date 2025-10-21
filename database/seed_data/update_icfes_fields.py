@@ -148,3 +148,5 @@ def update_icfes_fields():
 if __name__ == "__main__":
     success = update_icfes_fields()
     sys.exit(0 if success else 1)
+
+

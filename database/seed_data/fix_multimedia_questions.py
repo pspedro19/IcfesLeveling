@@ -145,3 +145,5 @@ def fix_multimedia_questions():
 if __name__ == "__main__":
     success = fix_multimedia_questions()
     exit(0 if success else 1)
+
+

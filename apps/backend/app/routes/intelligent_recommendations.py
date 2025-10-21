@@ -622,3 +622,5 @@ async def mark_video_completed(
     except Exception as e:
         logger.error(f"❌ Error marcando video completado: {e}")
         raise HTTPException(status_code=500, detail=f"Error updating progress: {str(e)}")
+
+

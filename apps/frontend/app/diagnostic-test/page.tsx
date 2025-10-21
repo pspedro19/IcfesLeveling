@@ -18,7 +18,7 @@ import {
   Flame,
   Eye
 } from 'lucide-react';
-import DynamicSubjectIcon from '../../components/DynamicSubjectIcon';
+import SubjectIcon from '../components/SubjectIcon';
 import DiagnosticTestFlow from './test-flow';
 
 export default function DiagnosticTest() {
@@ -427,8 +427,7 @@ export default function DiagnosticTest() {
                               boxShadow: `0 0 30px ${subject.display?.color_primary || subject.color || '#8B5CF6'}80`
                             }}
                           >
-                            <DynamicSubjectIcon
-                              subjectId={subject.id}
+                            <SubjectIcon
                               subjectName={subject.name}
                               size={56}
                               className="text-white drop-shadow-lg"

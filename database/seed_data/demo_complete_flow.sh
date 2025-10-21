@@ -123,3 +123,5 @@ echo "   📚 Student: student1 / secret (Nivel 5, Rango D)"
 echo ""
 echo -e "${GREEN}✨ ¡SISTEMA LISTO PARA USO EN PRODUCCIÓN! ✨${NC}"
 echo ""
+
+

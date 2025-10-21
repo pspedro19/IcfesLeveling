@@ -76,3 +76,5 @@ else
     echo "❌ Error durante la carga. Revisa los logs arriba."
     echo ""
 fi
+
+
