@@ -62,46 +62,130 @@ IcfesLeveling/
 
 ### Prerrequisitos
 
-- Docker y Docker Compose
+- Docker y Docker Compose instalados
 - Git
+- Puertos disponibles: 3002 (Frontend), 4000 (Backend), 5433 (PostgreSQL)
 
-### Instalación
+### Instalación y Despliegue
 
 ```bash
-# Clonar repositorio
-git clone <repository-url>
+# 1. Clonar repositorio
+git clone https://github.com/pspedro19/IcfesLeveling.git
 cd IcfesLeveling
 
-# Configurar variables de entorno
-cp .env.example .env
-# Editar .env con tus credenciales
+# 2. El archivo .env ya está configurado y listo para usar
+# (Opcionalmente puedes editarlo si necesitas cambiar credenciales)
 
-# Iniciar sistema completo
+# 3. Levantar todos los servicios
 docker-compose up -d
 
-# Esperar a que se complete la inicialización (1-2 minutos)
+# 4. Esperar a que se complete la inicialización (2-3 minutos)
+# Puedes monitorear el progreso con:
 docker-compose logs -f
+
+# 5. Verificar que todos los servicios estén healthy
+docker-compose ps
 ```
 
-### Acceso al Sistema
+### Servicios Disponibles
 
-- **Frontend**: http://localhost:3002
-- **Backend API**: http://localhost:3001
-- **Credenciales**:
-  - Usuario: `admin`
-  - Contraseña: `secret`
+Una vez levantados, los servicios estarán disponibles en:
 
-### Verificación
+| Servicio | URL | Descripción |
+|----------|-----|-------------|
+| **Frontend** | http://localhost:4001 | Interfaz de usuario principal |
+| **Backend API** | http://localhost:4000 | API REST (FastAPI) |
+| **API Docs** | http://localhost:4000/docs | Documentación interactiva Swagger |
+| **PgAdmin** | http://localhost:5050 | Administrador de PostgreSQL |
+| **WebSocket** | ws://localhost:8001 | Servidor WebSocket en tiempo real |
+| **AI Service** | http://localhost:8000 | Servicio de IA (Claude) |
+
+### Verificación del Sistema
 
 ```bash
-# Verificar servicios
+# Verificar estado de todos los servicios (deben mostrar "healthy")
 docker-compose ps
 
-# Probar API
-curl http://localhost:3001/health
+# Verificar salud del backend
+curl http://localhost:4000/health
 
 # Verificar base de datos
-docker exec icfes_postgres psql -U postgres -d icfes_db -c "SELECT COUNT(*) FROM questions;"
+docker exec icfes_postgres psql -U gameplay -d gameplay_db -c "SELECT COUNT(*) FROM questions;"
+# Debería mostrar: 1058 preguntas
+
+# Verificar videos en catálogo
+docker exec icfes_postgres psql -U gameplay -d gameplay_db -c "SELECT COUNT(*) FROM youtube_catalog;"
+# Debería mostrar: 193 videos
+
+# Ver logs de un servicio específico
+docker-compose logs -f backend    # Backend logs
+docker-compose logs -f frontend   # Frontend logs
+```
+
+### Detener y Reiniciar Servicios
+
+```bash
+# Detener todos los servicios
+docker-compose down
+
+# Reiniciar todos los servicios
+docker-compose restart
+
+# Reiniciar un servicio específico
+docker-compose restart backend
+docker-compose restart frontend
+
+# Reconstruir y levantar (si hay cambios en código)
+docker-compose up -d --build
+```
+
+### Acceso por Defecto
+
+**Credenciales de PgAdmin:**
+- Email: `admin@icfes.com`
+- Contraseña: `admin123`
+
+**Base de datos PostgreSQL:**
+- Host: `postgres`
+- Puerto: `5432` (interno) / `5433` (externo)
+- Usuario: `gameplay`
+- Contraseña: `gameplay123`
+- Base de datos: `gameplay_db`
+
+### Solución de Problemas
+
+**Si un servicio no inicia correctamente:**
+
+```bash
+# Ver logs del servicio problemático
+docker-compose logs backend
+
+# Reiniciar el servicio
+docker-compose restart backend
+
+# Si persiste, reconstruir
+docker-compose up -d --build backend
+```
+
+**Si el frontend muestra errores de compilación:**
+
+```bash
+# Limpiar caché y reconstruir
+docker-compose down
+docker volume prune -f
+docker-compose up -d --build frontend
+```
+
+**Si la base de datos no tiene datos:**
+
+```bash
+# Verificar que la inicialización se completó
+docker-compose logs postgres | grep "database system is ready"
+
+# Si es necesario, reiniciar servicios
+docker-compose restart postgres
+sleep 10
+docker-compose restart backend
 ```
 
 ## Características Principales
