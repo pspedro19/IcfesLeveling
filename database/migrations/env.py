@@ -10,13 +10,16 @@ from sqlalchemy import pool
 
 from alembic import context
 
-# Add project root to path for imports
-sys.path.append(str(Path(__file__).parent.parent.parent))
+# Add project's 'apps/backend' directory to path for imports
+backend_app_path = str(Path(__file__).parent.parent.parent / 'apps' / 'backend')
+if backend_app_path not in sys.path:
+    sys.path.insert(0, backend_app_path)
+
 
 try:
     # Import models for autogenerate
-    from apps.backend.app.core.database import Base
-    from apps.backend.app.models import *  # Import all models
+    from app.core.database import Base
+    from app.models import *  # Import all models
     target_metadata = Base.metadata
 except ImportError as e:
     print(f"Warning: Could not import models for autogenerate: {e}")
@@ -36,33 +39,19 @@ if config.config_file_name is not None:
 
 def include_object(object, name, type_, reflected, compare_to):
     """Filter objects to include in migrations."""
-    # Skip certain tables or objects if needed
     if type_ == "table" and name in ["alembic_version"]:
         return False
-    
-    # Skip temporary tables
     if type_ == "table" and (name.endswith("_backup_") or "_backup_" in name):
         return False
-    
     return True
 
 def compare_type(context, inspected_column, metadata_column, 
                 inspected_type, metadata_type):
     """Compare column types for changes."""
-    # Handle PostgreSQL specific type comparisons
     return None
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode.
-    
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well. By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-    
-    Calls to context.execute() here emit the given string to the
-    script output.
-    """
+    """Run migrations in 'offline' mode."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -71,7 +60,6 @@ def run_migrations_offline() -> None:
         dialect_opts={"paramstyle": "named"},
         include_object=include_object,
         compare_type=compare_type,
-        # Additional configuration for better migrations
         render_as_batch=False,
         compare_server_default=True,
     )
@@ -81,12 +69,7 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode.
-    
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-    """
-    
+    """Run migrations in 'online' mode."""
     configuration = config.get_section(config.config_ini_section)
     configuration['sqlalchemy.url'] = config.get_main_option("sqlalchemy.url")
     
@@ -102,31 +85,28 @@ def run_migrations_online() -> None:
             target_metadata=target_metadata,
             include_object=include_object,
             compare_type=compare_type,
-            # Additional configuration for better migrations
             render_as_batch=False,
             compare_server_default=True,
-            # Handle constraints and indexes properly
             include_schemas=False,
-            # PostgreSQL specific options
             user_module_prefix='sqlalchemy.',
-            # Migration options
-            transaction_per_migration=True,
+            transaction_per_migration=False,
         )
 
-        # Execute pre-migration hooks
         with context.begin_transaction():
             # Log migration start
-            context.execute("-- Migration started at %s" % 
-                          context.get_current_revision())
+            # CORRECTED: get_head_revision() is the correct function name
+            # CORRECTED: get_head_revision() is the correct function name
+            head_rev = context.get_head_revision()
+            # context.execute("-- Migration started at %s" % head_rev)
             
             context.run_migrations()
             
             # Log migration end
-            context.execute("-- Migration completed at %s" % 
-                          context.get_current_revision())
+            # CORRECTED: get_head_revision() is the correct function name
+            head_rev_after = context.get_head_revision()
+            # context.execute("-- Migration completed at %s" % head_rev_after)
 
 
-# Determine which mode to run
 if context.is_offline_mode():
     run_migrations_offline()
 else:

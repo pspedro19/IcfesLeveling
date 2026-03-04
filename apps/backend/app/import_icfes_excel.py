@@ -611,26 +611,26 @@ def main():
         result = importer.import_excel(args.file, validate_only=args.validate)
         
         # Mostrar resultados
-        print(f"\n{'='*50}")
-        print(f"RESULTADOS DE LA IMPORTACIÓN")
-        print(f"{'='*50}")
-        print(f"✅ Preguntas procesadas: {result['imported_questions']}")
-        print(f"❌ Errores: {len(result['errors'])}")
-        print(f"⚠️  Advertencias: {len(result['warnings'])}")
-        
+        logger.info(f"\n{'='*50}")
+        logger.info(f"RESULTADOS DE LA IMPORTACION")
+        logger.info(f"{'='*50}")
+        logger.info(f"Preguntas procesadas: {result['imported_questions']}")
+        logger.info(f"Errores: {len(result['errors'])}")
+        logger.info(f"Advertencias: {len(result['warnings'])}")
+
         if result['errors']:
-            print(f"\n❌ ERRORES ENCONTRADOS:")
+            logger.error(f"\nERRORES ENCONTRADOS:")
             for error in result['errors'][:10]:  # Mostrar solo los primeros 10
-                print(f"  - {error}")
+                logger.error(f"  - {error}")
             if len(result['errors']) > 10:
-                print(f"  ... y {len(result['errors']) - 10} errores más")
-        
+                logger.error(f"  ... y {len(result['errors']) - 10} errores mas")
+
         if result['warnings']:
-            print(f"\n⚠️  ADVERTENCIAS:")
+            logger.warning(f"\nADVERTENCIAS:")
             for warning in result['warnings'][:5]:
-                print(f"  - {warning}")
-        
-        print(f"\n{'='*50}")
+                logger.warning(f"  - {warning}")
+
+        logger.info(f"\n{'='*50}")
         
     except Exception as e:
         logger.error(f"Error en la importación: {e}")

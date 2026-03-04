@@ -464,16 +464,14 @@ class WompiService:
         """
         from ..services.notification_service import notification_service
         
-        await notification_service.send_notification(
+        notification_service.send_custom(
             user_id=user.id,
             title="¡Suscripción Activada!",
-            message=f"Tu {plan['name']} está activo. ¡Disfruta de todos los beneficios!",
-            type="subscription",
+            body=f"Tu {plan['name']} está activo. ¡Disfruta de todos los beneficios!",
             data={
                 "plan_name": plan["name"],
-                "features": plan["features"],
-                "xp_bonus": plan["xp_bonus"],
-                "orbs_received": plan["orbs_monthly"]
+                "xp_bonus": str(plan["xp_bonus"]),
+                "orbs_received": str(plan["orbs_monthly"])
             }
         )
     
@@ -487,11 +485,10 @@ class WompiService:
         """
         from ..services.notification_service import notification_service
         
-        await notification_service.send_notification(
+        notification_service.send_custom(
             user_id=user_id,
             title="Pago No Procesado",
-            message="Tu pago no pudo ser procesado. Por favor intenta nuevamente.",
-            type="payment_failed",
+            body="Tu pago no pudo ser procesado. Por favor intenta nuevamente.",
             data={
                 "reason": transaction.get("failure_message", "Error desconocido"),
                 "transaction_id": transaction["id"]

@@ -33,6 +33,40 @@ from .predictive_analytics import PredictiveAnalytics
 from .youtube_video import YoutubeVideo
 from .youtube_links import YouTubeLinks
 from .yml_storage import UserYMLPlan
+from .mobile_offline import (
+    UserQuestionHistory,
+    UserTopicMastery,
+    PendingAnswerSync,
+    HeartTransaction,
+    UserDailyActivity,
+    StreakFreeze,
+    LeagueDivision,
+    LeagueWeek,
+    LeagueGroup,
+    UserLeague,
+    UserLeagueHistory,
+    DailyChallenge,
+    UserDailyChallenge,
+    UserDeviceToken,
+    NotificationHistory,
+)
+from .boss_raid import (
+    Boss,
+    BossRaidSession,
+    BossRaidAnswer,
+    BossRaidLeaderboard,
+)
+from .diagnostic_two_phase import (
+    TwoPhaseDignostic,
+    TwoPhaseDiagnosticAnswer,
+    UserEngagement,
+    QuestionAttempt,
+    TopicMastery,
+)
+from .revoked_token import RevokedToken
+from .refresh_token import RefreshToken
+from .node_progress import UserKingdomProgress, UserNodeProgress
+from .economy import GoldTransaction, XPTransaction
 
 __all__ = [
     "User",
@@ -79,15 +113,12 @@ __all__ = [
     "Achievement",
     "UserAchievement",
     "Certificate",
-    "StoreItem",
     "StoreTransaction",
     "UserPowerUp",
     "CurrencyEarning",
     "Guild",
     "GuildMember",
-    "GuildInvitation",
-    "EnhancedQuest",
-    "QuestProgress",
+    "QuestTemplate",
     "QuestReward",
     "DungeonGate",
     "DungeonRun",
@@ -108,5 +139,41 @@ __all__ = [
     "PredictiveAnalytics",
     "YoutubeVideo",
     "YouTubeLinks",
-    "UserYMLPlan"
-] 
+    "UserYMLPlan",
+    # Mobile Offline Models
+    "UserQuestionHistory",
+    "UserTopicMastery",
+    "PendingAnswerSync",
+    "HeartTransaction",
+    "UserDailyActivity",
+    "StreakFreeze",
+    "LeagueDivision",
+    "LeagueWeek",
+    "LeagueGroup",
+    "UserLeague",
+    "UserLeagueHistory",
+    "DailyChallenge",
+    "UserDailyChallenge",
+    "UserDeviceToken",
+    "NotificationHistory",
+    # Boss Raid Models
+    "Boss",
+    "BossRaidSession",
+    "BossRaidAnswer",
+    "BossRaidLeaderboard",
+    # Two-Phase Diagnostic Models
+    "TwoPhaseDignostic",
+    "TwoPhaseDiagnosticAnswer",
+    "UserEngagement",
+    "QuestionAttempt",
+    "TopicMastery",
+    "RevokedToken",
+    "RefreshToken",
+    # Node Progress Models (Conquest Mode)
+    "UserKingdomProgress",
+    "UserNodeProgress",
+    # Economy Transaction Models
+    "GoldTransaction",
+    "XPTransaction",
+]
+ 

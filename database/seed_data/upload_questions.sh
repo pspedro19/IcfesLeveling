@@ -7,10 +7,10 @@ echo "🚀 ICFES LEVELING - CARGA DE PREGUNTAS DESDE EXCEL"
 echo "=================================================="
 
 # Verificar si existe el archivo Excel
-EXCEL_FILE="database/seed_data/questions.xlsx"
+EXCEL_FILE="database/allquestions/questions.xlsx"
 if [ ! -f "$EXCEL_FILE" ]; then
     echo "❌ Error: Archivo no encontrado: $EXCEL_FILE"
-    echo "   Por favor, asegúrate de que el archivo questions.xlsx esté en database/seed_data/"
+    echo "   Por favor, asegúrate de que el archivo questions.xlsx esté en database/allquestions/"
     exit 1
 fi
 

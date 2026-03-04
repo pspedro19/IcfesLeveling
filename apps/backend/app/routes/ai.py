@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func # New import
 from typing import Optional, List, Dict, Any
 import redis
 import json
@@ -19,6 +20,7 @@ from ..models.question import Question
 from ..models.ai_explanation import AIExplanation
 from ..models.ai_tutoring_session import AITutoringSession, AILearningProgress
 from ..services.ai_explanation_engine import ai_explanation_engine
+from ..middleware.rate_limit import rate_limit
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 logger = logging.getLogger(__name__)
@@ -72,6 +74,7 @@ class ProgressiveLearningRequest(BaseModel):
     previous_attempts: Optional[int] = 0
 
 @router.post("/explain")
+@rate_limit(limit=60, window=60)
 async def get_ai_explanation(
     question_id: str,
     user_answer: str,
@@ -127,6 +130,7 @@ async def get_ai_explanation(
     return explanation_data
 
 @router.post("/study-plan")
+@rate_limit(limit=100, window=60)
 async def get_study_plan(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -243,6 +247,7 @@ async def get_study_plan(
     return plan
 
 @router.get("/hint/{question_id}")
+@rate_limit(limit=100, window=60)
 async def get_hint(
     question_id: str,
     current_user: User = Depends(get_current_user),
@@ -262,6 +267,7 @@ async def get_hint(
     }
 
 @router.post("/explain/comprehensive")
+@rate_limit(limit=60, window=60)
 async def get_comprehensive_explanation(
     request: ComprehensiveExplanationRequest,
     current_user: User = Depends(get_current_user),
@@ -319,6 +325,7 @@ async def get_comprehensive_explanation(
         raise HTTPException(status_code=500, detail="Error generando explicación")
 
 @router.post("/hint/progressive")
+@rate_limit(limit=100, window=60)
 async def get_progressive_hint(
     request: ProgressiveLearningRequest,
     current_user: User = Depends(get_current_user),
@@ -345,6 +352,7 @@ async def get_progressive_hint(
         raise HTTPException(status_code=500, detail="Error generando pista")
 
 @router.post("/tutoring/feedback")
+@rate_limit(limit=100, window=60)
 async def submit_tutoring_feedback(
     request: TutoringFeedbackRequest,
     current_user: User = Depends(get_current_user),
@@ -379,13 +387,14 @@ async def submit_tutoring_feedback(
     }
 
 @router.get("/learning/progress/{user_id}")
+@rate_limit(limit=100, window=60)
 async def get_learning_progress(
     user_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get detailed learning progress analytics"""
-    # Only allow users to see their own progress (or admin)
+    # Admin check - users can only view their own progress unless admin
     if str(current_user.id) != user_id and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Acceso denegado")
     
@@ -435,11 +444,13 @@ async def get_learning_progress(
     }
 
 @router.get("/analytics/dashboard")
+@rate_limit(limit=100, window=60)
 async def get_ai_analytics_dashboard(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get AI tutoring analytics dashboard for administrators"""
+    # Admin check - only administrators can access
     if not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Acceso denegado - Solo administradores")
     

@@ -923,23 +923,23 @@ if __name__ == "__main__":
             top_k=5
         )
         
-        # Print results
-        print("Similarity Results:")
-        print("=" * 50)
-        
+        # Log results
+        logger.info("Similarity Results:")
+        logger.info("=" * 50)
+
         for i, result in enumerate(results, 1):
-            print(f"{i}. Content ID: {result.content_id}")
-            print(f"   Similarity Score: {result.similarity_score:.3f}")
-            print(f"   Primary Score: {result.primary_score:.3f}")
-            print(f"   Confidence: {result.confidence:.3f}")
-            print(f"   Explanation: {result.explanation}")
-            print(f"   Processing Time: {result.processing_time_ms:.2f}ms")
-            print("-" * 30)
-        
-        # Print engine stats
+            logger.info(f"{i}. Content ID: {result.content_id}")
+            logger.debug(f"   Similarity Score: {result.similarity_score:.3f}")
+            logger.debug(f"   Primary Score: {result.primary_score:.3f}")
+            logger.debug(f"   Confidence: {result.confidence:.3f}")
+            logger.debug(f"   Explanation: {result.explanation}")
+            logger.debug(f"   Processing Time: {result.processing_time_ms:.2f}ms")
+            logger.debug("-" * 30)
+
+        # Log engine stats
         stats = engine.get_engine_stats()
-        print("\nEngine Statistics:")
-        print(json.dumps(stats, indent=2, default=str))
+        logger.info("Engine Statistics:")
+        logger.debug(json.dumps(stats, indent=2, default=str))
     
     # Run the test
     asyncio.run(test_similarity_engine())

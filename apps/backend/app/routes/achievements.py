@@ -11,10 +11,12 @@ from ..schemas.achievement import (
     AchievementResponse, UserAchievementResponse, UserAchievementSummary,
     AchievementShowcase, AchievementProgressUpdate, AchievementUnlockRequest
 )
+from ..middleware.rate_limit import rate_limit
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1/achievements", tags=["achievements"])
 
-@router.get("/achievements", response_model=List[AchievementResponse])
+@router.get("/", response_model=List[AchievementResponse])
+@rate_limit(limit=100, window=60)
 async def get_all_achievements(
     include_secret: bool = Query(False, description="Include secret achievements"),
     current_user: User = Depends(get_current_user),
@@ -28,7 +30,8 @@ async def get_all_achievements(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving achievements: {str(e)}")
 
-@router.get("/achievements/user", response_model=List[UserAchievementResponse])
+@router.get("/user", response_model=List[UserAchievementResponse])
+@rate_limit(limit=100, window=60)
 async def get_user_achievements(
     include_secret: bool = Query(True, description="Include secret achievements"),
     current_user: User = Depends(get_current_user),
@@ -42,7 +45,8 @@ async def get_user_achievements(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving user achievements: {str(e)}")
 
-@router.get("/achievements/summary", response_model=UserAchievementSummary)
+@router.get("/summary", response_model=UserAchievementSummary)
+@rate_limit(limit=100, window=60)
 async def get_achievement_summary(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -55,7 +59,8 @@ async def get_achievement_summary(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving achievement summary: {str(e)}")
 
-@router.get("/achievements/showcase/{user_id}", response_model=AchievementShowcase)
+@router.get("/showcase/{user_id}", response_model=AchievementShowcase)
+@rate_limit(limit=100, window=60)
 async def get_achievement_showcase(
     user_id: str,
     db: Session = Depends(get_db)
@@ -70,7 +75,8 @@ async def get_achievement_showcase(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving achievement showcase: {str(e)}")
 
-@router.post("/achievements/unlock")
+@router.post("/unlock")
+@rate_limit(limit=20, window=60) # Lower limit for POST requests
 async def unlock_achievement(
     request: AchievementUnlockRequest,
     current_user: User = Depends(get_current_user),
@@ -92,7 +98,8 @@ async def unlock_achievement(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error updating achievement: {str(e)}")
 
-@router.post("/achievements/check-unit-completion")
+@router.post("/check-unit-completion")
+@rate_limit(limit=50, window=60)
 async def check_unit_completion_achievements(
     unit_number: int,
     subject_id: str,
@@ -115,7 +122,8 @@ async def check_unit_completion_achievements(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error checking unit completion achievements: {str(e)}")
 
-@router.post("/achievements/check-score-improvement")
+@router.post("/check-score-improvement")
+@rate_limit(limit=50, window=60)
 async def check_score_improvement_achievements(
     new_score: float,
     previous_score: Optional[float] = None,
@@ -138,7 +146,8 @@ async def check_score_improvement_achievements(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error checking score improvement achievements: {str(e)}")
 
-@router.post("/achievements/check-study-streak")
+@router.post("/check-study-streak")
+@rate_limit(limit=50, window=60)
 async def check_study_streak_achievements(
     streak_days: int,
     current_user: User = Depends(get_current_user),
@@ -159,7 +168,8 @@ async def check_study_streak_achievements(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error checking study streak achievements: {str(e)}")
 
-@router.post("/achievements/check-secret")
+@router.post("/check-secret")
+@rate_limit(limit=50, window=60)
 async def check_secret_achievements(
     action_type: str,
     action_data: dict,
@@ -182,7 +192,8 @@ async def check_secret_achievements(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error checking secret achievements: {str(e)}")
 
-@router.get("/achievements/progress/{achievement_id}")
+@router.get("/progress/{achievement_id}")
+@rate_limit(limit=100, window=60)
 async def get_achievement_progress(
     achievement_id: str,
     current_user: User = Depends(get_current_user),
@@ -208,7 +219,8 @@ async def get_achievement_progress(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving achievement progress: {str(e)}")
 
-@router.get("/achievements/categories")
+@router.get("/categories")
+@rate_limit(limit=100, window=60)
 async def get_achievement_categories(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -240,7 +252,8 @@ async def get_achievement_categories(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving achievement categories: {str(e)}")
 
-@router.get("/achievements/recent")
+@router.get("/recent")
+@rate_limit(limit=100, window=60)
 async def get_recent_achievements(
     limit: int = Query(5, description="Number of recent achievements to return"),
     current_user: User = Depends(get_current_user),
@@ -262,4 +275,5 @@ async def get_recent_achievements(
             "count": len(recent_achievements)
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving recent achievements: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"Error retrieving recent achievements: {str(e)}")
+ 

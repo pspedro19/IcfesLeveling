@@ -235,7 +235,7 @@ class AlembicMigrationManager:
                     (revision,)
                 )
                 return cursor.fetchone() is not None
-        except:
+        except Exception:
             return False
 
     def upgrade_database(self, revision: str = "head") -> MigrationResult:

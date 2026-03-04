@@ -78,6 +78,20 @@ async def generate_study_plan(
             lambda: study_plan_service._invalidate_user_cache(str(current_user.id))
         )
         
+        from ..schemas.study_plan import PersonalizedRecommendations, ProgressDetails
+
+        reco_data = personalized_plan.get("personalized_recommendations", {})
+        # Ensure reco_data has the fields expected by PersonalizedRecommendations, or this will fail
+        # For now, assuming it's a valid dict or empty.
+        reco_model = PersonalizedRecommendations(**reco_data) if reco_data else None
+
+        progress_data = {
+            "overall_progress": 0.0,
+            "completed_units": 0,
+            "unit_details": []
+        }
+        progress_model = ProgressDetails(**progress_data)
+        
         return StudyPlanDetail(
             id=personalized_plan.get("id", "generated"),
             plan_name=personalized_plan["title"],
@@ -92,12 +106,8 @@ async def generate_study_plan(
             difficulty_curve=personalized_plan["difficulty_curve"],
             icfes_weight=personalized_plan["icfes_weight"],
             exam_sections=personalized_plan["exam_sections"],
-            personalized_recommendations=personalized_plan.get("personalized_recommendations", {}),
-            progress_details={
-                "overall_progress": 0.0,
-                "completed_units": 0,
-                "unit_details": []
-            },
+            personalized_recommendations=reco_model,
+            progress_details=progress_model,
             last_updated=datetime.now().isoformat()
         )
         
@@ -163,41 +173,61 @@ async def generate_ai_comprehensive_study_plan(
             # Continue without saving if there's an error
 
         # Convert to StudyPlanDetail format
-        from ..schemas.study_plan import StudyUnit, StudyTopic, UnitRecommendations
+        from ..schemas.study_plan import StudyUnit, StudyTopic, UnitRecommendations, PersonalizedRecommendations, ProgressDetails
         
         converted_units = []
-        for unit in comprehensive_plan["units"]:
-            # Convert topics to StudyTopic schema
-            study_topics = []
+        for idx, unit in enumerate(comprehensive_plan["units"]):
+            # Convert topics to StudyTopic objects
+            topics = []
             for topic in unit.get("topics", []):
-                study_topics.append(StudyTopic(
-                    name=topic.get("name", "Tema"),
-                    difficulty=topic.get("difficulty", 1),
-                    questions=topic.get("questions", 5),
+                topics.append(StudyTopic(
+                    name=topic.get("name", "Topic"),
+                    difficulty=topic.get("difficulty", 3),
+                    questions=topic.get("questions", 10),
                     tags=topic.get("tags", [])
                 ))
-            
-            # Create UnitRecommendations from AI recommendations
+
+            # Convert recommendations to UnitRecommendations object
+            reco = unit.get("recommendations", {})
             unit_recommendations = UnitRecommendations(
-                priority=unit.get("ai_recommendations", {}).get("priority", "medium"),
-                weak_areas=unit.get("ai_recommendations", {}).get("potential_challenges", []),
-                focus_topics=unit.get("prioritized_topics", [])[:3],
-                study_time=f"{unit.get('personalized_hours', 2)} horas"
+                priority=reco.get("priority", "medium"),
+                weak_areas=reco.get("weak_areas", []),
+                focus_topics=reco.get("focus_topics", []),
+                study_time=reco.get("study_time", "2-3 horas")
             )
-            
-            # Create StudyUnit
-            study_unit = StudyUnit(
-                unit_number=unit.get("unit_number", 1),
-                name=unit.get("name", "Unidad"),
-                description=unit.get("description", "Descripción de la unidad"),
-                topics=study_topics,
+
+            # Create StudyUnit object
+            converted_units.append(StudyUnit(
+                unit_number=unit.get("unit_number", idx + 1),
+                name=unit.get("name", f"Unidad {idx + 1}"),
+                description=unit.get("description", ""),
+                topics=topics,
                 recommendations=unit_recommendations,
-                unlocked=unit.get("unlocked", True),
-                progress=0.0,
-                ai_recommended=unit.get("ai_recommended", True)
-            )
-            converted_units.append(study_unit)
-        
+                unlocked=unit.get("unlocked", idx == 0),
+                progress=unit.get("progress", 0.0),
+                ai_recommended=unit.get("ai_recommended", False)
+            ))
+
+        # Create Pydantic models from dictionaries
+        reco_data = comprehensive_plan.get("personalized_recommendations", {})
+        # Map only the fields that exist in the Pydantic model to avoid errors
+        reco_model_data = {
+            "overall_accuracy": reco_data.get("overall_accuracy", 0.0),
+            "weak_topics": reco_data.get("weak_topics", []),
+            "strong_topics": reco_data.get("strong_topics", []),
+            "suggested_focus": reco_data.get("suggested_focus", []),
+            "study_schedule": reco_data.get("study_schedule", {}),
+            "estimated_improvement": reco_data.get("estimated_improvement", {})
+        }
+        reco_model = PersonalizedRecommendations(**reco_model_data)
+
+        progress_data = {
+            "overall_progress": 0.0,
+            "completed_units": 0,
+            "unit_details": []
+        }
+        progress_model = ProgressDetails(**progress_data)
+
         return StudyPlanDetail(
             id=comprehensive_plan.get("id", "generated"),
             plan_name=comprehensive_plan["title"],
@@ -212,22 +242,8 @@ async def generate_ai_comprehensive_study_plan(
             difficulty_curve=comprehensive_plan.get("difficulty_curve", "adaptive"),
             icfes_weight=comprehensive_plan.get("icfes_weight", 0.25),
             exam_sections=comprehensive_plan.get("exam_sections", []),
-            personalized_recommendations={
-                **comprehensive_plan.get("personalized_recommendations", {}),
-                "ai_powered": True,
-                "learning_style": comprehensive_plan.get("ai_powered_features", {})
-                    .get("learning_style_detection", {}).get("primary_learning_style", "visual"),
-                "personalization_confidence": comprehensive_plan.get("personalization_confidence", 0.8),
-                "expected_outcomes": comprehensive_plan.get("expected_outcomes", {}),
-                "ai_features_enabled": list(comprehensive_plan.get("system_capabilities", {}).keys())
-            },
-            progress_details={
-                "overall_progress": 0.0,
-                "completed_units": 0,
-                "unit_details": [],
-                "ai_insights": comprehensive_plan.get("ai_powered_features", {}),
-                "adaptive_system_active": True
-            },
+            personalized_recommendations=reco_model,
+            progress_details=progress_model,
             last_updated=datetime.now().isoformat()
         )
         
@@ -290,7 +306,7 @@ async def generate_study_plan_adaptive(
             # Continue without saving if there's an error
 
         # Convert catalog units to StudyUnit schema
-        from ..schemas.study_plan import StudyUnit, StudyTopic, UnitRecommendations
+        from ..schemas.study_plan import StudyUnit, StudyTopic, UnitRecommendations, PersonalizedRecommendations, ProgressDetails
         
         converted_units = []
         for unit in personalized_plan["units"]:
@@ -324,6 +340,16 @@ async def generate_study_plan_adaptive(
                 ai_recommended=unit.get("ai_recommended", False)
             )
             converted_units.append(study_unit)
+
+        reco_data = personalized_plan.get("personalized_recommendations", {})
+        reco_model = PersonalizedRecommendations(**reco_data) if reco_data else None
+
+        progress_data = {
+            "overall_progress": 0.0,
+            "completed_units": 0,
+            "unit_details": []
+        }
+        progress_model = ProgressDetails(**progress_data)
         
         return StudyPlanDetail(
             id=personalized_plan.get("id", "generated"),
@@ -339,12 +365,8 @@ async def generate_study_plan_adaptive(
             difficulty_curve=personalized_plan["difficulty_curve"],
             icfes_weight=personalized_plan["icfes_weight"],
             exam_sections=personalized_plan["exam_sections"],
-            personalized_recommendations=personalized_plan.get("personalized_recommendations", {}),
-            progress_details={
-                "overall_progress": 0.0,
-                "completed_units": 0,
-                "unit_details": []
-            },
+            personalized_recommendations=reco_model,
+            progress_details=progress_model,
             last_updated=datetime.now().isoformat()
         )
     except Exception as e:
@@ -362,16 +384,60 @@ async def get_user_study_plans(
     try:
         study_plan_service = StudyPlanService(db)
         plans = study_plan_service.get_user_study_plans(str(current_user.id))
-        
+
         return StudyPlanList(
             plans=plans,
             total_plans=len(plans),
             active_plans=len([p for p in plans if p.get("progress_percentage", 0) < 100])
         )
-        
+
     except Exception as e:
         logger.error(f"Error getting user study plans: {e}")
         raise HTTPException(status_code=500, detail="Error obteniendo planes de estudio")
+
+
+@router.get("/current")
+async def get_current_study_plan(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Obtiene el plan de estudio activo actual del usuario.
+    Si no tiene plan activo, devuelve null con un mensaje informativo.
+    """
+    try:
+        study_plan_service = StudyPlanService(db)
+        plans = study_plan_service.get_user_study_plans(str(current_user.id))
+
+        # Find the most recent active plan (progress < 100%)
+        active_plans = [p for p in plans if p.get("progress_percentage", 0) < 100]
+
+        if not active_plans:
+            # No active plan - return informative response instead of error
+            return {
+                "plan": None,
+                "message": "No tienes un plan de estudio activo. Realiza el diagnostico para obtener tu plan personalizado.",
+                "has_plan": False
+            }
+
+        # Return the most recently updated active plan
+        current_plan = max(active_plans, key=lambda p: p.get("last_updated", ""))
+
+        return {
+            "plan": current_plan,
+            "message": None,
+            "has_plan": True
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting current study plan: {e}")
+        # Return graceful fallback instead of 500 error
+        return {
+            "plan": None,
+            "message": "Error obteniendo el plan de estudio",
+            "has_plan": False
+        }
+
 
 @router.get("/{plan_id}", response_model=StudyPlanDetail)
 async def get_study_plan_detail(

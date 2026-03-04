@@ -18,13 +18,13 @@ logger = logging.getLogger(__name__)
 def wait_for_postgres(max_retries=30):
     """Wait for PostgreSQL to be ready"""
     import psycopg2
-    
+
     db_config = {
         'host': os.getenv('DB_HOST', 'postgres'),
         'port': os.getenv('DB_PORT', '5432'),
         'database': os.getenv('DB_NAME', 'gameplay_db'),
         'user': os.getenv('DB_USER', 'gameplay'),
-        'password': os.getenv('DB_PASSWORD', 'gameplay123')
+        'password': os.getenv('DB_PASSWORD', '')
     }
     
     for i in range(max_retries):

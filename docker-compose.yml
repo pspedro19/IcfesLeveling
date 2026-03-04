@@ -4,18 +4,18 @@ services:
     image: postgres:16
     container_name: icfes_postgres
     environment:
-      POSTGRES_DB: gameplay_db
-      POSTGRES_USER: gameplay
-      POSTGRES_PASSWORD: gameplay123
+      POSTGRES_DB: ${DB_NAME:-gameplay_db}
+      POSTGRES_USER: ${DB_USER:-gameplay}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
     ports:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init:/docker-entrypoint-initdb.d
-      - ./database/allquestions:/data  # Mount Excel files directory
+      - ./database/allquestions:/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gameplay -d gameplay_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-gameplay} -d ${DB_NAME:-gameplay_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -24,13 +24,13 @@ services:
     networks:
       - icfes_network
 
-  # pgAdmin
+  # pgAdmin (development only)
   pgadmin:
     image: dpage/pgadmin4
     container_name: icfes_pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@icfes.com
-      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@icfes.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin123}
       PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:
       - "5050:80"
@@ -39,6 +39,8 @@ services:
     restart: unless-stopped
     networks:
       - icfes_network
+    profiles:
+      - dev
 
   # Redis Cache
   redis:
@@ -64,9 +66,9 @@ services:
     image: clickhouse/clickhouse-server:latest
     container_name: icfes_clickhouse
     environment:
-      CLICKHOUSE_DB: gameplay_analytics
-      CLICKHOUSE_USER: default
-      CLICKHOUSE_PASSWORD: clickhouse123
+      CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE:-gameplay_analytics}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD must be set}
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
     ports:
       - "8123:8123"  # HTTP
@@ -91,33 +93,38 @@ services:
       dockerfile: Dockerfile
     container_name: icfes_backend
     ports:
-      - "4000:4000"  # ✅ ALINEADO: Puerto externo e interno igual
+      - "4000:4000"
     environment:
-      - DATABASE_URL=postgresql://gameplay:gameplay123@postgres:5432/gameplay_db
+      - DATABASE_URL=postgresql://${DB_USER:-gameplay}:${DB_PASSWORD:?DB_PASSWORD must be set}@postgres:5432/${DB_NAME:-gameplay_db}
       - REDIS_URL=redis://redis:6379
-      - CLICKHOUSE_URL=clickhouse://default:clickhouse123@clickhouse:9000/gameplay_analytics
-      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - CLICKHOUSE_URL=clickhouse://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD must be set}@clickhouse:9000/${CLICKHOUSE_DATABASE:-gameplay_analytics}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set}
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set}
       - ALGORITHM=HS256
       - ACCESS_TOKEN_EXPIRE_MINUTES=30
-      - ENVIRONMENT=development
-      - DEBUG=true
-      - ALLOWED_ORIGINS=http://localhost:4001,http://127.0.0.1:4001,http://localhost:4000,http://127.0.0.1:4000,http://localhost:4002,http://127.0.0.1:4002,http://143.110.195.148:4001,http://143.110.195.148:4000,http://143.110.195.148:4002,http://157.230.150.80:4001,http://157.230.150.80:4000,http://157.230.150.80:4002,http://157.230.150.80:3002,http://157.230.150.80:3003
-      - AUTO_IMPORT_QUESTIONS=true
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - DEBUG=${DEBUG:-true}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:4001,http://127.0.0.1:4001,http://localhost:4000,http://127.0.0.1:4000,http://localhost:4002,http://127.0.0.1:4002}
+      - AUTO_IMPORT_QUESTIONS=${AUTO_IMPORT_QUESTIONS:-true}
       - QUESTIONS_EXCEL_PATH=/seed_data/questions.xlsx
-      - IMPORT_CLEAR_EXISTING=true
-      - ICFES_CATALOG_CSV_PATH=/seed_data/topics_catalog.csv
+      - IMPORT_CLEAR_EXISTING=${IMPORT_CLEAR_EXISTING:-false}
+      - ICFES_CATALOG_CSV_PATH=/seed_data/catalogs/icfes_topics.csv
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_NAME=gameplay_db
-      - DB_USER=gameplay
-      - DB_PASSWORD=gameplay123
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-your-anthropic-api-key-here}
+      - DB_NAME=${DB_NAME:-gameplay_db}
+      - DB_USER=${DB_USER:-gameplay}
+      - DB_PASSWORD=${DB_PASSWORD:?DB_PASSWORD must be set}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - WOMPI_PUBLIC_KEY=${WOMPI_PUBLIC_KEY:-}
+      - WOMPI_PRIVATE_KEY=${WOMPI_PRIVATE_KEY:-}
+      - WOMPI_EVENT_SECRET=${WOMPI_EVENT_SECRET:-}
     volumes:
       - ./apps/backend:/app
       - ./logs:/app/logs
       - ./database/seed_data:/app/seed_data
       - ./database/seed_data/load_all_data.py:/app/seed_data/load_all_data.py:ro
-      - ./database/allquestions:/app/allquestions
+      - ./database/allquestions:/app/database/allquestions
     depends_on:
       postgres:
         condition: service_healthy
@@ -126,7 +133,7 @@ services:
       clickhouse:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]  # ✅ ALINEADO: Puerto 4000
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -134,7 +141,6 @@ services:
     restart: unless-stopped
     networks:
       - icfes_network
-    command: python -m uvicorn app.main:app --host 0.0.0.0 --port 4000 --reload  # ✅ ALINEADO: Puerto 4000
 
   # WebSocket Service
   websocket:
@@ -143,13 +149,13 @@ services:
       dockerfile: Dockerfile
     container_name: icfes_websocket
     ports:
-      - "4002:4002"  # ✅ ALINEADO: Puerto externo e interno igual
+      - "4002:4002"
     environment:
       - REDIS_URL=redis://redis:6379
-      - DATABASE_URL=postgresql://gameplay:gameplay123@postgres:5432/gameplay_db
-      - ENVIRONMENT=development
-      - DEBUG=true
-      - PORT=4002  # ✅ ALINEADO: Variable de entorno para puerto
+      - DATABASE_URL=postgresql://${DB_USER:-gameplay}:${DB_PASSWORD:?DB_PASSWORD must be set}@postgres:5432/${DB_NAME:-gameplay_db}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - DEBUG=${DEBUG:-true}
+      - PORT=4002
     volumes:
       - ./apps/websocket:/app
     depends_on:
@@ -158,7 +164,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]  # Health check server on port 5002
+      test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.connect(('localhost', 4002)); s.close()\""]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -166,7 +172,7 @@ services:
     restart: unless-stopped
     networks:
       - icfes_network
-    command: python main.py  # ✅ ALINEADO: main.py ya usa puerto 4002
+    command: python main.py
 
   # AI Service
   ai-service:
@@ -178,10 +184,10 @@ services:
       - "8002:8002"
     environment:
       - REDIS_URL=redis://redis:6379
-      - DATABASE_URL=postgresql://gameplay:gameplay123@postgres:5432/gameplay_db
+      - DATABASE_URL=postgresql://${DB_USER:-gameplay}:${DB_PASSWORD:?DB_PASSWORD must be set}@postgres:5432/${DB_NAME:-gameplay_db}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - ENVIRONMENT=development
-      - DEBUG=true
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - DEBUG=${DEBUG:-true}
     volumes:
       - ./apps/ai-service:/app
     depends_on:
@@ -200,53 +206,6 @@ services:
       - icfes_network
     command: python main.py
 
-  # Frontend (Next.js) - DESARROLLO SIMPLE Y EFECTIVO
-  frontend:
-    build:
-      context: ./apps/frontend
-      dockerfile: Dockerfile.simple
-    container_name: icfes_frontend
-    ports:
-      - "4001:4001"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://${HOST_IP:-143.110.195.148}:4000
-      - NEXT_PUBLIC_WS_URL=ws://${HOST_IP:-143.110.195.148}:4002
-      - NODE_ENV=development
-      - PORT=4001
-      - HOSTNAME=0.0.0.0
-      - NODE_OPTIONS=--max-old-space-size=2048
-      - NEXT_TELEMETRY_DISABLED=1
-      - NEXT_SHARP_PATH=/app/node_modules/sharp
-    volumes:
-      - ./apps/frontend:/app
-      - frontend_cache:/app/.next/cache
-      - /app/node_modules
-      - ./database/allquestions:/app/images:ro
-    depends_on:
-      - backend
-      - websocket
-      - ai-service
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:4001/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 120s
-    restart: unless-stopped
-    networks:
-      - icfes_network
-    deploy:
-      resources:
-        limits:
-          memory: 3G
-          cpus: '1.5'
-        reservations:
-          memory: 1.5G
-          cpus: '0.75'
-    mem_limit: 3g
-    mem_reservation: 1.5g
-    shm_size: 512mb
-
 volumes:
   postgres_data:
     driver: local
@@ -254,9 +213,7 @@ volumes:
     driver: local
   clickhouse_data:
     driver: local
-  frontend_cache:
-    driver: local
 
 networks:
   icfes_network:
-    driver: bridge 
+    driver: bridge

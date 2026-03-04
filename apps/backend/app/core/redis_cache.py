@@ -4,6 +4,9 @@ import pickle
 from typing import Any, Optional, Union
 from datetime import timedelta
 import os
+import logging
+
+logger = logging.getLogger("icfes.cache")
 
 class RedisCache:
     def __init__(self):
@@ -24,7 +27,7 @@ class RedisCache:
                 ttl = self.default_ttl
             return bool(self.redis_client.setex(key, ttl, serialized))
         except Exception as e:
-            print(f"Cache set error: {e}")
+            logger.error(f"Cache set error: {e}")
             return False
 
     def get(self, key: str) -> Any:
@@ -35,7 +38,7 @@ class RedisCache:
                 return None
             return pickle.loads(data)
         except Exception as e:
-            print(f"Cache get error: {e}")
+            logger.error(f"Cache get error: {e}")
             return None
 
     def delete(self, key: str) -> bool:
@@ -43,7 +46,7 @@ class RedisCache:
         try:
             return bool(self.redis_client.delete(key))
         except Exception as e:
-            print(f"Cache delete error: {e}")
+            logger.error(f"Cache delete error: {e}")
             return False
 
     def exists(self, key: str) -> bool:
@@ -51,7 +54,7 @@ class RedisCache:
         try:
             return bool(self.redis_client.exists(key))
         except Exception as e:
-            print(f"Cache exists error: {e}")
+            logger.error(f"Cache exists error: {e}")
             return False
 
     def clear_pattern(self, pattern: str) -> int:
@@ -62,7 +65,7 @@ class RedisCache:
                 return self.redis_client.delete(*keys)
             return 0
         except Exception as e:
-            print(f"Cache clear pattern error: {e}")
+            logger.error(f"Cache clear pattern error: {e}")
             return 0
 
     # Specialized cache methods
@@ -104,6 +107,16 @@ class RedisCache:
 
 # Global cache instance
 cache = RedisCache()
+
+
+def get_redis():
+    """Get the raw Redis client for direct operations."""
+    try:
+        client = cache.redis_client
+        client.ping()
+        return client
+    except Exception:
+        return None
 
 # Decorator for caching function results
 def cached(ttl: int = 3600, key_prefix: str = ""):

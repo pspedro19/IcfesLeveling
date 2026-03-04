@@ -34,11 +34,11 @@ DB_CONFIG = {
     'password': 'gameplay123'
 }
 
-# Rutas de archivos de datos
+# Rutas de archivos de datos (Updated to new consolidated structure)
 DATA_PATHS = {
-    'excel_questions': '/data/ICFES_BASE_DATOS_COMPLETA_RUTAS_ACTUALIZADAS.xlsx',
-    'csv_youtube': '/docker-entrypoint-initdb.d/youtube_catalog_extendido_enriquecido.csv',
-    'csv_topics': '/docker-entrypoint-initdb.d/topics_catalog.csv'
+    'excel_questions': '/seed_data/allquestions/questions.xlsx',
+    'csv_youtube': '/seed_data/catalogs/youtube_catalog_complete.csv',
+    'csv_topics': '/seed_data/catalogs/icfes_topics.csv'
 }
 
 def get_db_connection():

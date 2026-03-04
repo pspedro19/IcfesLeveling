@@ -1,7 +1,11 @@
 """Script to populate subjects in the database"""
 import sys
 import uuid
+import logging
 from pathlib import Path
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent.parent))
@@ -64,19 +68,19 @@ def populate_subjects():
         
         # Commit the transaction
         db.commit()
-        print(f"✅ Successfully populated {len(subjects_data)} subjects")
-        
+        logger.info(f"Successfully populated {len(subjects_data)} subjects")
+
         # Verify subjects were created
         count = db.query(Subject).count()
-        print(f"📊 Total subjects in database: {count}")
-        
+        logger.info(f"Total subjects in database: {count}")
+
         # List all subjects
         all_subjects = db.query(Subject).all()
         for subject in all_subjects:
-            print(f"  - {subject.name}: {subject.description}")
-        
+            logger.info(f"  - {subject.name}: {subject.description}")
+
     except Exception as e:
-        print(f"❌ Error populating subjects: {e}")
+        logger.error(f"Error populating subjects: {e}")
         db.rollback()
     finally:
         db.close()

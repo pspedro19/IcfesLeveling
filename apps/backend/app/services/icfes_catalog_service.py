@@ -24,7 +24,7 @@ class ICFESCatalogService:
     def _load_catalog(self) -> Dict[str, List[Dict[str, Any]]]:
         """Cargar catálogo desde CSV"""
         try:
-            catalog_path = os.getenv("ICFES_CATALOG_CSV_PATH", "01_icfes_topics_catalog.csv")
+            catalog_path = os.getenv("ICFES_CATALOG_CSV_PATH", "database/catalogs/icfes_topics.csv")
             if not os.path.exists(catalog_path):
                 logger.warning(f"Catálogo ICFES no encontrado en: {catalog_path}")
                 return self._get_default_catalog()
@@ -98,7 +98,7 @@ class ICFESCatalogService:
                 return 2  # Intermedio
             else:
                 return 3  # Avanzado
-        except:
+        except ValueError:
             return 2  # Por defecto intermedio
     
     def _calculate_icfes_weight(self, code: str) -> float:
@@ -111,7 +111,7 @@ class ICFESCatalogService:
                 return 0.30  # Temas intermedios
             else:
                 return 0.25  # Temas avanzados
-        except:
+        except ValueError:
             return 0.30
     
     def _calculate_estimated_time(self, code: str) -> int:
@@ -124,7 +124,7 @@ class ICFESCatalogService:
                 return 35  # Temas intermedios
             else:
                 return 45  # Temas avanzados
-        except:
+        except ValueError:
             return 30
     
     def get_all_areas(self) -> List[Dict[str, Any]]:

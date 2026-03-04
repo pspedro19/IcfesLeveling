@@ -10,6 +10,7 @@ from ..models.topic import Topic
 from ..models.question import Question
 from ..models.study_plan import StudyPlan, PlanProgress
 from ..models.user import User
+from ..models.mobile_offline import UserLeague, LeagueGroup, LeagueWeek
 from ..schemas.quiz import (
     QuizCreate,
     QuizAnswerCreate,
@@ -94,7 +95,7 @@ class QuizService:
             else:
                 # Fallback: temas generales basados en el número de unidad
                 return [f"tema_{unit_number}", f"concepto_{unit_number}"]
-        except:
+        except Exception:
             # Fallback si hay error en el parsing
             return [f"tema_{unit_number}"]
     
@@ -260,10 +261,33 @@ class QuizService:
         # Generar retroalimentación IA
         ai_feedback = self._generate_quiz_feedback(quiz, answers)
         quiz.ai_feedback = ai_feedback
-        
+
         # Actualizar progreso ponderado
         self._update_weighted_progress(quiz)
-        
+
+        # ====== APLICAR XP AL USUARIO ======
+        user = self.db.query(User).filter(User.id == quiz.user_id).first()
+        if user and quiz.status == "completed":
+            # Calcular XP basado en score (más XP por mejor rendimiento)
+            base_xp = 50
+            performance_multiplier = score_percentage / 100
+            xp_earned = int(base_xp * performance_multiplier * (1 + (correct_answers * 0.1)))
+
+            if xp_earned > 0:
+                user.experience = (user.experience or 0) + xp_earned
+
+                # Actualizar XP de liga semanal
+                user_league = self.db.query(UserLeague).join(LeagueGroup).join(LeagueWeek).filter(
+                    UserLeague.user_id == quiz.user_id,
+                    LeagueWeek.is_active == True
+                ).first()
+                if user_league:
+                    user_league.weekly_xp += xp_earned
+
+            # Aplicar orbs si aprobó
+            if score_percentage >= quiz.passing_score:
+                user.orbs = (user.orbs or 0) + 10
+
         self.db.commit()
         
         return QuizFeedback(

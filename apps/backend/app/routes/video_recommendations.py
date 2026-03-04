@@ -7,8 +7,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..core.database import get_db
+from ..core.security import get_current_user
+from ..models.user import User
 from ..services.video_recommendation_service import VideoRecommendationService
-# from ..auth.auth_bearer import JWTBearer  # Comentado temporalmente
 import logging
 from sqlalchemy import text
 
@@ -21,8 +22,8 @@ async def get_video_recommendations(
     difficulty_level: Optional[int] = Query(None, ge=1, le=5, description="Nivel de dificultad (1-5)"),
     content_type: Optional[str] = Query(None, description="Tipo de contenido"),
     limit: int = Query(10, ge=1, le=50, description="Número máximo de videos"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
-    # current_user: dict = Depends(JWTBearer())  # Comentado temporalmente
 ):
     """
     Obtener recomendaciones de videos basadas en criterios específicos
@@ -35,7 +36,7 @@ async def get_video_recommendations(
         
         service = VideoRecommendationService(db)
         videos = service.get_video_recommendations(
-            user_id="test_user",  # Temporal
+            user_id=str(current_user.id),
             topic_codes=topic_list,
             difficulty_level=difficulty_level,
             content_type=content_type,
@@ -63,33 +64,44 @@ async def get_video_recommendations(
 @router.get("/personalized")
 async def get_personalized_video_recommendations(
     limit: int = Query(15, ge=1, le=50, description="Número máximo de videos por categoría"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
-    # current_user: dict = Depends(JWTBearer())  # Comentado temporalmente
 ):
     """
     Obtener recomendaciones personalizadas basadas en el perfil del usuario
     """
     try:
-        # TODO: Obtener resultados diagnósticos del usuario
-        # Por ahora, usamos datos de ejemplo
-        diagnostic_results = {
-            "weaknesses": ["MAT001", "LC001", "CN001"],
-            "strengths": ["MAT004", "LC004"],
-            "score_percentage": 65
-        }
-        
+        # Fetch real diagnostic results from DB
+        from ..models.diagnostic_test import DiagnosticTest, DiagnosticTestAnswer
+        from ..models.question import Question
+
+        latest_test = db.query(DiagnosticTest).filter(
+            DiagnosticTest.user_id == current_user.id
+        ).order_by(DiagnosticTest.created_at.desc()).first()
+
+        diagnostic_results = {"weaknesses": [], "strengths": [], "score_percentage": 50}
+
+        if latest_test:
+            answers = db.query(DiagnosticTestAnswer).filter(
+                DiagnosticTestAnswer.diagnostic_test_id == latest_test.id
+            ).all()
+            total = len(answers)
+            correct = sum(1 for a in answers if a.is_correct)
+            diagnostic_results["score_percentage"] = (correct / total * 100) if total > 0 else 50
+
+        user_id = str(current_user.id)
         service = VideoRecommendationService(db)
         recommendations = service.get_personalized_video_recommendations(
-            user_id="test_user",  # Temporal
+            user_id=user_id,
             diagnostic_results=diagnostic_results,
             limit=limit
         )
-        
+
         return {
             "success": True,
             "data": {
                 "recommendations": recommendations,
-                "user_id": "test_user",  # Temporal
+                "user_id": user_id,
                 "total_videos": sum(len(videos) for videos in recommendations.values())
             }
         }
@@ -103,8 +115,8 @@ async def get_video_by_topic(
     topic_code: str,
     difficulty_level: Optional[int] = Query(None, ge=1, le=5, description="Nivel de dificultad"),
     content_type: Optional[str] = Query(None, description="Tipo de contenido"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
-    # current_user: dict = Depends(JWTBearer())  # Comentado temporalmente
 ):
     """
     Obtener un video específico para un tema
@@ -137,8 +149,8 @@ async def get_video_by_topic(
 @router.get("/random")
 async def get_random_video_recommendation(
     area_evaluada: Optional[str] = Query(None, description="Área de evaluación"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
-    # current_user: dict = Depends(JWTBearer())  # Comentado temporalmente
 ):
     """
     Obtener una recomendación aleatoria de video
@@ -146,7 +158,7 @@ async def get_random_video_recommendation(
     try:
         service = VideoRecommendationService(db)
         video = service.get_random_video_recommendation(
-            user_id="test_user",  # Temporal
+            user_id=str(current_user.id),
             area_evaluada=area_evaluada
         )
         
@@ -170,42 +182,38 @@ async def get_random_video_recommendation(
 @router.get("/playlist/study-plan")
 async def get_video_playlist_for_study_plan(
     limit_per_unit: int = Query(5, ge=1, le=20, description="Videos por unidad"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
-    # current_user: dict = Depends(JWTBearer())  # Comentado temporalmente
 ):
     """
     Generar playlist de videos para un plan de estudio
     """
     try:
-        # TODO: Obtener plan de estudio del usuario
-        # Por ahora, usamos un plan de ejemplo
-        study_plan = {
-            "units": [
-                {
-                    "name": "Fundamentos Básicos",
-                    "focus_topics": ["MAT001", "LC001", "CN001"],
-                    "difficulty_level": 1
-                },
-                {
-                    "name": "Desarrollo Intermedio",
-                    "focus_topics": ["MAT004", "LC004", "CN004"],
-                    "difficulty_level": 2
-                }
-            ]
-        }
-        
+        user_id = str(current_user.id)
+
+        # Fetch real study plan from DB
+        from ..models.study_plan import StudyPlan
+        user_plan = db.query(StudyPlan).filter(
+            StudyPlan.user_id == current_user.id
+        ).order_by(StudyPlan.created_at.desc()).first()
+
+        if user_plan and hasattr(user_plan, 'plan_data') and user_plan.plan_data:
+            study_plan = user_plan.plan_data
+        else:
+            study_plan = {"units": []}
+
         service = VideoRecommendationService(db)
         playlist = service.get_video_playlist_for_study_plan(
-            user_id="test_user",  # Temporal
+            user_id=user_id,
             study_plan=study_plan,
             limit_per_unit=limit_per_unit
         )
-        
+
         return {
             "success": True,
             "data": {
                 "playlist": playlist,
-                "user_id": "test_user",  # Temporal
+                "user_id": user_id,
                 "total_units": len(playlist),
                 "total_videos": sum(len(videos) for videos in playlist.values())
             }
@@ -221,8 +229,8 @@ async def search_videos(
     area_evaluada: Optional[str] = Query(None, description="Área de evaluación"),
     difficulty_level: Optional[int] = Query(None, ge=1, le=5, description="Nivel de dificultad"),
     limit: int = Query(20, ge=1, le=50, description="Número máximo de resultados"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
-    # current_user: dict = Depends(JWTBearer())  # Comentado temporalmente
 ):
     """
     Buscar videos por término de búsqueda
@@ -300,8 +308,8 @@ async def search_videos(
 
 @router.get("/stats")
 async def get_video_stats(
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
-    # current_user: dict = Depends(JWTBearer())  # Comentado temporalmente
 ):
     """
     Obtener estadísticas de videos disponibles

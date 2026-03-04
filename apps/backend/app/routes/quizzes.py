@@ -19,6 +19,7 @@ from ..schemas.quiz import (
 from ..services.quiz_service import QuizService
 from ..models.user import User
 from ..models.quiz import Quiz, QuizAnswer
+from ..models.user_profile import UserProfile # New import
 
 router = APIRouter(prefix="/quiz", tags=["quizzes"])
 
@@ -42,11 +43,15 @@ async def generate_unit_quiz(
         plan_id = parts[0]
         unit_number = int(parts[1])
         
+        # Get user level from UserProfile
+        user_profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
+        user_level = user_profile.level if user_profile else 1
+        
         quiz_response = quiz_service.generate_unit_quiz(
             user_id=str(current_user.id),
             plan_id=plan_id,
             unit_number=unit_number,
-            user_level=current_user.level
+            user_level=user_level
         )
         
         return quiz_response

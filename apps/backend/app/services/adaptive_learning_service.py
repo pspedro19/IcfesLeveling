@@ -99,7 +99,7 @@ class AdaptiveLearningService:
             
             # Cache the evaluation
             cache_key = f"adaptive_eval:{user_id}:{plan_id}"
-            cache_service.set(cache_key, evaluation, expire=1800)  # 30 minutes
+            cache_service.set(cache_key, evaluation, ttl=1800)  # 30 minutes
             
             return evaluation
             

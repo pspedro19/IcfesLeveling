@@ -1,6 +1,7 @@
 from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse
-from typing import Dict, Any
+from starlette.middleware.base import BaseHTTPMiddleware
+from typing import Dict, Any, Callable
 import logging
 from datetime import datetime
 
@@ -13,12 +14,13 @@ GUEST_LIMITS = {
     "ai_requests": 3
 }
 
-class GuestLimitsMiddleware:
-    def __init__(self):
+class GuestLimitsMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app):
+        super().__init__(app)
         self.limits = GUEST_LIMITS
         self._guest_usage = {}
-    
-    async def __call__(self, request: Request, call_next):
+
+    async def dispatch(self, request: Request, call_next: Callable):
         is_guest = await self._is_guest_request(request)
         
         if is_guest:

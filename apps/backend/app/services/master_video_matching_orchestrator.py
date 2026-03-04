@@ -1026,19 +1026,19 @@ if __name__ == "__main__":
             'question_difficulty': 0.2
         }
         
-        print("Testing Master Video Matching Orchestrator...")
-        print(f"Configuration: {orchestrator.config.performance_profile}")
-        print(f"Default Strategy: {orchestrator.config.default_strategy}")
-        
+        logger.info("Testing Master Video Matching Orchestrator...")
+        logger.debug(f"Configuration: {orchestrator.config.performance_profile}")
+        logger.debug(f"Default Strategy: {orchestrator.config.default_strategy}")
+
         # Test health check
         health = await orchestrator.health_check()
-        print(f"Health Status: {health['overall']}")
-        
+        logger.info(f"Health Status: {health['overall']}")
+
         # Test system status
         status = orchestrator.get_system_status()
-        print(f"System Status: {status['status']}")
-        
-        print("Master orchestrator initialized successfully!")
+        logger.info(f"System Status: {status['status']}")
+
+        logger.info("Master orchestrator initialized successfully!")
     
     # Run the test
     asyncio.run(test_orchestrator())

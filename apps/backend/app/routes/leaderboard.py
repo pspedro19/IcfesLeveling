@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 import redis
 import json
@@ -9,6 +9,7 @@ from ..core.security import get_current_user
 from ..core.config import settings
 from ..models.user import User
 from ..models.leaderboard import Leaderboard
+from ..middleware.rate_limit import rate_limit
 
 router = APIRouter(prefix="/leaderboard", tags=["leaderboard"])
 
@@ -16,7 +17,9 @@ router = APIRouter(prefix="/leaderboard", tags=["leaderboard"])
 redis_client = redis.from_url(settings.REDIS_URL)
 
 @router.get("/global")
+@rate_limit(limit=100, window=60)  # 100 requests per minute for general endpoints
 async def get_global_leaderboard(
+    request: Request,
     limit: int = Query(10, ge=1, le=100, description="Número de jugadores a mostrar"),
     offset: int = Query(0, ge=0, description="Posición inicial"),
     db: Session = Depends(get_db)
@@ -29,25 +32,26 @@ async def get_global_leaderboard(
     if cached_data:
         return json.loads(cached_data)
     
-    # Obtener leaderboard desde base de datos
-    leaderboard = db.query(Leaderboard).filter(
+    # Obtener leaderboard desde base de datos con JOIN para evitar N+1
+    leaderboard = db.query(Leaderboard).options(
+        joinedload(Leaderboard.user)
+    ).filter(
         Leaderboard.leaderboard_type == "global"
     ).order_by(Leaderboard.score.desc()).offset(offset).limit(limit).all()
-    
-    # Obtener información de usuarios
+
+    # Construir resultado usando la relación precargada
     result = []
     for entry in leaderboard:
-        user = db.query(User).filter(User.id == entry.user_id).first()
-        if user:
+        if entry.user:
             result.append({
                 "rank": entry.rank_position,
-                "user_id": str(user.id),
-                "username": user.username,
-                "display_name": user.display_name,
-                "level": user.level,
-                "rank_letter": user.rank,
+                "user_id": str(entry.user.id),
+                "username": entry.user.username,
+                "display_name": entry.user.display_name,
+                "level": entry.user.level,
+                "rank_letter": entry.user.rank,
                 "score": entry.score,
-                "avatar_url": user.avatar_url
+                "avatar_url": getattr(entry.user, 'avatar_url', None)
             })
     
     # Guardar en cache por 5 minutos
@@ -56,7 +60,9 @@ async def get_global_leaderboard(
     return result
 
 @router.get("/weekly")
+@rate_limit(limit=100, window=60)  # 100 requests per minute for general endpoints
 async def get_weekly_leaderboard(
+    request: Request,
     limit: int = Query(10, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
@@ -68,24 +74,26 @@ async def get_weekly_leaderboard(
     if cached_data:
         return json.loads(cached_data)
     
-    # Obtener leaderboard semanal
-    leaderboard = db.query(Leaderboard).filter(
+    # Obtener leaderboard semanal con JOIN para evitar N+1
+    leaderboard = db.query(Leaderboard).options(
+        joinedload(Leaderboard.user)
+    ).filter(
         Leaderboard.leaderboard_type == "weekly"
     ).order_by(Leaderboard.score.desc()).limit(limit).all()
-    
+
+    # Construir resultado usando la relación precargada
     result = []
     for entry in leaderboard:
-        user = db.query(User).filter(User.id == entry.user_id).first()
-        if user:
+        if entry.user:
             result.append({
                 "rank": entry.rank_position,
-                "user_id": str(user.id),
-                "username": user.username,
-                "display_name": user.display_name,
-                "level": user.level,
-                "rank_letter": user.rank,
+                "user_id": str(entry.user.id),
+                "username": entry.user.username,
+                "display_name": entry.user.display_name,
+                "level": entry.user.level,
+                "rank_letter": entry.user.rank,
                 "score": entry.score,
-                "avatar_url": user.avatar_url
+                "avatar_url": getattr(entry.user, 'avatar_url', None)
             })
     
     # Guardar en cache por 5 minutos
@@ -94,7 +102,9 @@ async def get_weekly_leaderboard(
     return result
 
 @router.get("/monthly")
+@rate_limit(limit=100, window=60)  # 100 requests per minute for general endpoints
 async def get_monthly_leaderboard(
+    request: Request,
     limit: int = Query(10, ge=1, le=100),
     db: Session = Depends(get_db)
 ):
@@ -106,24 +116,26 @@ async def get_monthly_leaderboard(
     if cached_data:
         return json.loads(cached_data)
     
-    # Obtener leaderboard mensual
-    leaderboard = db.query(Leaderboard).filter(
+    # Obtener leaderboard mensual con JOIN para evitar N+1
+    leaderboard = db.query(Leaderboard).options(
+        joinedload(Leaderboard.user)
+    ).filter(
         Leaderboard.leaderboard_type == "monthly"
     ).order_by(Leaderboard.score.desc()).limit(limit).all()
-    
+
+    # Construir resultado usando la relación precargada
     result = []
     for entry in leaderboard:
-        user = db.query(User).filter(User.id == entry.user_id).first()
-        if user:
+        if entry.user:
             result.append({
                 "rank": entry.rank_position,
-                "user_id": str(user.id),
-                "username": user.username,
-                "display_name": user.display_name,
-                "level": user.level,
-                "rank_letter": user.rank,
+                "user_id": str(entry.user.id),
+                "username": entry.user.username,
+                "display_name": entry.user.display_name,
+                "level": entry.user.level,
+                "rank_letter": entry.user.rank,
                 "score": entry.score,
-                "avatar_url": user.avatar_url
+                "avatar_url": getattr(entry.user, 'avatar_url', None)
             })
     
     # Guardar en cache por 5 minutos
@@ -132,7 +144,9 @@ async def get_monthly_leaderboard(
     return result
 
 @router.get("/user/position")
+@rate_limit(limit=100, window=60)  # 100 requests per minute for general endpoints
 async def get_user_position(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -162,7 +176,9 @@ async def get_user_position(
     }
 
 @router.get("/user/stats")
+@rate_limit(limit=100, window=60)  # 100 requests per minute for general endpoints
 async def get_user_stats(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):

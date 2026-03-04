@@ -3,6 +3,7 @@
 Simple Question Loader - Direct approach without complex transactions
 """
 
+import os
 import pandas as pd
 import psycopg2
 import uuid
@@ -12,13 +13,13 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Database connection
+# Database connection (from environment variables)
 conn = psycopg2.connect(
-    host='postgres',
-    port=5432,
-    database='gameplay_db',
-    user='gameplay',
-    password='gameplay123'
+    host=os.getenv('DB_HOST', 'postgres'),
+    port=int(os.getenv('DB_PORT', '5432')),
+    database=os.getenv('DB_NAME', 'gameplay_db'),
+    user=os.getenv('DB_USER', 'gameplay'),
+    password=os.getenv('DB_PASSWORD', '')
 )
 cur = conn.cursor()
 

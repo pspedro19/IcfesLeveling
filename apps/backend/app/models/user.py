@@ -1,19 +1,19 @@
-from sqlalchemy import Column, String, Integer, DateTime, Text, Boolean
+from sqlalchemy import Column, String, Integer, DateTime, Text, Boolean, Date, Float, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from ..core.database import Base
 import uuid
+from ..services.game_engine_service import GameEngineService
 
 class User(Base):
     __tablename__ = "users"
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = Column(String(50), unique=True, nullable=False)
     email = Column(String(255), unique=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     display_name = Column(String(100), default="")  # Display name for user
-    # avatar_url = Column(String(500))  # No existe en la tabla
     level = Column(Integer, default=1)
     experience = Column(Integer, default=0)
     rank = Column(String(10), default="E")
@@ -22,52 +22,46 @@ class User(Base):
     power = Column(Integer, default=10)
     wisdom = Column(Integer, default=10)
     speed = Column(Integer, default=10)
-    orbs = Column(Integer, default=1000)
-    crystals = Column(Integer, default=0)
-    streak_days = Column(Integer, default=0)  # ENABLED: Track user login streaks
-    last_login = Column(DateTime(timezone=True))  # ENABLED: Track last login for streak calculation
+    gold = Column(Integer, default=1000)  # Primary currency per spec (gold coins)
+    orbs = Column(Integer, default=0)  # Secondary currency (knowledge orbs)
+    crystals = Column(Integer, default=0)  # Premium currency
+    streak_days = Column(Integer, default=0)
+    last_login = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    
-    # Premium fields
-    # is_premium = Column(Boolean, default=False)  # No existe en la tabla
-    # premium_expires_at = Column(DateTime(timezone=True), nullable=True)  # No existe en la tabla
-    # premium_plan = Column(String(50), default="free")  # No existe en la tabla
-    # ai_requests_used = Column(Integer, default=0)  # No existe en la tabla
-    # ai_requests_limit = Column(Integer, default=5)  # No existe en la tabla
-    # simulacros_used = Column(Integer, default=0)  # No existe en la tabla
-    # simulacros_limit = Column(Integer, default=2)  # No existe en la tabla
-    is_active = Column(Boolean, default=True)  # Este sí existe
-    
-    # Relationships - Temporarily commented out to fix SQLAlchemy mapping issues
-    # battles = relationship("Battle", cascade="all, delete-orphan")
-    # user_quests = relationship("UserQuest", cascade="all, delete-orphan")  
-    # leaderboard_entries = relationship("Leaderboard", cascade="all, delete-orphan")
-    # diagnostic_tests = relationship("DiagnosticTest", cascade="all, delete-orphan")
-    # user_items = relationship("UserItem", cascade="all, delete-orphan")
-    
-    # Temporarily commenting out problematic relationships that have foreign key issues
-    # Will be re-enabled once FK relationships are properly defined
-    # ai_explanations = relationship("AIExplanation", cascade="all, delete-orphan")
-    # user_events = relationship("UserEvent", cascade="all, delete-orphan")
-    # notifications = relationship("Notification", cascade="all, delete-orphan")
-    # study_plans = relationship("StudyPlan", cascade="all, delete-orphan")
-    # user_achievements = relationship("UserAchievement", cascade="all, delete-orphan")
-    # store_transactions = relationship("StoreTransaction", cascade="all, delete-orphan")
-    # user_power_ups = relationship("UserPowerUp", cascade="all, delete-orphan")
-    # currency_earnings = relationship("CurrencyEarning", cascade="all, delete-orphan")
-    # certificates = relationship("Certificate", cascade="all, delete-orphan")
-    # subscription = relationship("Subscription", cascade="all, delete-orphan")
-    # payments = relationship("Payment", cascade="all, delete-orphan")
-    # payment_methods = relationship("PaymentMethod", cascade="all, delete-orphan")
-    # invoices = relationship("Invoice", cascade="all, delete-orphan")
-    # profile = relationship("UserProfile", cascade="all, delete-orphan", uselist=False)
-    # practice_sessions = relationship("PracticeSession", cascade="all, delete-orphan")
-    # ai_tutoring_sessions = relationship("AITutoringSession", cascade="all, delete-orphan")
-    # responses = relationship("Response", cascade="all, delete-orphan")
-    # quizzes = relationship("Quiz", cascade="all, delete-orphan")
-    # video_tracking = relationship("VideoTracking", cascade="all, delete-orphan")
-    # training_zones = relationship("TrainingZone", cascade="all, delete-orphan")
+
+    # Streak System Fields (for mobile app)
+    current_streak = Column(Integer, default=0)
+    longest_streak = Column(Integer, default=0)
+    previous_streak = Column(Integer, default=0)
+    streak_lost_at = Column(DateTime(timezone=True), nullable=True)
+    last_activity_date = Column(Date, nullable=True)
+    daily_goal_xp = Column(Integer, default=20)
+    ad_repairs_today = Column(Integer, default=0)
+    timezone = Column(String(50), default='America/Bogota')
+
+    # Hearts System Fields (for mobile app)
+    hearts = Column(Integer, default=5)
+    max_hearts = Column(Integer, default=5)
+    hearts_last_regeneration = Column(DateTime(timezone=True), nullable=True)
+    unlimited_hearts_until = Column(DateTime(timezone=True), nullable=True)
+
+    # Streak Freeze & Ads Fields (per spec)
+    streak_freeze_count = Column(Integer, default=0)  # Number of streak freezes available
+    ads_watched_today = Column(Integer, default=0)  # Max 3 per day for heart recovery
+    ads_watched_date = Column(Date, nullable=True)  # Date to reset ads_watched_today
+
+    # Onboarding & Projections
+    onboarding_completed = Column(Boolean, default=False)  # Tutorial completed
+    onboarding_preferences = Column(JSON, nullable=True)  # Steps 2-5 preferences (goal, level, subjects, time)
+    projected_icfes_score = Column(Integer, nullable=True)  # AI-projected score (0-500)
+
+    # Premium/Subscription Fields
+    premium_plan = Column(String(50), default="free", nullable=False)  # free, basic, premium, elite
+    premium_expires_at = Column(DateTime(timezone=True), nullable=True)
+    is_admin = Column(Boolean, default=False)  # For admin access checks
+
+    is_active = Column(Boolean, default=True)
     
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}', level={self.level})>"
@@ -83,26 +77,26 @@ class User(Base):
         # Return the stored rank (calculated from actual diagnostic test performance)
         return self.rank or 'E'
     
-    @property 
-    def legacy_rank_info(self):
-        """Legacy rank calculation based on level (kept for compatibility)"""
-        ranks = ['E', 'D', 'C', 'B', 'A', 'S', 'SS', 'SSS']
-        if self.level <= 10:
-            return ranks[0]
-        elif self.level <= 25:
-            return ranks[1]
-        elif self.level <= 50:
-            return ranks[2]
-        elif self.level <= 75:
-            return ranks[3]
-        elif self.level <= 100:
-            return ranks[4]
-        elif self.level <= 150:
-            return ranks[5]
-        elif self.level <= 200:
-            return ranks[6]
-        else:
-            return ranks[7]
+    # @property 
+    # def legacy_rank_info(self):
+    #     """DEPRECATED: Legacy rank calculation based on level. Use GameEngineService.calculate_rank instead."""
+    #     ranks = ['E', 'D', 'C', 'B', 'A', 'S', 'SS', 'SSS']
+    #     if self.level <= 10:
+    #         return ranks[0]
+    #     elif self.level <= 25:
+    #         return ranks[1]
+    #     elif self.level <= 50:
+    #         return ranks[2]
+    #     elif self.level <= 75:
+    #         return ranks[3]
+    #     elif self.level <= 100:
+    #         return ranks[4]
+    #     elif self.level <= 150:
+    #         return ranks[5]
+    #     elif self.level <= 200:
+    #         return ranks[6]
+    #     else:
+    #         return ranks[7]
     
     def add_experience(self, exp_amount: int):
         """
@@ -113,9 +107,8 @@ class User(Base):
         """
         self.experience += exp_amount
         
-        # Calculate new level using improved XP curve: level = sqrt(exp/50) + 1
-        import math
-        new_level = int(math.sqrt(self.experience / 50)) + 1
+        # Calculate new level using the unified GameEngineService
+        new_level = GameEngineService.calculate_level_for_xp(self.experience)
         new_level = max(1, min(new_level, 999))  # Cap at level 999
         
         level_up_occurred = new_level > self.level
@@ -136,4 +129,4 @@ class User(Base):
         Returns:
             bool: Whether a level up occurred
         """
-        return self.add_experience(xp_from_questions) 
+        return self.add_experience(xp_from_questions)

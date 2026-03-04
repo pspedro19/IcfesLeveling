@@ -4,6 +4,7 @@ Smart Question Loader with Intelligent Mapping
 Seamlessly integrates ICFES Excel questions into the database
 """
 
+import os
 import pandas as pd
 import psycopg2
 from psycopg2.extras import execute_values
@@ -17,14 +18,14 @@ logger = logging.getLogger(__name__)
 
 class SmartQuestionMapper:
     """Intelligent mapper for ICFES questions to database structure"""
-    
+
     def __init__(self):
         self.conn_params = {
-            'host': 'postgres',
-            'port': 5432,
-            'database': 'gameplay_db',
-            'user': 'gameplay',
-            'password': 'gameplay123'
+            'host': os.getenv('DB_HOST', 'postgres'),
+            'port': int(os.getenv('DB_PORT', '5432')),
+            'database': os.getenv('DB_NAME', 'gameplay_db'),
+            'user': os.getenv('DB_USER', 'gameplay'),
+            'password': os.getenv('DB_PASSWORD', '')
         }
         self.conn = None
         self.cur = None

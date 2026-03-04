@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
 """Direct question loader - minimal approach"""
 
+import os
 import pandas as pd
 import psycopg2
 import uuid
 import json
+import logging
 
-# Connect
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Connect (using environment variables)
 conn = psycopg2.connect(
-    host='postgres', port=5432, database='gameplay_db',
-    user='gameplay', password='gameplay123'
+    host=os.getenv('DB_HOST', 'postgres'),
+    port=int(os.getenv('DB_PORT', '5432')),
+    database=os.getenv('DB_NAME', 'gameplay_db'),
+    user=os.getenv('DB_USER', 'gameplay'),
+    password=os.getenv('DB_PASSWORD', '')
 )
 cur = conn.cursor()
 
@@ -22,11 +30,11 @@ try:
         LIMIT 1
     """)
     topic_id, subject_id = cur.fetchone()
-    print(f"Using topic_id: {topic_id}, subject_id: {subject_id}")
-    
+    logger.info(f"Using topic_id: {topic_id}, subject_id: {subject_id}")
+
     # Load Excel
     df = pd.read_excel('/app/ICFES2 (1).xlsx')
-    print(f"Loading {len(df)} questions...")
+    logger.info(f"Loading {len(df)} questions...")
     
     # Clear existing
     cur.execute("DELETE FROM questions")
@@ -64,22 +72,22 @@ try:
             count += 1
             if count % 10 == 0:
                 conn.commit()
-                print(f"Progress: {count}/{len(df)}")
-                
+                logger.info(f"Progress: {count}/{len(df)}")
+
         except Exception as e:
-            print(f"Error row {idx}: {e}")
+            logger.error(f"Error row {idx}: {e}")
             conn.rollback()
-    
+
     conn.commit()
-    print(f"✅ Loaded {count} questions")
-    
+    logger.info(f"Loaded {count} questions")
+
     # Verify
     cur.execute("SELECT COUNT(*) FROM questions")
     total = cur.fetchone()[0]
-    print(f"📊 Total in DB: {total}")
-    
+    logger.info(f"Total in DB: {total}")
+
 except Exception as e:
-    print(f"Fatal: {e}")
+    logger.error(f"Fatal: {e}")
 finally:
     cur.close()
     conn.close()

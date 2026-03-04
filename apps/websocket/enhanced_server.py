@@ -213,7 +213,7 @@ class EnhancedWebSocketServer:
                             "type": MessageType.PING.value,
                             "timestamp": current_time.isoformat()
                         }))
-                    except:
+                    except Exception:
                         disconnected.append(client_id)
                 
                 # Desconectar clientes inactivos
@@ -633,7 +633,7 @@ class EnhancedWebSocketServer:
                 "error": error,
                 "timestamp": datetime.now().isoformat()
             }))
-        except:
+        except Exception:
             pass
     
     async def disconnect_client(self, client_id: str):

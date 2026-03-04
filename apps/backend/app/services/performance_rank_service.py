@@ -1,8 +1,18 @@
 """
 Performance-based Rank Calculation Service
 
-This service calculates user ranks (E-S) based on real diagnostic test performance data,
-including theta scores from IRT analysis and actual XP earned from test completions.
+This service calculates user ranks (E-S) based on PERCENTILE comparison among all users,
+using theta scores from IRT analysis and performance metrics.
+
+Rank System (per README_NEGOCIO.md spec):
+- E: Bottom 20% of users
+- D: 20-40 percentile
+- C: 40-60 percentile
+- B: 60-80 percentile
+- A: 80-95 percentile
+- S: Top 5% of users (elite)
+
+IMPORTANT: Ranks are calculated weekly by comparing users against each other.
 """
 
 from sqlalchemy.orm import Session
@@ -21,25 +31,24 @@ logger = logging.getLogger(__name__)
 
 class PerformanceRankService:
     """
-    Service to calculate user ranks based on real performance data from diagnostic tests.
-    
-    Ranking Criteria:
-    - Theta scores across subjects (IRT ability estimation)
-    - Test completion rate and consistency
-    - XP earned from actual question performance
-    - Cross-subject performance stability
+    Service to calculate user ranks based on PERCENTILE comparison among all users.
+
+    Ranking is comparative - a user's rank depends on how they perform relative to others.
+    Uses a composite score based on:
+    - Average theta score (IRT ability)
+    - Accuracy rate
+    - Consistency (stability of performance)
     """
-    
-    # Rank thresholds based on average theta scores and performance metrics
-    RANK_THRESHOLDS = {
-        'SSS': {'min_theta': 2.5, 'min_tests': 5, 'min_stability': 0.8, 'min_xp_per_test': 150},
-        'SS':  {'min_theta': 2.0, 'min_tests': 4, 'min_stability': 0.7, 'min_xp_per_test': 120},
-        'S':   {'min_theta': 1.5, 'min_tests': 3, 'min_stability': 0.6, 'min_xp_per_test': 100},
-        'A':   {'min_theta': 1.0, 'min_tests': 3, 'min_stability': 0.5, 'min_xp_per_test': 80},
-        'B':   {'min_theta': 0.5, 'min_tests': 2, 'min_stability': 0.4, 'min_xp_per_test': 60},
-        'C':   {'min_theta': 0.0, 'min_tests': 2, 'min_stability': 0.3, 'min_xp_per_test': 40},
-        'D':   {'min_theta': -0.5, 'min_tests': 1, 'min_stability': 0.2, 'min_xp_per_test': 20},
-        'E':   {'min_theta': -3.0, 'min_tests': 0, 'min_stability': 0.0, 'min_xp_per_test': 0}
+
+    # Percentile-based rank thresholds (per spec)
+    # Ranks: E → D → C → B → A → S (no SS or SSS)
+    RANK_PERCENTILES = {
+        'S': 95,   # Top 5%
+        'A': 80,   # Top 20% (80-95 percentile)
+        'B': 60,   # Top 40% (60-80 percentile)
+        'C': 40,   # Middle (40-60 percentile)
+        'D': 20,   # Lower middle (20-40 percentile)
+        'E': 0     # Bottom 20%
     }
     
     def __init__(self, db: Session):
@@ -47,11 +56,14 @@ class PerformanceRankService:
     
     def calculate_user_rank(self, user_id: str) -> Dict:
         """
-        Calculate user rank based on diagnostic test performance data.
-        
+        Calculate user rank based on PERCENTILE comparison among all users.
+
+        Rank is determined by comparing the user's composite score against all other users.
+        This implements the spec requirement for comparative ranking.
+
         Args:
             user_id: UUID of the user
-            
+
         Returns:
             Dict containing rank calculation details
         """
@@ -59,25 +71,32 @@ class PerformanceRankService:
             user = self.db.query(User).filter(User.id == user_id).first()
             if not user:
                 return {"error": "User not found"}
-            
+
             # Get performance metrics
             performance_data = self._get_user_performance_data(user_id)
-            
+
             if not performance_data['completed_tests']:
                 return {
                     "user_id": user_id,
                     "current_rank": "E",
                     "new_rank": "E",
+                    "percentile": 0.0,
                     "reason": "No completed diagnostic tests",
                     "metrics": performance_data
                 }
-            
-            # Calculate rank based on performance
-            new_rank = self._determine_rank_from_metrics(performance_data)
-            
+
+            # Get all user scores for percentile calculation
+            all_user_scores = self._get_all_user_scores()
+
+            # Calculate composite score for this user
+            composite_score = self._calculate_composite_score(performance_data)
+
+            # Determine rank based on percentile
+            new_rank, percentile = self._determine_rank_from_percentile(user_id, all_user_scores)
+
             # Calculate level based on total XP
             new_level = self._calculate_level_from_xp(performance_data['total_xp_earned'])
-            
+
             result = {
                 "user_id": user_id,
                 "current_rank": user.rank,
@@ -86,12 +105,15 @@ class PerformanceRankService:
                 "new_level": new_level,
                 "rank_changed": user.rank != new_rank,
                 "level_changed": user.level != new_level,
+                "composite_score": composite_score,
+                "percentile": round(percentile, 2),
+                "total_ranked_users": len(all_user_scores),
                 "metrics": performance_data,
-                "thresholds_met": self._get_threshold_analysis(performance_data, new_rank)
+                "ranking_method": "percentile_based"
             }
-            
+
             return result
-            
+
         except Exception as e:
             logger.error(f"Error calculating rank for user {user_id}: {str(e)}")
             return {"error": f"Calculation error: {str(e)}"}
@@ -213,33 +235,108 @@ class PerformanceRankService:
         
         return subject_data
     
-    def _determine_rank_from_metrics(self, performance_data: Dict) -> str:
+    def _calculate_composite_score(self, performance_data: Dict) -> float:
         """
-        Determine rank based on performance metrics.
-        
+        Calculate a composite score for percentile ranking.
+
+        Composite score combines:
+        - Theta score (50% weight) - normalized to 0-100 scale
+        - Accuracy rate (30% weight) - already 0-1, scale to 0-100
+        - Consistency (20% weight) - theta stability, scale to 0-100
+
         Args:
             performance_data: User performance metrics
-            
+
         Returns:
-            Rank string (E, D, C, B, A, S, SS, SSS)
+            Composite score (0-100)
         """
-        avg_theta = performance_data['average_theta']
-        completed_tests = performance_data['completed_tests']
-        theta_stability = performance_data['theta_stability']
-        avg_xp_per_test = performance_data['average_xp_per_test']
-        
-        # Check ranks from highest to lowest
-        for rank in ['SSS', 'SS', 'S', 'A', 'B', 'C', 'D', 'E']:
-            thresholds = self.RANK_THRESHOLDS[rank]
-            
-            if (avg_theta >= thresholds['min_theta'] and
-                completed_tests >= thresholds['min_tests'] and
-                theta_stability >= thresholds['min_stability'] and
-                avg_xp_per_test >= thresholds['min_xp_per_test']):
-                
-                return rank
-        
-        return 'E'  # Default rank
+        # Normalize theta from [-3, 3] to [0, 100]
+        theta = performance_data.get('average_theta', 0.0)
+        theta_normalized = ((theta + 3) / 6) * 100
+        theta_normalized = max(0, min(100, theta_normalized))
+
+        # Accuracy is already 0-1, convert to 0-100
+        accuracy = performance_data.get('accuracy_rate', 0.0) * 100
+
+        # Stability is 0-1, convert to 0-100
+        stability = performance_data.get('theta_stability', 0.0) * 100
+
+        # Weighted composite
+        composite = (theta_normalized * 0.50) + (accuracy * 0.30) + (stability * 0.20)
+
+        return round(composite, 2)
+
+    def _get_all_user_scores(self) -> List[Tuple[str, float]]:
+        """
+        Get composite scores for all users with completed tests.
+
+        Returns:
+            List of (user_id, composite_score) tuples, sorted by score descending
+        """
+        # Get all users with completed diagnostic tests
+        users_with_tests = self.db.query(User.id).join(
+            DiagnosticTest,
+            User.id == DiagnosticTest.user_id
+        ).filter(
+            DiagnosticTest.status == "completed"
+        ).distinct().all()
+
+        user_scores = []
+        for (user_id,) in users_with_tests:
+            performance = self._get_user_performance_data(str(user_id))
+            if performance['completed_tests'] > 0:
+                score = self._calculate_composite_score(performance)
+                user_scores.append((str(user_id), score))
+
+        # Sort by score descending (highest first)
+        user_scores.sort(key=lambda x: x[1], reverse=True)
+        return user_scores
+
+    def _determine_rank_from_percentile(self, user_id: str, user_scores: List[Tuple[str, float]]) -> Tuple[str, float]:
+        """
+        Determine rank based on percentile among all users.
+
+        Args:
+            user_id: User ID to find rank for
+            user_scores: List of (user_id, score) sorted by score descending
+
+        Returns:
+            Tuple of (rank, percentile)
+        """
+        if not user_scores:
+            return 'E', 0.0
+
+        total_users = len(user_scores)
+        user_position = None
+
+        for idx, (uid, score) in enumerate(user_scores):
+            if uid == user_id:
+                user_position = idx
+                break
+
+        if user_position is None:
+            return 'E', 0.0
+
+        # Calculate percentile (higher is better)
+        # Position 0 = top, so percentile = (total - position - 1) / (total - 1) * 100
+        if total_users == 1:
+            percentile = 50.0  # Only user, give middle rank
+        else:
+            percentile = ((total_users - user_position - 1) / (total_users - 1)) * 100
+
+        # Determine rank from percentile
+        if percentile >= self.RANK_PERCENTILES['S']:
+            return 'S', percentile
+        elif percentile >= self.RANK_PERCENTILES['A']:
+            return 'A', percentile
+        elif percentile >= self.RANK_PERCENTILES['B']:
+            return 'B', percentile
+        elif percentile >= self.RANK_PERCENTILES['C']:
+            return 'C', percentile
+        elif percentile >= self.RANK_PERCENTILES['D']:
+            return 'D', percentile
+        else:
+            return 'E', percentile
     
     def _calculate_level_from_xp(self, total_xp: int) -> int:
         """

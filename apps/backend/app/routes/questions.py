@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import logging
@@ -6,8 +6,8 @@ import logging
 from ..core.database import get_db
 from ..core.security import get_current_user
 from ..schemas.question import (
-    QuestionCreate, 
-    QuestionResponse, 
+    QuestionCreate,
+    QuestionResponse,
     QuestionUpdate,
     QuestionWithStats,
     QuestionValidationRequest,
@@ -18,12 +18,15 @@ from ..models.topic import Topic
 from ..models.question import Question
 from ..models.subject import Subject
 from ..models.user import User
+from ..middleware.rate_limit import rate_limit
 
 router = APIRouter(prefix="/questions", tags=["questions"])
 logger = logging.getLogger(__name__)
 
 @router.get("/", response_model=List[QuestionResponse])
+@rate_limit(limit=100, window=60)  # 100 requests per minute for general endpoints
 async def get_questions(
+    request: Request,
     subject_id: Optional[str] = Query(None, description="Filter by subject ID"),
     topic_id: Optional[str] = Query(None, description="Filter by topic ID"),
     difficulty: Optional[int] = Query(None, description="Filter by difficulty level"),
@@ -53,7 +56,9 @@ async def get_questions(
         raise HTTPException(status_code=500, detail="Error fetching questions")
 
 @router.get("/multimedia", response_model=List[QuestionResponse])
+@rate_limit(limit=100, window=60)  # 100 requests per minute for general endpoints
 async def get_multimedia_questions(
+    request: Request,
     subject_id: Optional[str] = Query(None, description="Filter by subject ID"),
     topic_id: Optional[str] = Query(None, description="Filter by topic ID"),
     limit: int = Query(45, description="Number of questions to return (default 45 for exam)"),
@@ -82,7 +87,9 @@ async def get_multimedia_questions(
         raise HTTPException(status_code=500, detail="Error fetching multimedia questions")
 
 @router.get("/navigation-grid", response_model=QuestionNavigationGrid)
+@rate_limit(limit=100, window=60)  # 100 requests per minute for general endpoints
 async def get_question_navigation_grid(
+    request: Request,
     subject_id: Optional[str] = Query(None, description="Filter by subject ID"),
     current_question: int = Query(1, description="Current question number"),
     answered_questions: Optional[List[int]] = Query(None, description="List of answered question numbers"),
@@ -126,7 +133,9 @@ async def get_question_navigation_grid(
         raise HTTPException(status_code=500, detail="Error generating navigation grid")
 
 @router.get("/{question_id}", response_model=QuestionResponse)
+@rate_limit(limit=100, window=60)  # 100 requests per minute for general endpoints
 async def get_question(
+    request: Request,
     question_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -142,7 +151,9 @@ async def get_question(
         raise HTTPException(status_code=500, detail="Error fetching question")
 
 @router.post("/", response_model=QuestionResponse)
+@rate_limit(limit=100, window=60)  # 100 requests per minute for general endpoints
 async def create_question(
+    request: Request,
     question_data: QuestionCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -182,7 +193,9 @@ async def create_question(
         raise HTTPException(status_code=500, detail="Error creating question")
 
 @router.put("/{question_id}", response_model=QuestionResponse)
+@rate_limit(limit=100, window=60)  # 100 requests per minute for general endpoints
 async def update_question(
+    request: Request,
     question_id: str,
     question_data: QuestionUpdate,
     current_user: User = Depends(get_current_user),
@@ -220,7 +233,9 @@ async def update_question(
         raise HTTPException(status_code=500, detail="Error updating question")
 
 @router.delete("/{question_id}")
+@rate_limit(limit=100, window=60)  # 100 requests per minute for general endpoints
 async def delete_question(
+    request: Request,
     question_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -244,7 +259,9 @@ async def delete_question(
         raise HTTPException(status_code=500, detail="Error deleting question")
 
 @router.post("/validate", response_model=QuestionValidationResponse)
+@rate_limit(limit=100, window=60)  # 100 requests per minute for general endpoints
 async def validate_question(
+    request: Request,
     validation_request: QuestionValidationRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -289,7 +306,9 @@ async def validate_question(
         raise HTTPException(status_code=500, detail="Error validating question")
 
 @router.get("/stats/{question_id}", response_model=QuestionWithStats)
+@rate_limit(limit=100, window=60)  # 100 requests per minute for general endpoints
 async def get_question_stats(
+    request: Request,
     question_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -316,7 +335,9 @@ async def get_question_stats(
         raise HTTPException(status_code=500, detail="Error fetching question stats")
 
 @router.post("/{question_id}/update-stats")
+@rate_limit(limit=60, window=60)  # 60 requests per minute for stats updates
 async def update_question_stats(
+    request: Request,
     question_id: str,
     response_time_ms: int,
     is_correct: bool,
@@ -339,4 +360,45 @@ async def update_question_stats(
     except Exception as e:
         logger.error(f"Error updating question stats {question_id}: {e}")
         db.rollback()
-        raise HTTPException(status_code=500, detail="Error updating question stats") 
+        raise HTTPException(status_code=500, detail="Error updating question stats")
+
+@router.get("/batch", response_model=List[QuestionWithStats])
+@rate_limit(limit=100, window=60)  # 100 requests per minute for general endpoints
+async def get_questions_batch(
+    request: Request,
+    subject_id: Optional[str] = Query(None, description="Filter by subject ID"),
+    limit: int = Query(50, ge=1, le=100, description="Number of questions to return"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Obtiene un lote de preguntas para el cache offline del movil.
+    En el futuro integrara el Adaptive Engine para priorizar debilidades.
+    """
+    try:
+        query = db.query(Question)
+        
+        if subject_id:
+            query = query.filter(Question.subject_id == subject_id)
+            
+        # Orden aleatorio por ahora, luego segun AdaptiveEngine
+        query = query.order_by(func.random())
+        
+        questions = query.limit(limit).all()
+        
+        # Enriquecer con stats basicas
+        results = []
+        for q in questions:
+            success_rate = q.power_stats.get("success_rate", 0.0) if q.power_stats else 0.0
+            difficulty_rating = q.get_difficulty_rating()
+            results.append(QuestionWithStats(
+                **q.__dict__,
+                success_rate=success_rate,
+                difficulty_rating=difficulty_rating
+            ))
+            
+        return results
+    except Exception as e:
+        logger.error(f"Error fetching questions batch: {e}")
+        raise HTTPException(status_code=500, detail="Error fetching questions batch")
+ 

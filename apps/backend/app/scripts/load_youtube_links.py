@@ -110,7 +110,7 @@ class YouTubeLinksLoader:
                 return url.split('youtu.be/')[1].split('?')[0]
             else:
                 return None
-        except:
+        except Exception:
             return None
     
     async def ensure_table_exists(self, db):

@@ -548,7 +548,7 @@ class AutomaticRecoveryService:
                     total = int([line for line in lines if 'MemTotal' in line][0].split()[1])
                     available = int([line for line in lines if 'MemAvailable' in line][0].split()[1])
                     return ((total - available) / total) * 100
-            except:
+            except Exception:
                 return 0.0
     
     async def _get_recent_error_rate(self) -> float:

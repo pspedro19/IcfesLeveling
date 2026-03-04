@@ -1,0 +1,529 @@
+{
+  "@@locale": "es",
+  "@@last_modified": "2025-12-29",
+
+  "appName": "ICFES Leveling",
+  "@appName": {
+    "description": "The name of the application"
+  },
+
+  "welcome": "Bienvenido",
+  "@welcome": {
+    "description": "Welcome greeting"
+  },
+
+  "welcomeBack": "Bienvenido de vuelta",
+  "@welcomeBack": {
+    "description": "Welcome back greeting"
+  },
+
+  "welcomeUser": "Bienvenido, {name}",
+  "@welcomeUser": {
+    "description": "Welcome greeting with user name",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Juan"
+      }
+    }
+  },
+
+  "readyToLevelUp": "Listo para subir de nivel?",
+  "@readyToLevelUp": {
+    "description": "Motivational message on home screen"
+  },
+
+  "login": "Iniciar Sesion",
+  "@login": {
+    "description": "Login button text"
+  },
+
+  "register": "Registrarse",
+  "@register": {
+    "description": "Register button text"
+  },
+
+  "email": "Correo electronico",
+  "@email": {
+    "description": "Email field label"
+  },
+
+  "password": "Contrasena",
+  "@password": {
+    "description": "Password field label"
+  },
+
+  "continueWithGoogle": "CONTINUAR CON GOOGLE",
+  "@continueWithGoogle": {
+    "description": "Google login button"
+  },
+
+  "continueWithApple": "CONTINUAR CON APPLE",
+  "@continueWithApple": {
+    "description": "Apple login button"
+  },
+
+  "continueAsGuest": "Continuar como Invitado",
+  "@continueAsGuest": {
+    "description": "Guest login option"
+  },
+
+  "theSystemSeeksYou": "EL SISTEMA TE BUSCA",
+  "@theSystemSeeksYou": {
+    "description": "Login page title"
+  },
+
+  "loginSubtitle": "Inicia sesion para registrar tu progreso y reclamar tus recompensas de cazador.",
+  "@loginSubtitle": {
+    "description": "Login page subtitle"
+  },
+
+  "termsAndPrivacy": "Al continuar, aceptas nuestros Terminos de Servicio y Politica de Privacidad.",
+  "@termsAndPrivacy": {
+    "description": "Terms and privacy notice"
+  },
+
+  "dailyGoal": "Meta Diaria",
+  "@dailyGoal": {
+    "description": "Daily goal card title"
+  },
+
+  "continueStudying": "Continuar Estudiando",
+  "@continueStudying": {
+    "description": "Continue studying card title"
+  },
+
+  "practice": "Practica",
+  "@practice": {
+    "description": "Practice section title"
+  },
+
+  "startPractice": "Iniciar Practica",
+  "@startPractice": {
+    "description": "Start practice button"
+  },
+
+  "streak": "Racha",
+  "@streak": {
+    "description": "Streak label"
+  },
+
+  "streakLost": "RACHA PERDIDA",
+  "@streakLost": {
+    "description": "Streak lost modal title"
+  },
+
+  "streakLostMessage": "Tu llama de {days} dias se ha apagado. Pero un verdadero cazador siempre puede reponerse.",
+  "@streakLostMessage": {
+    "description": "Streak lost message",
+    "placeholders": {
+      "days": {
+        "type": "int",
+        "example": "7"
+      }
+    }
+  },
+
+  "repairStreak": "REPARAR RACHA ({gold} ORO)",
+  "@repairStreak": {
+    "description": "Repair streak with gold button",
+    "placeholders": {
+      "gold": {
+        "type": "int",
+        "example": "300"
+      }
+    }
+  },
+
+  "repairWithAd": "REPARAR CON ANUNCIO",
+  "@repairWithAd": {
+    "description": "Repair streak with ad button"
+  },
+
+  "startOver": "EMPEZAR DE NUEVO",
+  "@startOver": {
+    "description": "Start over button"
+  },
+
+  "hearts": "Vidas",
+  "@hearts": {
+    "description": "Hearts/lives label"
+  },
+
+  "noHearts": "Sin Vidas",
+  "@noHearts": {
+    "description": "No hearts remaining message"
+  },
+
+  "loading": "Cargando...",
+  "@loading": {
+    "description": "Loading indicator text"
+  },
+
+  "loadingQuestions": "Cargando preguntas...",
+  "@loadingQuestions": {
+    "description": "Loading questions message"
+  },
+
+  "error": "Error",
+  "@error": {
+    "description": "Error label"
+  },
+
+  "retry": "Reintentar",
+  "@retry": {
+    "description": "Retry button"
+  },
+
+  "cancel": "Cancelar",
+  "@cancel": {
+    "description": "Cancel button"
+  },
+
+  "confirm": "Confirmar",
+  "@confirm": {
+    "description": "Confirm button"
+  },
+
+  "save": "Guardar",
+  "@save": {
+    "description": "Save button"
+  },
+
+  "delete": "Eliminar",
+  "@delete": {
+    "description": "Delete button"
+  },
+
+  "close": "Cerrar",
+  "@close": {
+    "description": "Close button"
+  },
+
+  "check": "Verificar",
+  "@check": {
+    "description": "Check answer button"
+  },
+
+  "continueText": "Continuar",
+  "@continueText": {
+    "description": "Continue button"
+  },
+
+  "finish": "Finalizar",
+  "@finish": {
+    "description": "Finish button"
+  },
+
+  "excellent": "Excelente!",
+  "@excellent": {
+    "description": "Correct answer feedback"
+  },
+
+  "incorrect": "Incorrecto",
+  "@incorrect": {
+    "description": "Incorrect answer feedback"
+  },
+
+  "correctWas": "La respuesta correcta era: {answer}",
+  "@correctWas": {
+    "description": "Shows the correct answer",
+    "placeholders": {
+      "answer": {
+        "type": "String",
+        "example": "Option A"
+      }
+    }
+  },
+
+  "sessionFinished": "Sesion Terminada",
+  "@sessionFinished": {
+    "description": "Practice session finished message"
+  },
+
+  "correctAnswers": "Respuestas Correctas",
+  "@correctAnswers": {
+    "description": "Correct answers label"
+  },
+
+  "xpGained": "XP Ganado",
+  "@xpGained": {
+    "description": "XP gained label"
+  },
+
+  "maxCombo": "Combo Maximo",
+  "@maxCombo": {
+    "description": "Maximum combo label"
+  },
+
+  "precision": "Precision",
+  "@precision": {
+    "description": "Precision/accuracy label"
+  },
+
+  "questionProgress": "Pregunta {current} de {total}",
+  "@questionProgress": {
+    "description": "Question progress indicator",
+    "placeholders": {
+      "current": {
+        "type": "int",
+        "example": "5"
+      },
+      "total": {
+        "type": "int",
+        "example": "10"
+      }
+    }
+  },
+
+  "selectSubject": "Selecciona una materia",
+  "@selectSubject": {
+    "description": "Subject selection prompt"
+  },
+
+  "questionsCount": "{count, plural, =1{1 pregunta} other{{count} preguntas}}",
+  "@questionsCount": {
+    "description": "Number of questions",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "10"
+      }
+    }
+  },
+
+  "difficulty": "Dificultad",
+  "@difficulty": {
+    "description": "Difficulty label"
+  },
+
+  "settings": "Configuracion",
+  "@settings": {
+    "description": "Settings page title"
+  },
+
+  "logout": "Cerrar Sesion",
+  "@logout": {
+    "description": "Logout button"
+  },
+
+  "logoutConfirmTitle": "Cerrar Sesion",
+  "@logoutConfirmTitle": {
+    "description": "Logout confirmation dialog title"
+  },
+
+  "logoutConfirmMessage": "Estas seguro de que quieres salir?",
+  "@logoutConfirmMessage": {
+    "description": "Logout confirmation message"
+  },
+
+  "exit": "Salir",
+  "@exit": {
+    "description": "Exit button"
+  },
+
+  "profile": "Perfil de Cazador",
+  "@profile": {
+    "description": "Profile page title"
+  },
+
+  "hunterClass": "Clase",
+  "@hunterClass": {
+    "description": "Hunter class label"
+  },
+
+  "hunterRankE": "Cazador Rango E",
+  "@hunterRankE": {
+    "description": "E rank hunter"
+  },
+
+  "noUserFound": "No user found",
+  "@noUserFound": {
+    "description": "No user found message"
+  },
+
+  "shop": "TIENDA DEL SISTEMA",
+  "@shop": {
+    "description": "Shop page title"
+  },
+
+  "featuredItems": "ARTICULOS DESTACADOS",
+  "@featuredItems": {
+    "description": "Featured items section"
+  },
+
+  "yourInventory": "TU INVENTARIO",
+  "@yourInventory": {
+    "description": "Your inventory section"
+  },
+
+  "buyItem": "Comprar {item}?",
+  "@buyItem": {
+    "description": "Buy item confirmation",
+    "placeholders": {
+      "item": {
+        "type": "String",
+        "example": "Streak Freeze"
+      }
+    }
+  },
+
+  "cost": "Costo",
+  "@cost": {
+    "description": "Cost label"
+  },
+
+  "insufficientCoins": "Monedas insuficientes",
+  "@insufficientCoins": {
+    "description": "Insufficient coins message"
+  },
+
+  "buy": "Comprar",
+  "@buy": {
+    "description": "Buy button"
+  },
+
+  "zeroXpRepeated": "0 XP (REPETIDA)",
+  "@zeroXpRepeated": {
+    "description": "Zero XP for repeated question"
+  },
+
+  "reviewXp": "5 XP (REPASO)",
+  "@reviewXp": {
+    "description": "Reduced XP for review question"
+  },
+
+  "comboMultiplier": "COMBO x{count}",
+  "@comboMultiplier": {
+    "description": "Combo multiplier display",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+
+  "xpAmount": "+{amount} XP",
+  "@xpAmount": {
+    "description": "XP amount display",
+    "placeholders": {
+      "amount": {
+        "type": "int",
+        "example": "100"
+      }
+    }
+  },
+
+  "optionLabel": "Opcion {id}",
+  "@optionLabel": {
+    "description": "Option accessibility label",
+    "placeholders": {
+      "id": {
+        "type": "String",
+        "example": "A"
+      }
+    }
+  },
+
+  "correct": "Correcto",
+  "@correct": {
+    "description": "Correct label for accessibility"
+  },
+
+  "offline": "Sin conexion",
+  "@offline": {
+    "description": "Offline status"
+  },
+
+  "online": "En linea",
+  "@online": {
+    "description": "Online status"
+  },
+
+  "syncPending": "Sincronizacion pendiente",
+  "@syncPending": {
+    "description": "Sync pending message"
+  },
+
+  "syncing": "Sincronizando...",
+  "@syncing": {
+    "description": "Syncing in progress"
+  },
+
+  "syncComplete": "Sincronizacion completada",
+  "@syncComplete": {
+    "description": "Sync complete message"
+  },
+
+  "daysStreak": "{count, plural, =1{1 dia} other{{count} dias}}",
+  "@daysStreak": {
+    "description": "Days streak count",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "7"
+      }
+    }
+  },
+
+  "weeklyStats": "Estadisticas Semanales",
+  "@weeklyStats": {
+    "description": "Weekly stats section title"
+  },
+
+  "bossRaid": "Raid de Jefe",
+  "@bossRaid": {
+    "description": "Boss raid feature"
+  },
+
+  "quickActions": "Acciones Rapidas",
+  "@quickActions": {
+    "description": "Quick actions section"
+  },
+
+  "diagnostic": "Diagnostico",
+  "@diagnostic": {
+    "description": "Diagnostic test"
+  },
+
+  "deepDiagnostic": "Diagnostico Profundo",
+  "@deepDiagnostic": {
+    "description": "Deep diagnostic test"
+  },
+
+  "skillTree": "Arbol de Habilidades",
+  "@skillTree": {
+    "description": "Skill tree feature"
+  },
+
+  "studyPlan": "Plan de Estudio",
+  "@studyPlan": {
+    "description": "Study plan feature"
+  },
+
+  "leagues": "Ligas",
+  "@leagues": {
+    "description": "Leagues/leaderboard feature"
+  },
+
+  "achievements": "Logros",
+  "@achievements": {
+    "description": "Achievements feature"
+  },
+
+  "dailyMissions": "Misiones Diarias",
+  "@dailyMissions": {
+    "description": "Daily missions"
+  },
+
+  "notifications": "Notificaciones",
+  "@notifications": {
+    "description": "Notifications"
+  },
+
+  "unknown": "Desconocido",
+  "@unknown": {
+    "description": "Unknown value"
+  }
+}

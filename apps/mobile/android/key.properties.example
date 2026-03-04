@@ -1,0 +1,50 @@
+# Android Keystore Configuration
+# Copy this file to key.properties and fill in your values
+# NEVER commit the actual key.properties file to version control!
+
+# The password used when creating the keystore
+storePassword=your_store_password_here
+
+# The password for the key alias
+keyPassword=your_key_password_here
+
+# The alias name for your signing key
+keyAlias=your_key_alias_here
+
+# Path to your keystore file (relative to android/app/ directory)
+# For local development: path/to/your/release-keystore.jks
+# For CI/CD: release-keystore.jks (created from base64 secret)
+storeFile=release-keystore.jks
+
+# ============================================================
+# SETUP INSTRUCTIONS
+# ============================================================
+#
+# 1. Generate a keystore (if you don't have one):
+#    keytool -genkey -v -keystore release-keystore.jks -keyalg RSA \
+#            -keysize 2048 -validity 10000 -alias your_key_alias
+#
+# 2. For local development:
+#    - Copy this file to key.properties
+#    - Fill in your actual values
+#    - Place your keystore file in android/app/
+#
+# 3. For GitHub Actions CI/CD, create these repository secrets:
+#    - KEYSTORE_BASE64: Base64 encoded keystore file
+#      Command: base64 -i release-keystore.jks | tr -d '\n'
+#    - KEY_ALIAS: Your key alias
+#    - KEY_PASSWORD: Your key password
+#    - STORE_PASSWORD: Your store password
+#    - API_URL: Your backend API URL
+#    - SENTRY_DSN: Your Sentry DSN for error tracking
+#
+# ============================================================
+# SECURITY NOTES
+# ============================================================
+#
+# - NEVER commit key.properties or keystore files to git
+# - Keep your keystore file backed up securely
+# - Use strong passwords (16+ characters, mixed case, numbers, symbols)
+# - The keystore is required for Play Store updates - losing it means
+#   you cannot update your app, only publish a new one
+#

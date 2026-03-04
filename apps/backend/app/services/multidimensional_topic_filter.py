@@ -1041,7 +1041,7 @@ if __name__ == "__main__":
     # Initialize filter
     topic_filter = MultidimensionalTopicFilter(db)
     
-    print("Multi-dimensional Topic Filter initialized successfully!")
-    print(f"Available competencies: {len(ICFESCompetency)}")
-    print(f"Available cognitive levels: {len(CognitiveLevel)}")
-    print(f"Dimension weights: {topic_filter.dimension_weights}")
+    logger.info("Multi-dimensional Topic Filter initialized successfully!")
+    logger.debug(f"Available competencies: {len(ICFESCompetency)}")
+    logger.debug(f"Available cognitive levels: {len(CognitiveLevel)}")
+    logger.debug(f"Dimension weights: {topic_filter.dimension_weights}")

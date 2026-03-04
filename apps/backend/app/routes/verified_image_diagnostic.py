@@ -132,7 +132,7 @@ def get_verified_questions_cache(db: Session) -> Dict[str, List[dict]]:
                     "opcion_c": question.opcion_c,
                     "opcion_d": question.opcion_d,
                     "respuesta_correcta": question.respuesta_correcta,
-                    "dificultad": question.dificultad or 1,
+                    "difficulty": question.dificultad or 1,
                     "tiempo_estimado": question.tiempo_estimado or 60,
                     "puntos_xp": question.puntos_xp or 10,
                     "pregunta_imagen": question.pregunta_imagen if question.pregunta_imagen and question.pregunta_imagen.strip() and question.pregunta_imagen != "No Aplica" else None,

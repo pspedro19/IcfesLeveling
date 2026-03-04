@@ -7,7 +7,8 @@ import random
 import logging
 
 from ..core.database import get_db
-from ..core.security import get_current_user, calculate_damage, calculate_experience_gain, calculate_orbs_gain
+from ..core.security import get_current_user
+from ..services.game_engine_service import calculate_damage, calculate_experience_gain, calculate_orbs_gain
 from ..models.user import User
 from ..models.user_profile import UserProfile
 from ..models.battle import Battle, BattleAnswer
@@ -33,21 +34,15 @@ async def start_cached_battle(
         UserProfile.user_id == current_user.id
     ).first()
     
-    if not user_profile:
-        raise HTTPException(status_code=404, detail="User profile not found")
-    
-    # Create battle
+    # Create battle (using User model fields for hp, not UserProfile)
     battle = Battle(
         user_id=current_user.id,
         battle_type=battle_create.battle_type,
         enemy_name=battle_create.enemy_name,
         enemy_level=battle_create.enemy_level,
         enemy_hp=battle_create.enemy_level * 50,
-        enemy_max_hp=battle_create.enemy_level * 50,
-        player_hp=user_profile.hp,
-        player_max_hp=user_profile.hp,
-        player_mp=user_profile.mp,
-        player_max_mp=user_profile.mp,
+        user_hp_start=current_user.hp,
+        user_hp_end=current_user.hp,
         status="in_progress"
     )
     

@@ -63,7 +63,7 @@ class Subscription(Base):
     
     # Configuración
     auto_renew = Column(Boolean, default=True)
-    payment_method_id = Column(String, ForeignKey("payment_methods.id"))
+    payment_method_id = Column(UUID(as_uuid=True), ForeignKey("payment_methods.id"), nullable=True) # Changed to UUID
     
     # Metadata
     meta_data = Column(JSON)
@@ -81,7 +81,7 @@ class Payment(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    subscription_id = Column(String, ForeignKey("subscriptions.id"))
+    subscription_id = Column(UUID(as_uuid=True), ForeignKey("subscriptions.id"))
     
     # Información del pago
     amount = Column(Numeric(10, 2), nullable=False)
@@ -164,8 +164,8 @@ class Invoice(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    payment_id = Column(String, ForeignKey("payments.id"))
-    subscription_id = Column(String, ForeignKey("subscriptions.id"))
+    payment_id = Column(UUID(as_uuid=True), ForeignKey("payments.id"))
+    subscription_id = Column(UUID(as_uuid=True), ForeignKey("subscriptions.id"))
     
     # Información de factura
     invoice_number = Column(String, unique=True, nullable=False)
@@ -244,9 +244,9 @@ class CouponUsage(Base):
     __tablename__ = "coupon_usage"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    coupon_id = Column(String, ForeignKey("coupons.id"), nullable=False)
+    coupon_id = Column(UUID(as_uuid=True), ForeignKey("coupons.id"), nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    payment_id = Column(String, ForeignKey("payments.id"))
+    payment_id = Column(UUID(as_uuid=True), ForeignKey("payments.id"))
     
     # Descuento aplicado
     discount_amount = Column(Numeric(10, 2), nullable=False)

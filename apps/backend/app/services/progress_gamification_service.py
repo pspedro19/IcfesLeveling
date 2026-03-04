@@ -168,7 +168,7 @@ class ProgressGamificationService:
             
             # Cache the progress data
             cache_key = f"comprehensive_progress:{user_id}:{plan_id or 'all'}"
-            cache_service.set(cache_key, comprehensive_progress, expire=1800)  # 30 minutes
+            cache_service.set(cache_key, comprehensive_progress, ttl=1800)  # 30 minutes
             
             return comprehensive_progress
             

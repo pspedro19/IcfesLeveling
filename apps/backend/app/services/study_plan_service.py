@@ -131,7 +131,7 @@ class StudyPlanService:
         self._create_initial_progress(study_plan.id, personalized_plan["units"])
         
         # Cachear el plan
-        cache_service.set(cache_key, personalized_plan, expire=3600)
+        cache_service.set(cache_key, personalized_plan, ttl=3600)
         
         return personalized_plan
     

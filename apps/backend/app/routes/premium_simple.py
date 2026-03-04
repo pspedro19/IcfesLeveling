@@ -1,14 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import Optional
+from pydantic import BaseModel
+import logging
 
 from ..core.database import get_db
 from ..core.security import get_current_user
 from ..models.user import User
 from ..models.subscription import Subscription
+from ..services.wompi_service import wompi_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/premium", tags=["premium"])
+
+
+class CheckoutRequest(BaseModel):
+    plan_id: str = "basic"
+    redirect_url: Optional[str] = None
 
 @router.get("/plans")
 async def get_premium_plans(db: Session = Depends(get_db)):
@@ -78,16 +88,56 @@ async def get_premium_plans(db: Session = Depends(get_db)):
 
 @router.post("/create-checkout-session")
 async def create_checkout_session(
+    checkout: CheckoutRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Crear una sesión de checkout (simulada para desarrollo)"""
+    """Create a Wompi checkout session for subscription payment"""
+    result = await wompi_service.create_payment_link(
+        user=current_user,
+        plan_id=checkout.plan_id,
+        redirect_url=checkout.redirect_url,
+    )
+
+    if not result.get("success"):
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=result.get("error", "Error creating payment session")
+        )
+
     return {
-        "checkout_url": "https://example.com/checkout",
-        "session_id": "mock_session_123",
+        "checkout_url": result.get("payment_url"),
+        "reference": result.get("reference"),
+        "link_id": result.get("link_id"),
         "success": True,
-        "message": "Checkout session created successfully (mock)"
     }
+
+
+@router.post("/webhook/wompi")
+async def wompi_webhook(request: Request, db: Session = Depends(get_db)):
+    """Handle Wompi payment webhook events"""
+    try:
+        payload = await request.json()
+        signature = request.headers.get("X-Event-Checksum", "")
+        event_type = payload.get("event", "")
+
+        logger.info(f"Wompi webhook received: {event_type}")
+
+        success = await wompi_service.process_webhook(
+            event_type=event_type,
+            data=payload.get("data", {}),
+            signature=signature,
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail="Webhook processing failed")
+
+        return {"status": "processed"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Webhook error: {e}")
+        raise HTTPException(status_code=500, detail="Internal webhook error")
 
 @router.get("/status")
 async def get_premium_status(

@@ -96,8 +96,7 @@ class MediaRateLimiter:
         if self.redis_client:
             try:
                 data = self.redis_client.get(f"rate_limit:{key}")
-                return json.loads(data) if data else {}
-            except:
+            except Exception:
                 pass
         
         return self._memory_store.get(key, {})
@@ -107,8 +106,7 @@ class MediaRateLimiter:
         if self.redis_client:
             try:
                 self.redis_client.setex(f"rate_limit:{key}", ttl, json.dumps(data))
-                return
-            except:
+            except Exception:
                 pass
         
         self._memory_store[key] = data
@@ -127,7 +125,7 @@ class MediaRateLimiter:
                 pipe.expire(key, window + 10)
                 result = pipe.execute()
                 return result[2]
-            except:
+            except Exception:
                 pass
         
         # Memory fallback with sliding window

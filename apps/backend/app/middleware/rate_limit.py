@@ -4,8 +4,12 @@ import time
 import asyncio
 from typing import Dict, Tuple
 from collections import defaultdict, deque
+from functools import wraps
 import redis
 import os
+import logging
+
+logger = logging.getLogger("icfes.middleware.rate_limit")
 
 class RateLimiter:
     def __init__(self):
@@ -20,12 +24,17 @@ class RateLimiter:
             )
             self.redis_client.ping()
             self.use_redis = True
-        except:
+        except Exception as e:
+            logger.warning(f"Redis connection failed, falling back to in-memory store. Error: {e}")
             self.use_redis = False
             # In-memory fallback
             self.memory_store: Dict[str, deque] = defaultdict(deque)
             self.cleanup_interval = 300  # 5 minutes
-            asyncio.create_task(self._cleanup_memory_store())
+            try:
+                asyncio.create_task(self._cleanup_memory_store())
+            except RuntimeError:
+                # No event loop running (e.g. during tests) — skip cleanup task
+                pass
 
     async def _cleanup_memory_store(self):
         """Clean up expired entries from memory store"""
@@ -89,7 +98,7 @@ class RateLimiter:
                 }
         except Exception as e:
             # Fallback to allowing request if Redis fails
-            print(f"Redis rate limit error: {e}")
+            logger.error(f"Redis rate limit error: {e}")
             return True, {"allowed": True, "limit": limit, "remaining": limit}
 
     async def _memory_check(self, key: str, limit: int, window: int, current_time: float) -> Tuple[bool, Dict]:
@@ -120,6 +129,14 @@ class RateLimiter:
 # Global rate limiter instance
 rate_limiter = RateLimiter()
 
+def get_client_ip(request: Request) -> str:
+    """Get client IP, handling X-Forwarded-For header for proxies."""
+    x_forwarded_for = request.headers.get("X-Forwarded-For")
+    if x_forwarded_for:
+        # The first IP in the list is the original client IP
+        return x_forwarded_for.split(",")[0].strip()
+    return request.client.host
+
 # Decorator for rate limiting endpoints
 def rate_limit(limit: int = 100, window: int = 60, key_func=None):
     """
@@ -131,6 +148,7 @@ def rate_limit(limit: int = 100, window: int = 60, key_func=None):
         key_func: Function to generate rate limit key
     """
     def decorator(func):
+        @wraps(func)
         async def wrapper(*args, **kwargs):
             # Extract request from args/kwargs
             request = None
@@ -147,8 +165,8 @@ def rate_limit(limit: int = 100, window: int = 60, key_func=None):
             if key_func:
                 key = key_func(request)
             else:
-                # Default: use IP address
-                client_ip = request.client.host
+                # Default: use IP address from our helper
+                client_ip = get_client_ip(request)
                 key = f"rate_limit:{client_ip}:{func.__name__}"
             
             # Check rate limit
@@ -185,6 +203,7 @@ def rate_limit(limit: int = 100, window: int = 60, key_func=None):
 def user_rate_limit(limit: int = 1000, window: int = 3600):
     """Rate limit by user ID"""
     def key_func(request: Request):
+        client_ip = get_client_ip(request)
         # Extract user ID from token or session
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
@@ -193,11 +212,10 @@ def user_rate_limit(limit: int = 1000, window: int = 3600):
                 import jwt
                 token = auth_header[7:]
                 payload = jwt.decode(token, options={"verify_signature": False})
-                user_id = payload.get("user_id", request.client.host)
-                return f"user_rate_limit:{user_id}"
-            except:
+                user_id = payload.get("user_id", client_ip)
+            except Exception:
                 pass
-        return f"ip_rate_limit:{request.client.host}"
+        return f"ip_rate_limit:{client_ip}"
     
     return rate_limit(limit, window, key_func)
 
@@ -205,7 +223,8 @@ def user_rate_limit(limit: int = 1000, window: int = 3600):
 def ip_rate_limit(limit: int = 100, window: int = 60):
     """Rate limit by IP address"""
     def key_func(request: Request):
-        return f"ip_rate_limit:{request.client.host}"
+        client_ip = get_client_ip(request)
+        return f"ip_rate_limit:{client_ip}"
     
     return rate_limit(limit, window, key_func)
 
@@ -213,7 +232,7 @@ def ip_rate_limit(limit: int = 100, window: int = 60):
 def endpoint_rate_limit(endpoint: str, limit: int = 50, window: int = 60):
     """Rate limit by endpoint and user/IP"""
     def key_func(request: Request):
-        identifier = request.client.host
+        identifier = get_client_ip(request)
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
             try:
@@ -221,7 +240,7 @@ def endpoint_rate_limit(endpoint: str, limit: int = 50, window: int = 60):
                 token = auth_header[7:]
                 payload = jwt.decode(token, options={"verify_signature": False})
                 identifier = payload.get("user_id", identifier)
-            except:
+            except Exception:
                 pass
         return f"endpoint_rate_limit:{endpoint}:{identifier}"
     

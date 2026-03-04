@@ -256,8 +256,7 @@ class SystemHealthMonitor:
             started_at = container.attrs['State']['StartedAt']
             start_time = datetime.fromisoformat(started_at.replace('Z', '+00:00'))
             uptime = datetime.now(start_time.tzinfo) - start_time
-            return str(uptime).split('.')[0]  # Sin microsegundos
-        except:
+        except Exception:
             return "unknown"
     
     def _get_container_memory_usage(self, container) -> str:
@@ -266,7 +265,7 @@ class SystemHealthMonitor:
             stats = container.stats(stream=False)
             memory_usage = stats['memory_stats']['usage']
             return f"{memory_usage // (1024**2)} MB"
-        except:
+        except Exception:
             return "unknown"
     
     def _get_container_cpu_usage(self, container) -> str:
@@ -277,7 +276,7 @@ class SystemHealthMonitor:
             system_delta = stats['cpu_stats']['system_cpu_usage'] - stats['precpu_stats']['system_cpu_usage']
             cpu_percent = (cpu_delta / system_delta) * 100 if system_delta > 0 else 0
             return f"{cpu_percent:.1f}%"
-        except:
+        except Exception:
             return "unknown"
     
     def get_current_health(self) -> Dict:

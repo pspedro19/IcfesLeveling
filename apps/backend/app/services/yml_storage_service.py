@@ -411,7 +411,7 @@ class YMLStorageService:
                         'total_keys': self.redis_client.dbsize(),
                         'memory_usage': self.redis_client.info('memory').get('used_memory_human', 'N/A')
                     }
-                except:
+                except Exception:
                     cache_stats = {'error': 'No disponible'}
             
             return {

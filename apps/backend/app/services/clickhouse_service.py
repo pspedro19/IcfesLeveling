@@ -2,9 +2,10 @@ from clickhouse_driver import Client
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 import logging
+import os
 from ..core.config import settings
 import json
-import time
+import asyncio # New import
 
 logger = logging.getLogger(__name__)
 
@@ -12,22 +13,23 @@ class ClickHouseService:
     def __init__(self):
         self.client = None
         self.connected = False
-        self.connect()
-    
-    def connect(self, max_retries=3):
+        # self.connect() is removed from here
+
+    async def connect(self, max_retries=3): # Now async
         """Connect to ClickHouse with retry logic"""
         for attempt in range(max_retries):
             try:
+                # The clickhouse_driver client is synchronous, which is not ideal,
+                # but we are at least making the retry logic non-blocking.
                 self.client = Client(
-                    host='clickhouse',
-                    port=9000,
-                    user='default',
-                    password='clickhouse123',
-                    database='gameplay_analytics',
+                    host=settings.CLICKHOUSE_HOST,
+                    port=settings.CLICKHOUSE_PORT,
+                    user=settings.CLICKHOUSE_USER,
+                    password=settings.CLICKHOUSE_PASSWORD,
+                    database=settings.CLICKHOUSE_DATABASE,
                     connect_timeout=5,
                     send_receive_timeout=10
                 )
-                # Test connection
                 self.client.execute('SELECT 1')
                 self.connected = True
                 logger.info("Successfully connected to ClickHouse")
@@ -35,21 +37,21 @@ class ClickHouseService:
             except Exception as e:
                 logger.warning(f"ClickHouse connection attempt {attempt + 1} failed: {e}")
                 if attempt < max_retries - 1:
-                    time.sleep(2 ** attempt)  # Exponential backoff
+                    await asyncio.sleep(2 ** attempt)  # Non-blocking sleep
                 else:
                     logger.error("Failed to connect to ClickHouse after all retries")
                     self.connected = False
     
-    def _ensure_connection(self):
+    async def _ensure_connection(self): # Now async
         """Ensure ClickHouse connection is active"""
         if not self.connected or not self.client:
-            self.connect()
+            await self.connect()
     
-    def insert_event(self, event_type: str, user_id: str, event_data: Dict[str, Any], 
-                    session_id: str = None, platform: str = 'web'):
+    async def insert_event(self, event_type: str, user_id: str, event_data: Dict[str, Any], 
+                    session_id: str = None, platform: str = 'web'): # Now async
         """Insert a single event into ClickHouse"""
         try:
-            self._ensure_connection()
+            await self._ensure_connection()
             if not self.connected:
                 logger.warning("ClickHouse not connected, skipping event insertion")
                 return
@@ -74,13 +76,11 @@ class ClickHouseService:
             logger.info(f"Event inserted: {event_type} for user {user_id}")
         except Exception as e:
             logger.error(f"Error inserting event: {e}")
-            # Don't raise the exception to prevent 500 errors
-            # Just log and continue
     
-    def insert_batch_events(self, events: List[Dict[str, Any]]):
+    async def insert_batch_events(self, events: List[Dict[str, Any]]): # Now async
         """Insert multiple events in batch"""
         try:
-            self._ensure_connection()
+            await self._ensure_connection()
             if not self.connected:
                 logger.warning("ClickHouse not connected, skipping batch event insertion")
                 return
@@ -107,12 +107,11 @@ class ClickHouseService:
             logger.info(f"Batch inserted {len(events)} events")
         except Exception as e:
             logger.error(f"Error inserting batch events: {e}")
-            # Don't raise the exception to prevent 500 errors
-            # Just log and continue
-    
-    def track_battle_analytics(self, battle_data: Dict[str, Any]):
+
+    async def track_battle_analytics(self, battle_data: Dict[str, Any]): # Now async
         """Track battle analytics data"""
         try:
+            await self._ensure_connection()
             query = """
             INSERT INTO battle_analytics
             (battle_id, user_id, battle_type, enemy_name, enemy_level,
@@ -147,9 +146,10 @@ class ClickHouseService:
             logger.error(f"Error tracking battle analytics: {e}")
             raise
     
-    def track_question_performance(self, performance_data: Dict[str, Any]):
+    async def track_question_performance(self, performance_data: Dict[str, Any]): # Now async
         """Track question performance data"""
         try:
+            await self._ensure_connection()
             query = """
             INSERT INTO question_performance
             (question_id, user_id, subject_id, topic_id, difficulty,
@@ -181,9 +181,10 @@ class ClickHouseService:
             logger.error(f"Error tracking question performance: {e}")
             raise
     
-    def update_user_progression(self, user_data: Dict[str, Any]):
+    async def update_user_progression(self, user_data: Dict[str, Any]): # Now async
         """Update user progression snapshot"""
         try:
+            await self._ensure_connection()
             query = """
             INSERT INTO user_progression
             (user_id, level, experience, rank, hp, mp, power, wisdom, speed,
@@ -213,14 +214,16 @@ class ClickHouseService:
             logger.error(f"Error updating user progression: {e}")
             raise
     
-    def get_user_analytics(self, user_id: str, days: int = 30) -> Dict[str, Any]:
+    async def get_user_analytics(self, user_id: str, days: int = 30) -> Dict[str, Any]:
         """Get user analytics for the specified period"""
         try:
+            await self._ensure_connection()
             start_date = datetime.now() - timedelta(days=days)
-            
-            # Get battle statistics
-            battle_stats = self.client.execute(f"""
-                SELECT 
+
+            # Get battle statistics using parameterized query
+            battle_stats = self.client.execute(
+                """
+                SELECT
                     count() as total_battles,
                     sum(questions_answered) as total_questions,
                     sum(correct_answers) as total_correct,
@@ -228,50 +231,61 @@ class ClickHouseService:
                     sum(experience_gained) as total_experience,
                     sum(orbs_gained) as total_orbs
                 FROM battle_analytics
-                WHERE user_id = '{user_id}' 
-                AND created_at >= '{start_date.isoformat()}'
-            """)[0]
-            
-            # Get question performance by topic
-            topic_performance = self.client.execute(f"""
-                SELECT 
+                WHERE user_id = %(user_id)s
+                AND created_at >= %(start_date)s
+                """,
+                {'user_id': user_id, 'start_date': start_date}
+            )[0]
+
+            # Get question performance by topic using parameterized query
+            topic_performance = self.client.execute(
+                """
+                SELECT
                     topic_id,
                     count() as questions_count,
                     sum(is_correct) as correct_count,
                     avg(response_time_ms) as avg_response_time
                 FROM question_performance
-                WHERE user_id = '{user_id}'
-                AND created_at >= '{start_date.isoformat()}'
+                WHERE user_id = %(user_id)s
+                AND created_at >= %(start_date)s
                 GROUP BY topic_id
-            """)
-            
-            # Get daily activity
-            daily_activity = self.client.execute(f"""
-                SELECT 
+                """,
+                {'user_id': user_id, 'start_date': start_date}
+            )
+
+            # Get daily activity using parameterized query
+            daily_activity = self.client.execute(
+                """
+                SELECT
                     toDate(created_at) as date,
                     count() as battles_count,
                     sum(correct_answers) / sum(questions_answered) as accuracy
                 FROM battle_analytics
-                WHERE user_id = '{user_id}'
-                AND created_at >= '{start_date.isoformat()}'
+                WHERE user_id = %(user_id)s
+                AND created_at >= %(start_date)s
                 GROUP BY date
                 ORDER BY date
-            """)
-            
-            # Get progression history
-            progression = self.client.execute(f"""
-                SELECT 
+                """,
+                {'user_id': user_id, 'start_date': start_date}
+            )
+
+            # Get progression history using parameterized query
+            progression = self.client.execute(
+                """
+                SELECT
                     recorded_at,
                     level,
                     experience,
                     rank,
                     streak_days
                 FROM user_progression
-                WHERE user_id = '{user_id}'
-                AND recorded_at >= '{start_date.isoformat()}'
+                WHERE user_id = %(user_id)s
+                AND recorded_at >= %(start_date)s
                 ORDER BY recorded_at
                 LIMIT 100
-            """)
+                """,
+                {'user_id': user_id, 'start_date': start_date}
+            )
             
             return {
                 'battle_stats': {
@@ -316,63 +330,77 @@ class ClickHouseService:
             logger.error(f"Error getting user analytics: {e}")
             raise
     
-    def get_global_analytics(self, days: int = 7) -> Dict[str, Any]:
+    async def get_global_analytics(self, days: int = 7) -> Dict[str, Any]: # Now async
         """Get global analytics for the platform"""
         try:
+            await self._ensure_connection()
             start_date = datetime.now() - timedelta(days=days)
-            
-            # Get overall statistics
-            overall_stats = self.client.execute(f"""
-                SELECT 
+
+            # Get overall statistics using parameterized query
+            overall_stats = self.client.execute(
+                """
+                SELECT
                     count(DISTINCT user_id) as unique_users,
                     count() as total_events,
                     count(DISTINCT session_id) as total_sessions
                 FROM game_events
-                WHERE event_time >= '{start_date.isoformat()}'
-            """)[0]
-            
-            # Get event type distribution
-            event_distribution = self.client.execute(f"""
-                SELECT 
+                WHERE event_time >= %(start_date)s
+                """,
+                {'start_date': start_date}
+            )[0]
+
+            # Get event type distribution using parameterized query
+            event_distribution = self.client.execute(
+                """
+                SELECT
                     event_type,
                     count() as event_count
                 FROM game_events
-                WHERE event_time >= '{start_date.isoformat()}'
+                WHERE event_time >= %(start_date)s
                 GROUP BY event_type
                 ORDER BY event_count DESC
                 LIMIT 20
-            """)
-            
-            # Get top players
-            top_players = self.client.execute(f"""
-                SELECT 
+                """,
+                {'start_date': start_date}
+            )
+
+            # Get top players using parameterized query
+            top_players = self.client.execute(
+                """
+                SELECT
                     user_id,
                     sum(experience_gained) as total_experience,
                     count() as battles_count,
                     sum(correct_answers) / sum(questions_answered) as accuracy
                 FROM battle_analytics
-                WHERE created_at >= '{start_date.isoformat()}'
+                WHERE created_at >= %(start_date)s
                 GROUP BY user_id
                 ORDER BY total_experience DESC
                 LIMIT 10
-            """)
-            
-            # Get popular battle types
-            popular_battles = self.client.execute(f"""
-                SELECT 
+                """,
+                {'start_date': start_date}
+            )
+
+            # Get popular battle types using parameterized query
+            popular_battles = self.client.execute(
+                """
+                SELECT
                     battle_type,
                     count() as battle_count,
                     avg(questions_answered) as avg_questions,
                     avg(correct_answers / questions_answered) as avg_accuracy
                 FROM battle_analytics
-                WHERE created_at >= '{start_date.isoformat()}'
+                WHERE created_at >= %(start_date)s
                 GROUP BY battle_type
                 ORDER BY battle_count DESC
-            """)
-            
-            # Get daily metrics
-            daily_metrics = self.client.execute(f"""
-                SELECT 
+                """,
+                {'start_date': start_date}
+            )
+
+            # Get daily metrics using parameterized query
+            daily_metrics = self.client.execute(
+                """
+                SELECT
                     toDate(created_at) as date,
                     count(DISTINCT user_id) as active_users,
                     count() as total_battles,
@@ -380,10 +408,12 @@ class ClickHouseService:
                     sum(correct_answers) as correct_answers,
                     sum(experience_gained) as total_experience
                 FROM battle_analytics
-                WHERE created_at >= '{start_date.isoformat()}'
+                WHERE created_at >= %(start_date)s
                 GROUP BY date
                 ORDER BY date
-            """)
+                """,
+                {'start_date': start_date}
+            )
             
             return {
                 'overall_stats': {
@@ -433,14 +463,17 @@ class ClickHouseService:
             logger.error(f"Error getting global analytics: {e}")
             raise
     
-    def generate_daily_report(self) -> Dict[str, Any]:
+    async def generate_daily_report(self) -> Dict[str, Any]: # Now async
         """Generate daily analytics report"""
         try:
+            await self._ensure_connection()
             # This would be called by a scheduled task
             yesterday = datetime.now() - timedelta(days=1)
-            
-            daily_stats = self.client.execute(f"""
-                SELECT 
+
+            # Use parameterized query to prevent SQL injection
+            daily_stats = self.client.execute(
+                """
+                SELECT
                     count(DISTINCT user_id) as active_users,
                     count() as total_battles,
                     sum(questions_answered) as total_questions,
@@ -449,8 +482,10 @@ class ClickHouseService:
                     sum(orbs_gained) as total_orbs,
                     avg(duration_seconds) as avg_session_duration
                 FROM battle_analytics
-                WHERE toDate(created_at) = toDate('{yesterday.isoformat()}')
-            """)[0]
+                WHERE toDate(created_at) = toDate(%(yesterday)s)
+                """,
+                {'yesterday': yesterday}
+            )[0]
             
             # Insert into daily metrics table
             self.client.execute("""

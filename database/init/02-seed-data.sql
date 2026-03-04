@@ -4,7 +4,7 @@
 -- Insert subjects (materias)
 INSERT INTO subjects (id, name, description, icon_url, color) VALUES
 ('550e8400-e29b-41d4-a716-446655440001', 'Matemáticas', 'Cálculo, álgebra, geometría y estadística', '/assets/images/subjects/matematicasicon.png', '#FF6B6B'),
-('550e8400-e29b-41d4-a716-446655440002', 'Lenguaje', 'Comprensión lectora, gramática y literatura', '/assets/images/subjects/lecturaicon.png', '#4ECDC4'),
+('550e8400-e29b-41d4-a716-446655440002', 'Lectura Crítica', 'Comprensión lectora, gramática y literatura', '/assets/images/subjects/lecturaicon.png', '#4ECDC4'),
 ('550e8400-e29b-41d4-a716-446655440003', 'Ciencias Naturales', 'Física, química y biología', '/assets/images/subjects/cienciasnaturalesicon.png', '#45B7D1'),
 ('550e8400-e29b-41d4-a716-446655440004', 'Ciencias Sociales', 'Historia, geografía y filosofía', '/assets/images/subjects/socialesicon.png', '#96CEB4'),
 ('550e8400-e29b-41d4-a716-446655440005', 'Inglés', 'Comprensión y uso del idioma inglés', '/assets/images/subjects/englishicon.png', '#FFEAA7');

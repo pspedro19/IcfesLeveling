@@ -3,7 +3,7 @@ Modelo SQLAlchemy para YouTube Links
 Tabla que mapea temas ICFES con videos educativos de YouTube
 """
 
-from sqlalchemy import Column, String, Text, Integer, Boolean, DECIMAL, DateTime, UUID, ARRAY
+from sqlalchemy import Column, String, Text, Integer, Boolean, DECIMAL, DateTime, ARRAY
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import UUID as PostgresUUID
 from ..core.database import Base

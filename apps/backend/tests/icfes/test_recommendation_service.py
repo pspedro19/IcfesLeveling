@@ -85,9 +85,17 @@ class TestICFESRecommendationService:
         """Verifica generación básica de plan de estudio"""
         # Mock de la base de datos
         mock_db.query.return_value.filter.return_value.order_by.return_value.first.return_value = None
-        
-        # Mock del análisis por defecto
-        with patch.object(service, '_analyze_diagnostic_results') as mock_analyze:
+
+        # All patches must be nested so they are active during the call
+        with patch.object(service, '_analyze_diagnostic_results') as mock_analyze, \
+             patch.object(service, '_identify_critical_topics') as mock_identify, \
+             patch.object(service, '_build_dependency_graph') as mock_graph, \
+             patch.object(service, '_topological_sort') as mock_sort, \
+             patch.object(service, '_allocate_study_time') as mock_time, \
+             patch.object(service, '_select_optimal_resources') as mock_resources, \
+             patch.object(service, '_generate_milestones') as mock_milestones, \
+             patch.object(service, '_calculate_success_probability') as mock_prob:
+
             mock_analyze.return_value = {
                 'current_score': 250,
                 'competency_scores': {},
@@ -97,55 +105,34 @@ class TestICFESRecommendationService:
                 'weakest_competencies': [],
                 'weakest_topics': []
             }
-        
-        # Mock de identificación de temas críticos
-        with patch.object(service, '_identify_critical_topics') as mock_identify:
             mock_identify.return_value = ["LC001", "LC002", "MAT001"]
-        
-        # Mock de construcción de grafo
-        with patch.object(service, '_build_dependency_graph') as mock_graph:
             mock_graph.return_value = {
                 "LC001": ["LC002"],
                 "LC002": [],
                 "MAT001": []
             }
-        
-        # Mock de ordenamiento topológico
-        with patch.object(service, '_topological_sort') as mock_sort:
             mock_sort.return_value = ["LC001", "LC002", "MAT001"]
-        
-        # Mock de asignación de tiempo
-        with patch.object(service, '_allocate_study_time') as mock_time:
             mock_time.return_value = {
                 "LC001": 8,
                 "LC002": 10,
                 "MAT001": 8
             }
-        
-        # Mock de selección de recursos
-        with patch.object(service, '_select_optimal_resources') as mock_resources:
             mock_resources.return_value = {
                 "LC001": [],
                 "LC002": [],
                 "MAT001": []
             }
-        
-        # Mock de generación de hitos
-        with patch.object(service, '_generate_milestones') as mock_milestones:
             mock_milestones.return_value = []
-        
-        # Mock de cálculo de probabilidad
-        with patch.object(service, '_calculate_success_probability') as mock_prob:
             mock_prob.return_value = 0.75
-        
-        # Ejecutar método
-        target_date = datetime.now() + timedelta(days=90)
-        result = service.generate_personalized_study_path(
-            user_id="test_user",
-            target_date=target_date,
-            target_score=350
-        )
-        
+
+            # Ejecutar método
+            target_date = datetime.now() + timedelta(days=90)
+            result = service.generate_personalized_study_path(
+                user_id="test_user",
+                target_date=target_date,
+                target_score=350
+            )
+
         # Verificaciones
         assert result is not None
         assert 'user_id' in result
@@ -154,7 +141,7 @@ class TestICFESRecommendationService:
         assert 'topics_sequence' in result
         assert 'time_per_topic' in result
         assert 'success_probability' in result
-        
+
         assert result['user_id'] == "test_user"
         assert result['target_score'] == 350
         assert len(result['topics_sequence']) == 3

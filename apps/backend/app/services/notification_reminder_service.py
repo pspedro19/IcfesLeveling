@@ -169,7 +169,7 @@ class NotificationReminderService:
             
             # Cache the reminder system
             cache_key = f"reminder_system:{user_id}:{plan_id or 'all'}"
-            cache_service.set(cache_key, reminder_system, expire=3600 * 24)  # 24 hours
+            cache_service.set(cache_key, reminder_system, ttl=3600 * 24)  # 24 hours
             
             return reminder_system
             

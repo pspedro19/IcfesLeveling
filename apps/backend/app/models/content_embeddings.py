@@ -3,7 +3,10 @@ from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import uuid
+import logging
 from ..core.database import Base
+
+logger = logging.getLogger("icfes.models.content_embeddings")
 
 try:
     from pgvector.sqlalchemy import Vector
@@ -125,7 +128,7 @@ class ContentEmbeddings(Base):
                 
             return dot_product / (norm_v1 * norm_v2)
         except Exception as e:
-            print(f"Error calculating similarity: {e}")
+            logger.error(f"Error calculating similarity: {e}")
             return 0.0
 
 # Índices especializados para búsquedas eficientes

@@ -45,7 +45,7 @@ class RecommendationService:
             "confidence_level": self._calculate_confidence_level(data_sufficiency, user_data)
         }
         
-        cache_service.set(cache_key, recommendations, expire=3600)
+        cache_service.set(cache_key, recommendations, ttl=3600)
         return recommendations
 
     def _check_data_sufficiency(self, user_data: Dict[str, Any]) -> Dict[str, Any]:

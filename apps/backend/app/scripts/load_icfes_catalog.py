@@ -298,7 +298,7 @@ def main():
     }
     
     # Ruta del archivo CSV
-    csv_path = "01_icfes_topics_catalog.csv"
+    csv_path = "database/catalogs/icfes_topics.csv"
     
     if not os.path.exists(csv_path):
         logger.error(f"❌ Archivo CSV no encontrado: {csv_path}")

@@ -320,15 +320,55 @@ class DungeonService:
         # Calculate results
         correct_count = 0
         total_questions = len(questions)
-        
+
         question_dict = {str(q.id): q for q in questions}
-        
+
+        # Build detailed question results with explanations
+        question_results = []
+
         for i, answer in enumerate(answers):
             if i < len(question_ids):
                 question = question_dict.get(question_ids[i])
-                if question and question.correct_answer.lower() == answer.lower():
-                    correct_count += 1
-        
+                if question:
+                    # Get correct answer - try both field names for compatibility
+                    correct_ans = getattr(question, 'correct_answer', None) or getattr(question, 'respuesta_correcta', '')
+                    correct_ans = correct_ans.lower() if correct_ans else ''
+                    is_correct = correct_ans == answer.lower()
+
+                    if is_correct:
+                        correct_count += 1
+
+                    # Get explanation (may be None if not set)
+                    explanation = getattr(question, 'explanation', None)
+
+                    # Try to get video URL from video recommendations if question was answered incorrectly
+                    video_url = None
+                    if not is_correct:
+                        try:
+                            from ..models.question_video_recommendations import QuestionVideoRecommendations
+                            from ..models.youtube_catalog import YoutubeCatalog
+
+                            # Get top video recommendation for this question
+                            video_rec = self.db.query(QuestionVideoRecommendations).filter(
+                                QuestionVideoRecommendations.question_id == question.id,
+                                QuestionVideoRecommendations.is_active == True
+                            ).order_by(QuestionVideoRecommendations.total_score.desc()).first()
+
+                            if video_rec and video_rec.video:
+                                video_url = video_rec.video.url
+                        except Exception:
+                            # If video recommendation lookup fails, continue without it
+                            pass
+
+                    question_results.append({
+                        "question_id": str(question.id),
+                        "user_answer": answer,
+                        "correct_answer": correct_ans,
+                        "is_correct": is_correct,
+                        "explanation": explanation,
+                        "video_url": video_url
+                    })
+
         accuracy = correct_count / total_questions if total_questions > 0 else 0
         
         # Calculate combat results
@@ -408,6 +448,13 @@ class DungeonService:
         
         self.db.commit()
         
+        # Get current HP values for the response
+        user = self.db.query(User).filter(User.id == user_id).first()
+        player_max_hp = getattr(user, 'max_hp', 100) if user else 100
+        player_current_hp = max(0, player_max_hp - dungeon_run.total_damage_taken)
+        enemy_max_hp = monster.health if monster else 100
+        enemy_current_hp = max(0, enemy_max_hp - total_damage) if not encounter_won else 0
+
         result = {
             "success": encounter_won,
             "encounter_results": {
@@ -416,19 +463,26 @@ class DungeonService:
                 "total_questions": total_questions,
                 "damage_dealt": total_damage,
                 "damage_taken": encounter.damage_taken,
+                "enemy_current_hp": enemy_current_hp,
+                "player_current_hp": player_current_hp,
+                "current_combo": dungeon_run.monsters_defeated,  # Combo based on consecutive monsters defeated
+                "xp_earned": encounter.experience_gained,
                 "experience_gained": encounter.experience_gained,
-                "orbs_gained": encounter.orbs_gained
+                "orbs_gained": encounter.orbs_gained,
+                "enemy_defeated": encounter_won,
+                "player_defeated": dungeon_run.status == "failed"
             },
+            "question_results": question_results,  # Detailed results with explanations and video URLs
             "dungeon_status": dungeon_run.status,
             "current_room": dungeon_run.current_room
         }
-        
+
         if extraction_result:
             result["shadow_extraction"] = extraction_result
-        
+
         if encounter_won and room_completed < gate.total_rooms:
             result["next_encounter"] = next_encounter
-        
+
         return result
     
     def _complete_dungeon_run(self, dungeon_run: DungeonRun, user_id: str) -> Dict[str, Any]:

@@ -11,7 +11,7 @@ class Response(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    question_id = Column(Integer, ForeignKey("questions.id"), nullable=False)
+    question_id = Column(UUID(as_uuid=True), ForeignKey("questions.id"), nullable=False)
     answer = Column(String(10), nullable=False)  # A, B, C, D, E
     is_correct = Column(Boolean, nullable=False, default=False)
     time_taken = Column(Integer, nullable=True)  # Time in seconds

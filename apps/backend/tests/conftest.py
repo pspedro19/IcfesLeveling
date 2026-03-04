@@ -1,420 +1,397 @@
 """
-Test configuration and fixtures for the ICFES Leveling backend tests.
+Shared test fixtures for the ICFES Leveling backend test suite.
+
+This conftest sets up:
+- A SQLite in-memory database for fast, isolated tests
+- A TestClient with dependency overrides for the DB session
+- Helper functions for generating test JWT tokens
+- A mock authenticated user fixture
+
+Usage:
+    All fixtures defined here are automatically available to any test file
+    in this directory and subdirectories.
 """
-import asyncio
+
 import os
-import tempfile
+import uuid
+from datetime import datetime, timedelta
+from typing import Generator
+
 import pytest
-from typing import Generator, AsyncGenerator
-from unittest.mock import Mock, patch
-import redis
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
-from clickhouse_driver import Client as ClickHouseClient
-import pandas as pd
+from sqlalchemy import create_engine, event
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
-# Import app components
-from app.main import app
-from app.core.database import Base, get_db
-from app.core.config import settings
-from app.models import *  # Import all models
-from app.services.cache_service import CacheService
+# ---------------------------------------------------------------------------
+# Environment variable overrides -- MUST be set BEFORE importing app code
+# so that pydantic Settings validation does not fail.
+# ---------------------------------------------------------------------------
+os.environ.setdefault("DATABASE_URL", "sqlite:///./test.db")
+os.environ.setdefault("JWT_SECRET", "test-secret-key-that-is-at-least-32-characters-long-for-validation")
+os.environ.setdefault("SECRET_KEY", "test-secret-key-that-is-at-least-32-characters-long-for-validation")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379")
+os.environ.setdefault("ENVIRONMENT", "testing")
+
+# ---------------------------------------------------------------------------
+# Database backend selection.
+# Set USE_POSTGRES=1 to test against a real PostgreSQL instance.
+# Otherwise, use SQLite in-memory with type monkey-patches.
+# ---------------------------------------------------------------------------
+USE_POSTGRES = os.environ.get("USE_POSTGRES", "0") == "1"
+
+if not USE_POSTGRES:
+    # Make PostgreSQL-specific types work with SQLite for testing.
+    # Monkey-patches SQLiteTypeCompiler to handle UUID, JSONB, ARRAY, JSON types
+    # that are normally PostgreSQL-only. MUST run BEFORE model imports.
+    from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
+
+    def _visit_UUID(self, type_, **kw):
+        return "CHAR(32)"
+
+    def _visit_JSONB(self, type_, **kw):
+        return "TEXT"
+
+    def _visit_ARRAY(self, type_, **kw):
+        return "TEXT"
+
+    def _visit_JSON(self, type_, **kw):
+        return "TEXT"
+
+    SQLiteTypeCompiler.visit_UUID = _visit_UUID
+    SQLiteTypeCompiler.visit_JSONB = _visit_JSONB
+    SQLiteTypeCompiler.visit_ARRAY = _visit_ARRAY
+    # Only set visit_JSON if not already defined
+    if not hasattr(SQLiteTypeCompiler, 'visit_JSON'):
+        SQLiteTypeCompiler.visit_JSON = _visit_JSON
+
+from app.core.database import Base, get_db  # noqa: E402
+from app.core.security import create_access_token  # noqa: E402
+from app.models.user import User  # noqa: E402
+
+# ---------------------------------------------------------------------------
+# Test database engine
+# ---------------------------------------------------------------------------
+if USE_POSTGRES:
+    # Real PostgreSQL — use DATABASE_URL from environment
+    _pg_url = os.environ.get("DATABASE_URL", "postgresql://gameplay:gameplay123@localhost:5433/gameplay_db")
+    engine = create_engine(_pg_url)
+
+    TestingSessionLocal = sessionmaker(
+        autocommit=False,
+        autoflush=False,
+        bind=engine,
+    )
+else:
+    # SQLite in-memory for speed and isolation
+    SQLALCHEMY_TEST_URL = "sqlite://"
+
+    engine = create_engine(
+        SQLALCHEMY_TEST_URL,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    # SQLite does not support UUID natively -- enable foreign key support
+    @event.listens_for(engine, "connect")
+    def _set_sqlite_pragma(dbapi_conn, connection_record):
+        cursor = dbapi_conn.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+    TestingSessionLocal = sessionmaker(
+        autocommit=False,
+        autoflush=False,
+        bind=engine,
+    )
 
 
-# Test Database Configuration
-TEST_DATABASE_URL = "sqlite:///:memory:"
-
-# Create test engine
-test_engine = create_engine(
-    TEST_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-
-# Create test session
-TestingSessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=test_engine
-)
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
 
 @pytest.fixture(scope="function")
-def db_session() -> Generator[Session, None, None]:
-    """Create a fresh database session for each test."""
-    # Create all tables
-    Base.metadata.create_all(bind=test_engine)
-    
-    # Create session
+def db() -> Generator[Session, None, None]:
+    """
+    Create a fresh database for every test function.
+
+    Tables are created before the test and dropped after to ensure
+    complete isolation between tests.
+    """
+    Base.metadata.create_all(bind=engine)
     session = TestingSessionLocal()
-    
     try:
         yield session
     finally:
         session.close()
-        # Drop all tables after test
-        Base.metadata.drop_all(bind=test_engine)
+        Base.metadata.drop_all(bind=engine)
 
 
+# Keep the old name as an alias so existing tests still work
 @pytest.fixture(scope="function")
-def override_get_db(db_session: Session):
-    """Override the get_db dependency for testing."""
+def db_session(db) -> Generator[Session, None, None]:
+    """Alias for ``db`` -- backwards compatibility with existing tests."""
+    yield db
+
+
+def _reset_security_middleware(app):
+    """
+    Reset the in-memory state of RateLimitSecurityMiddleware so that
+    rate-limit counters and blocked-IP sets don't leak between tests.
+
+    Walks ``app.middleware_stack`` (built on first request) to find the
+    RateLimitSecurityMiddleware instance and clear its dicts/sets.
+    """
+    start = getattr(app, "middleware_stack", app)
+    current = start
+    for _ in range(30):
+        if hasattr(current, "request_counts"):
+            current.request_counts.clear()
+        if hasattr(current, "blocked_ips"):
+            current.blocked_ips.clear()
+        if hasattr(current, "app"):
+            current = current.app
+        else:
+            break
+
+
+@pytest.fixture()
+def client(db: Session) -> Generator[TestClient, None, None]:
+    """
+    Provide a TestClient whose DB dependency is overridden to use the
+    test database session.
+    """
+    from app.main import app
+
     def _override_get_db():
         try:
-            yield db_session
+            yield db
         finally:
             pass
-    
+
     app.dependency_overrides[get_db] = _override_get_db
-    yield
+    _reset_security_middleware(app)
+    with TestClient(app, raise_server_exceptions=False) as test_client:
+        yield test_client
     app.dependency_overrides.clear()
 
 
-@pytest.fixture(scope="function")
-def client(override_get_db) -> TestClient:
-    """Create a test client for the FastAPI application."""
-    return TestClient(app)
+# ---------------------------------------------------------------------------
+# Auth helpers
+# ---------------------------------------------------------------------------
 
+def create_test_user_record(db: Session, **overrides) -> User:
+    """
+    Insert a test user into the database and return the ORM instance.
 
-@pytest.fixture(scope="function")
-def mock_redis():
-    """Mock Redis client for testing."""
-    with patch('redis.Redis') as mock:
-        redis_mock = Mock()
-        mock.return_value = redis_mock
-        yield redis_mock
-
-
-@pytest.fixture(scope="function")
-def mock_clickhouse():
-    """Mock ClickHouse client for testing."""
-    with patch('clickhouse_driver.Client') as mock:
-        clickhouse_mock = Mock()
-        mock.return_value = clickhouse_mock
-        yield clickhouse_mock
-
-
-@pytest.fixture(scope="function")
-def cache_service(mock_redis):
-    """Create a mock cache service for testing."""
-    return CacheService(mock_redis)
-
-
-# Test Data Fixtures
-@pytest.fixture
-def sample_user_data():
-    """Sample user data for testing."""
-    return {
-        "id": "test-user-123",
-        "username": "testuser",
-        "email": "test@example.com",
-        "password_hash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/5pW5h2jha",
-        "display_name": "Test User",
-        "rank": "D",
-        "level": 1,
-        "xp": 0,
-        "hp": 100,
-        "mp": 50,
-        "power": 10,
-        "wisdom": 10,
-        "speed": 10,
-        "resistance": 10,
-        "credits": 1000,
-        "gems": 10,
-        "is_active": True,
-        "is_premium": False
-    }
-
-
-@pytest.fixture
-def sample_subject_data():
-    """Sample subject data for testing."""
-    return {
-        "id": 1,
-        "name": "Matemáticas",
-        "code": "MAT",
-        "description": "Matemáticas para ICFES",
-        "difficulty_level": 3,
-        "estimated_hours": 40,
-        "is_active": True
-    }
-
-
-@pytest.fixture
-def sample_topic_data():
-    """Sample topic data for testing."""
-    return {
-        "id": 1,
-        "name": "Álgebra",
-        "subject_id": 1,
-        "difficulty_level": 2,
-        "estimated_time": 120,
-        "prerequisites": [],
-        "learning_objectives": ["Resolver ecuaciones lineales"],
-        "is_active": True
-    }
-
-
-@pytest.fixture
-def sample_question_data():
-    """Sample question data for testing."""
-    return {
-        "id": 1,
-        "topic_id": 1,
-        "subject_id": 1,
-        "question_text": "¿Cuál es el valor de x en 2x + 4 = 10?",
-        "options": {
-            "A": "2",
-            "B": "3", 
-            "C": "4",
-            "D": "5"
-        },
-        "correct_answer": "B",
-        "difficulty": 2,
-        "explanation": "Despejando x: 2x = 6, por lo tanto x = 3",
-        "question_type": "multiple_choice",
-        "competency": "Razonamiento cuantitativo",
-        "is_active": True
-    }
-
-
-@pytest.fixture
-def sample_study_plan_data():
-    """Sample study plan data for testing."""
-    return {
-        "id": 1,
-        "user_id": "test-user-123",
-        "subject_id": 1,
-        "title": "Plan de Matemáticas - Nivel Básico",
-        "description": "Plan personalizado para matemáticas",
-        "difficulty_level": 2,
-        "estimated_weeks": 8,
-        "topics": [1, 2, 3],
-        "is_active": True,
-        "status": "active"
-    }
-
-
-@pytest.fixture
-def sample_diagnostic_test_data():
-    """Sample diagnostic test data for testing."""
-    return {
-        "id": 1,
-        "user_id": "test-user-123",
-        "subject_id": 1,
-        "questions_answered": 10,
-        "correct_answers": 7,
-        "score_percentage": 70.0,
-        "time_taken": 1800,  # 30 minutes
-        "rank_assigned": "C",
-        "status": "completed"
-    }
-
-
-@pytest.fixture
-def create_test_user(db_session: Session, sample_user_data):
-    """Create a test user in the database."""
-    user = User(**sample_user_data)
-    db_session.add(user)
-    db_session.commit()
-    db_session.refresh(user)
+    Keyword arguments are merged into the default values so callers can
+    customise any field (e.g. ``create_test_user_record(db, gold=5000)``).
+    """
+    defaults = dict(
+        id=uuid.uuid4(),
+        username=f"testuser_{uuid.uuid4().hex[:8]}",
+        email=f"test_{uuid.uuid4().hex[:8]}@example.com",
+        # bcrypt hash of "testpass123"
+        hashed_password="$2b$12$LJ3m4ys7Jg0tZnTVOQB8JeE4xJGkQOZy3Kl0VHfWZ5cNzN8rX5Pu",
+        display_name="Test User",
+        level=5,
+        experience=500,
+        rank="D",
+        hp=100,
+        mp=50,
+        power=15,
+        wisdom=12,
+        speed=10,
+        gold=1000,
+        orbs=500,
+        crystals=50,
+        hearts=5,
+        max_hearts=5,
+        current_streak=3,
+        longest_streak=10,
+        previous_streak=0,
+        daily_goal_xp=20,
+        is_active=True,
+        streak_freeze_count=1,
+    )
+    defaults.update(overrides)
+    user = User(**defaults)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
     return user
 
 
-@pytest.fixture
-def create_test_subject(db_session: Session, sample_subject_data):
-    """Create a test subject in the database."""
-    subject = Subject(**sample_subject_data)
-    db_session.add(subject)
-    db_session.commit()
-    db_session.refresh(subject)
+def make_auth_token(user_id: uuid.UUID) -> str:
+    """
+    Generate a valid JWT access token for the given user id.
+
+    The token is signed with the test JWT_SECRET configured above.
+    """
+    return create_access_token(
+        data={"sub": str(user_id)},
+        expires_delta=timedelta(hours=1),
+    )
+
+
+def auth_header_for(user_id: uuid.UUID) -> dict:
+    """Return an Authorization header dict ready to pass to ``client.get(headers=...)``."""
+    return {"Authorization": f"Bearer {make_auth_token(user_id)}"}
+
+
+@pytest.fixture()
+def test_user(db: Session) -> User:
+    """Convenience fixture: inserts a default test user and returns it."""
+    return create_test_user_record(db)
+
+
+@pytest.fixture()
+def create_test_user(db: Session) -> User:
+    """
+    Fixture used by test_auth.py, test_diagnostic.py, test_study_plans.py.
+    Creates a user with predictable username='testuser' for login tests.
+    """
+    return create_test_user_record(
+        db,
+        username="testuser",
+        email="testuser@example.com",
+        display_name="Test User",
+    )
+
+
+@pytest.fixture()
+def test_user_headers(test_user: User) -> dict:
+    """Convenience fixture: returns auth headers for ``test_user``."""
+    return auth_header_for(test_user.id)
+
+
+# ---------------------------------------------------------------------------
+# Model fixtures for diagnostic/study plan tests
+# ---------------------------------------------------------------------------
+
+@pytest.fixture()
+def create_test_subject(db: Session):
+    """Creates a test Subject in the DB."""
+    from app.models.subject import Subject
+    subject = Subject(
+        id=uuid.uuid4(),
+        name="Matematicas Test",
+        description="Test math subject",
+    )
+    db.add(subject)
+    db.commit()
+    db.refresh(subject)
     return subject
 
 
-@pytest.fixture
-def create_test_topic(db_session: Session, sample_topic_data, create_test_subject):
-    """Create a test topic in the database."""
-    topic_data = sample_topic_data.copy()
-    topic_data["subject_id"] = create_test_subject.id
-    topic = Topic(**topic_data)
-    db_session.add(topic)
-    db_session.commit()
-    db_session.refresh(topic)
+@pytest.fixture()
+def create_test_topic(db: Session, create_test_subject):
+    """Creates a test Topic linked to the test Subject."""
+    from app.models.topic import Topic
+    topic = Topic(
+        id=uuid.uuid4(),
+        subject_id=create_test_subject.id,
+        name="Algebra Basica Test",
+        description="Test algebra topic",
+    )
+    db.add(topic)
+    db.commit()
+    db.refresh(topic)
     return topic
 
 
-@pytest.fixture
-def create_test_question(db_session: Session, sample_question_data, create_test_topic, create_test_subject):
-    """Create a test question in the database."""
-    question_data = sample_question_data.copy()
-    question_data["topic_id"] = create_test_topic.id
-    question_data["subject_id"] = create_test_subject.id
-    question = Question(**question_data)
-    db_session.add(question)
-    db_session.commit()
-    db_session.refresh(question)
+@pytest.fixture()
+def create_test_question(db: Session, create_test_subject, create_test_topic):
+    """Creates a test Question linked to subject and topic."""
+    from app.models.question import Question
+    question = Question(
+        id=uuid.uuid4(),
+        subject_id=create_test_subject.id,
+        topic_id=create_test_topic.id,
+        pregunta_texto="Cual es el resultado de 2+2?",
+        opcion_a_texto="3",
+        opcion_b_texto="4",
+        opcion_c_texto="5",
+        opcion_d_texto="6",
+        respuesta_correcta="b",
+        difficulty=3,
+    )
+    db.add(question)
+    db.commit()
+    db.refresh(question)
     return question
 
 
-@pytest.fixture
-def create_test_study_plan(db_session: Session, sample_study_plan_data, create_test_user, create_test_subject):
-    """Create a test study plan in the database."""
-    plan_data = sample_study_plan_data.copy()
-    plan_data["user_id"] = create_test_user.id
-    plan_data["subject_id"] = create_test_subject.id
-    plan = StudyPlan(**plan_data)
-    db_session.add(plan)
-    db_session.commit()
-    db_session.refresh(plan)
-    return plan
-
-
-@pytest.fixture
-def create_test_diagnostic(db_session: Session, sample_diagnostic_test_data, create_test_user, create_test_subject):
-    """Create a test diagnostic in the database."""
-    diagnostic_data = sample_diagnostic_test_data.copy()
-    diagnostic_data["user_id"] = create_test_user.id
-    diagnostic_data["subject_id"] = create_test_subject.id
-    diagnostic = DiagnosticTest(**diagnostic_data)
-    db_session.add(diagnostic)
-    db_session.commit()
-    db_session.refresh(diagnostic)
+@pytest.fixture()
+def create_test_diagnostic(db: Session, create_test_user, create_test_subject):
+    """Creates a test DiagnosticTest record."""
+    from app.models.diagnostic_two_phase import DiagnosticTest
+    diagnostic = DiagnosticTest(
+        id=uuid.uuid4(),
+        user_id=create_test_user.id,
+        subject_id=create_test_subject.id,
+        status="completed",
+    )
+    db.add(diagnostic)
+    db.commit()
+    db.refresh(diagnostic)
     return diagnostic
 
 
-# Mock external services
-@pytest.fixture
-def mock_openai():
-    """Mock OpenAI API calls."""
-    with patch('openai.ChatCompletion.create') as mock:
-        mock.return_value.choices[0].message.content = "Mocked AI response"
-        yield mock
+@pytest.fixture()
+def create_test_study_plan(db: Session, create_test_user, create_test_subject):
+    """Creates a test StudyPlan record."""
+    try:
+        from app.models.study_plan import StudyPlan
+        plan = StudyPlan(
+            id=uuid.uuid4(),
+            user_id=create_test_user.id,
+            subject_id=create_test_subject.id,
+            title="Plan de Prueba",
+        )
+        db.add(plan)
+        db.commit()
+        db.refresh(plan)
+        return plan
+    except Exception:
+        # StudyPlan model may vary — return None and let test handle it
+        return None
 
 
-@pytest.fixture
-def mock_youtube_api():
-    """Mock YouTube API calls."""
-    mock_response = {
-        "items": [{
-            "id": {"videoId": "test123"},
-            "snippet": {
-                "title": "Test Video",
-                "description": "Test Description",
-                "thumbnails": {"default": {"url": "http://test.com/thumb.jpg"}}
-            },
-            "statistics": {
-                "viewCount": "1000",
-                "likeCount": "100"
-            }
-        }]
-    }
-    
-    with patch('googleapiclient.discovery.build') as mock:
-        mock.return_value.search.return_value.list.return_value.execute.return_value = mock_response
-        yield mock
+# ---------------------------------------------------------------------------
+# Mock fixtures
+# ---------------------------------------------------------------------------
 
+@pytest.fixture()
+def mock_redis():
+    """Provide a mock Redis client for tests that need it.
 
-@pytest.fixture
-def temporary_file():
-    """Create a temporary file for testing."""
-    with tempfile.NamedTemporaryFile(delete=False) as tmp:
-        yield tmp.name
-    os.unlink(tmp.name)
+    The ``incr`` side keeps a per-key counter so rate-limit tests work.
+    """
+    from unittest.mock import Mock
+    from collections import defaultdict
 
+    store: dict = defaultdict(int)
 
-@pytest.fixture
-def mock_excel_data():
-    """Mock Excel data for testing import functions."""
-    return pd.DataFrame({
-        'Pregunta': ['¿Cuánto es 2+2?', '¿Cuál es la capital de Francia?'],
-        'A)': ['3', 'Londres'],
-        'B)': ['4', 'París'],
-        'C)': ['5', 'Madrid'],
-        'D)': ['6', 'Roma'],
-        'Respuesta_Correcta': ['B', 'B'],
-        'Materia': ['Matemáticas', 'Sociales'],
-        'Competencia': ['Razonamiento', 'Conocimiento'],
-        'Componente': ['Aritmética', 'Geografía']
-    })
+    def _incr(key, amount=1):
+        store[key] += amount
+        return store[key]
 
+    def _get(key):
+        val = store.get(key)
+        return str(val).encode() if val is not None else None
 
-# Authentication fixtures
-@pytest.fixture
-def auth_headers():
-    """Create authentication headers for testing."""
-    # Mock JWT token
-    token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.token"
-    return {"Authorization": f"Bearer {token}"}
-
-
-@pytest.fixture
-def mock_jwt():
-    """Mock JWT token validation."""
-    with patch('app.core.security.decode_token') as mock:
-        mock.return_value = {"sub": "test-user-123", "username": "testuser"}
-        yield mock
-
-
-# Database cleanup utilities
-def cleanup_database(session: Session):
-    """Clean up all test data from database."""
-    for table in reversed(Base.metadata.sorted_tables):
-        session.execute(table.delete())
-    session.commit()
-
-
-# Test data generators
-def generate_test_questions(count: int, subject_id: int, topic_id: int) -> list:
-    """Generate test questions for bulk testing."""
-    questions = []
-    for i in range(count):
-        questions.append({
-            "id": i + 1,
-            "topic_id": topic_id,
-            "subject_id": subject_id,
-            "question_text": f"Test question {i + 1}",
-            "options": {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"},
-            "correct_answer": "A",
-            "difficulty": (i % 3) + 1,
-            "question_type": "multiple_choice",
-            "is_active": True
-        })
-    return questions
-
-
-def generate_test_users(count: int) -> list:
-    """Generate test users for bulk testing."""
-    users = []
-    for i in range(count):
-        users.append({
-            "id": f"test-user-{i + 1}",
-            "username": f"testuser{i + 1}",
-            "email": f"test{i + 1}@example.com",
-            "password_hash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/5pW5h2jha",
-            "display_name": f"Test User {i + 1}",
-            "rank": ["E", "D", "C", "B", "A", "S"][i % 6],
-            "level": (i % 10) + 1,
-            "is_active": True
-        })
-    return users
-
-
-# Environment setup for tests
-@pytest.fixture(autouse=True)
-def setup_test_environment(monkeypatch):
-    """Set up test environment variables."""
-    monkeypatch.setenv("TESTING", "true")
-    monkeypatch.setenv("DATABASE_URL", TEST_DATABASE_URL)
-    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/1")
-    monkeypatch.setenv("JWT_SECRET", "test-secret-key")
-    monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
+    mock = Mock()
+    mock.get.side_effect = _get
+    mock.set.return_value = True
+    mock.setex.return_value = True
+    mock.delete.return_value = True
+    mock.incr.side_effect = _incr
+    mock.incrby.side_effect = _incr
+    mock.expire.return_value = True
+    mock.pipeline.return_value = mock
+    mock.execute.return_value = [True]
+    mock.exists.return_value = False
+    mock.hget.return_value = None
+    mock.hset.return_value = True
+    return mock

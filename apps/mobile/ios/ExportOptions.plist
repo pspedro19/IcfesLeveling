@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Export method: app-store, ad-hoc, enterprise, development -->
+    <key>method</key>
+    <string>app-store</string>
+
+    <!-- Team ID from Apple Developer Account -->
+    <key>teamID</key>
+    <string>YOUR_TEAM_ID</string>
+
+    <!-- Upload to App Store Connect -->
+    <key>uploadBitcode</key>
+    <false/>
+
+    <key>uploadSymbols</key>
+    <true/>
+
+    <key>compileBitcode</key>
+    <false/>
+
+    <!-- Signing configuration -->
+    <key>signingStyle</key>
+    <string>manual</string>
+
+    <!-- Provisioning profiles mapping: Bundle ID -> Profile Name -->
+    <key>provisioningProfiles</key>
+    <dict>
+        <key>com.icfesleveling.mobile</key>
+        <string>ICFES Mobile App Store</string>
+    </dict>
+
+    <!-- Signing certificate -->
+    <key>signingCertificate</key>
+    <string>Apple Distribution</string>
+
+    <!-- Destination: export (default) or upload -->
+    <key>destination</key>
+    <string>export</string>
+</dict>
+</plist>

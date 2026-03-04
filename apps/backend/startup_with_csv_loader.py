@@ -19,13 +19,13 @@ logger = logging.getLogger(__name__)
 def wait_for_postgres(max_retries=30):
     """Wait for PostgreSQL to be ready"""
     import psycopg2
-    
+
     db_config = {
         'host': os.getenv('DB_HOST', 'postgres'),
         'port': os.getenv('DB_PORT', '5432'),
         'database': os.getenv('DB_NAME', 'gameplay_db'),
         'user': os.getenv('DB_USER', 'gameplay'),
-        'password': os.getenv('DB_PASSWORD', 'gameplay123')
+        'password': os.getenv('DB_PASSWORD', '')
     }
     
     for i in range(max_retries):
@@ -40,94 +40,68 @@ def wait_for_postgres(max_retries=30):
     
     return False
 
-def copy_seed_data_if_needed():
-    """Copy seed data files to expected location if they exist"""
-    sources = [
-        ('/seed_data', '/app/seed_data'),
-        ('./database/seed_data', '/app/seed_data'),
-        ('/app/database/seed_data', '/app/seed_data')
-    ]
-    
-    for source, dest in sources:
-        if os.path.exists(source) and not os.path.exists(dest):
-            logger.info(f"📁 Copying seed data from {source} to {dest}")
-            shutil.copytree(source, dest)
-            return dest
-        elif os.path.exists(source):
-            return source
-    
-    # Check for individual CSV files in various locations
-    csv_locations = [
-        '/app/database/data',
-        '/app/database',
-        '/app',
-        './database/data'
-    ]
-    
-    for location in csv_locations:
-        if os.path.exists(location):
-            csv_files = [f for f in os.listdir(location) if f.endswith('.csv')]
-            if csv_files:
-                logger.info(f"📊 Found {len(csv_files)} CSV files in {location}")
-                return location
-    
-    return None
+def run_migrations():
+    """Run Alembic migrations to ensure DB schema is up to date."""
+    try:
+        migrations_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'database', 'migrations')
+        if not os.path.exists(migrations_dir):
+            migrations_dir = '/app/database/migrations'
+
+        if os.path.exists(os.path.join(migrations_dir, 'alembic.ini')):
+            logger.info("Running Alembic migrations...")
+            result = subprocess.run(
+                ['alembic', 'upgrade', 'head'],
+                cwd=migrations_dir,
+                capture_output=True, text=True,
+                timeout=60
+            )
+            if result.returncode == 0:
+                logger.info("Alembic migrations completed successfully!")
+            else:
+                logger.warning(f"Alembic migration failed: {result.stderr}")
+                logger.info("Falling back to SQLAlchemy create_all...")
+                _create_tables_fallback()
+        else:
+            logger.info("No Alembic config found, using SQLAlchemy create_all...")
+            _create_tables_fallback()
+    except Exception as e:
+        logger.warning(f"Migration error: {e}, falling back to create_all")
+        _create_tables_fallback()
+
+def _create_tables_fallback():
+    """Create all tables via SQLAlchemy metadata as fallback."""
+    try:
+        from app.core.database import engine, Base
+        from app.models import *  # noqa: F401,F403 — import all models
+        Base.metadata.create_all(bind=engine)
+        logger.info("SQLAlchemy create_all completed!")
+    except Exception as e:
+        logger.error(f"Failed to create tables: {e}")
 
 def load_seed_data():
-    """Load seed data into database from CSV files"""
+    """Load seed data into database by calling the main loader script."""
     try:
-        # Find seed data location
-        seed_data_path = copy_seed_data_if_needed()
+        # The new structure is standardized, so we can call the loader directly.
+        # This script assumes it's being run from the project root.
+        loader_script = 'database/seed_data/load_all_data.py'
         
-        if not seed_data_path:
-            logger.warning("⚠️ No seed data directory found")
-            return
-        
-        logger.info(f"📂 Using seed data from: {seed_data_path}")
-        
-        # Check for CSV files
-        csv_files = {
-            'questions.csv': False,
-            'topics_catalog.csv': False,
-            'study_plan_templates.csv': False,
-            'youtube_catalog_extendido_enriquecido.csv': False
-        }
-        
-        for filename in csv_files.keys():
-            full_path = os.path.join(seed_data_path, filename)
-            if os.path.exists(full_path):
-                csv_files[filename] = True
-                logger.info(f"✅ Found: {filename}")
-            else:
-                # Try alternate names
-                alt_names = {
-                    'youtube_catalog_extendido_enriquecido.csv': ['youtube_catalog.csv', '01_icfes_youtube_catalog.csv'],
-                    'topics_catalog.csv': ['01_icfes_topics_catalog.csv', 'ICFES_topics.csv']
-                }
-                for alt in alt_names.get(filename, []):
-                    alt_path = os.path.join(seed_data_path, alt)
-                    if os.path.exists(alt_path):
-                        csv_files[filename] = True
-                        logger.info(f"✅ Found (as {alt}): {filename}")
-                        break
-        
-        # Check if we have the updated load_all_data.py
-        loader_script = os.path.join(seed_data_path, 'load_all_data.py')
         if os.path.exists(loader_script):
-            logger.info("🚀 Using load_all_data.py script")
-            sys.path.insert(0, seed_data_path)
-            from load_all_data import DataLoader
+            logger.info(f"🚀 Found loader script at: {loader_script}")
             
-            loader = DataLoader()
-            success = loader.run()
+            # Execute the script using python3
+            result = subprocess.run(['python3', loader_script], capture_output=True, text=True)
             
-            if success:
-                logger.info("✅ CSV data loaded successfully!")
+            logger.info("--- Loader Script STDOUT ---")
+            logger.info(result.stdout)
+            
+            if result.returncode != 0:
+                logger.error("--- Loader Script STDERR ---")
+                logger.error(result.stderr)
+                logger.warning("⚠️ CSV data loading script failed")
             else:
-                logger.warning("⚠️ CSV data loading had issues")
+                logger.info("✅ CSV data loading script finished successfully!")
         else:
-            logger.warning("⚠️ load_all_data.py not found, skipping CSV loading")
-            logger.info(f"📍 Looked for script at: {loader_script}")
+            logger.warning(f"⚠️ Loader script not found at: {loader_script}, skipping CSV loading")
             
     except Exception as e:
         logger.error(f"Error loading seed data: {e}")
@@ -156,8 +130,12 @@ if __name__ == "__main__":
         logger.error("PostgreSQL is not available after waiting")
         sys.exit(1)
     
+    # Run database migrations
+    logger.info("Running database migrations...")
+    run_migrations()
+
     # Load seed data from CSV files
-    logger.info("📊 Starting CSV data loading process...")
+    logger.info("Starting CSV data loading process...")
     load_seed_data()
     
     # Start FastAPI

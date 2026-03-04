@@ -12,7 +12,7 @@ from .progress_gamification_service import ProgressGamificationService
 from .learning_styles_service import LearningStylesService
 from .scheduling_service import SchedulingService
 from .notification_reminder_service import NotificationReminderService
-from .enhanced_video_service import EnhancedVideoService
+from .video_learning_planner import VideoLearningPlanner
 from ..models.user import User
 from ..models.subject import Subject
 
@@ -34,7 +34,7 @@ class StudyPlanIntegrationService:
         self.learning_styles_service = LearningStylesService(db)
         self.scheduling_service = SchedulingService(db)
         self.notification_service = NotificationReminderService(db)
-        self.video_service = EnhancedVideoService(db)
+        self.video_service = VideoLearningPlanner(db)
     
     def generate_comprehensive_study_plan(
         self, 
@@ -250,7 +250,7 @@ class StudyPlanIntegrationService:
             )
             
             # 5. Setup spaced repetition
-            spaced_repetition_system = await self.spaced_repetition_service.create_spaced_repetition_schedule(
+            spaced_repetition_system = self.spaced_repetition_service.create_spaced_repetition_schedule(
                 user_id, ai_study_plan["id"]
             )
             
@@ -265,8 +265,8 @@ class StudyPlanIntegrationService:
             )
             
             # 8. Create personalized video recommendations
-            video_recommendations = await self.video_service.get_personalized_video_recommendations(
-                user_id, subject.name, user.level
+            video_recommendations = await self.video_service.get_adaptive_video_recommendations(
+                user_id, subject.id
             )
             
             # 9. Setup notification system

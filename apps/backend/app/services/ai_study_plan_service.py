@@ -121,7 +121,7 @@ class AIStudyPlanService:
             
             # 8. Cache the plan
             cache_key = f"ai_study_plan:{user_id}:{subject_id}"
-            cache_service.set(cache_key, ai_study_plan, expire=7200)  # 2 hours
+            cache_service.set(cache_key, ai_study_plan, ttl=7200)  # 2 hours
             
             return ai_study_plan
             

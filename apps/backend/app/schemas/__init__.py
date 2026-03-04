@@ -7,16 +7,26 @@ from .personality import (
     PersonalityTestRequest, PersonalityTestResponse,
     UserProfileBase, UserProfileCreate, UserProfileResponse, UserProfileUpdate
 )
+from .economy import (
+    BalanceResponse, ShopItem, ShopResponse, PurchaseRequest, PurchaseResponse,
+    CurrencyType, ItemCategory, PurchaseError, UserInventoryItem, InventoryResponse,
+    TransactionRecord
+)
+from .hearts import (
+    GraceStatusResponse, EnterGraceModeResponse, ExitGraceModeResponse,
+    HeartsStatusResponse, HeartsUseRequest, HeartsUseResponse,
+    HeartsRefillRequest, HeartsRefillResponse, HeartsErrorResponse
+)
 
 __all__ = [
     "UserBase",
-    "UserCreate", 
+    "UserCreate",
     "UserLogin",
     "UserResponse",
     "UserUpdate",
     "QuestionBase",
     "QuestionCreate",
-    "QuestionResponse", 
+    "QuestionResponse",
     "QuestionUpdate",
     "BattleBase",
     "BattleCreate",
@@ -37,5 +47,27 @@ __all__ = [
     "UserProfileBase",
     "UserProfileCreate",
     "UserProfileResponse",
-    "UserProfileUpdate"
+    "UserProfileUpdate",
+    # Economy schemas
+    "BalanceResponse",
+    "ShopItem",
+    "ShopResponse",
+    "PurchaseRequest",
+    "PurchaseResponse",
+    "CurrencyType",
+    "ItemCategory",
+    "PurchaseError",
+    "UserInventoryItem",
+    "InventoryResponse",
+    "TransactionRecord",
+    # Hearts/Grace Mode schemas
+    "GraceStatusResponse",
+    "EnterGraceModeResponse",
+    "ExitGraceModeResponse",
+    "HeartsStatusResponse",
+    "HeartsUseRequest",
+    "HeartsUseResponse",
+    "HeartsRefillRequest",
+    "HeartsRefillResponse",
+    "HeartsErrorResponse",
 ] 

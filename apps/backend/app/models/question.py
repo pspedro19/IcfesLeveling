@@ -38,6 +38,7 @@ class Question(Base):
     options = Column(JSON, nullable=True)  # Campo legacy
     correct_answer = Column(String(10), nullable=True)  # Campo legacy
     explanation = Column(Text)
+    video_url = Column(String(500), nullable=True)  # URL to explanatory video for this question
     hint = Column(Text)
     tags = Column(ARRAY(String))
     power_stats = Column(JSON, default={"discrimination_index": 0.5, "success_rate": 0.6})

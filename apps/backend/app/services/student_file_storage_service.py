@@ -576,8 +576,8 @@ class StudentFileStorageService:
                         'cache_hits': cache_info.get('keyspace_hits', 0),
                         'cache_misses': cache_info.get('keyspace_misses', 0)
                     }
-                except:
-                    cache_stats = {'status': 'unavailable'}
+                except Exception:
+                    cache_stats = {'error': 'No disponible'}
             
             return {
                 'total_files': total_files,

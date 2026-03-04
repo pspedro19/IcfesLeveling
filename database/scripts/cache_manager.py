@@ -403,7 +403,7 @@ class RedisCacheManager:
             try:
                 self.redis_client.memory_purge()
                 optimizations['memory_cleaned'] = 1
-            except:
+            except Exception:
                 pass  # Comando no disponible en todas las versiones
             
             # 3. Actualizar políticas

@@ -208,7 +208,7 @@ class AIService:
                     ai_response = json.loads(json_match.group())
                 else:
                     raise ValueError("No JSON found in response")
-            except:
+            except Exception:
                 # Fallback if JSON parsing fails
                 ai_response = {
                     "explanation": content[:200] + "..." if len(content) > 200 else content,
@@ -311,7 +311,7 @@ class AIService:
                     ai_response = json.loads(json_match.group())
                 else:
                     raise ValueError("No JSON found in response")
-            except:
+            except Exception:
                 # Fallback
                 ai_response = {
                     "plan": {
@@ -343,21 +343,11 @@ class AIService:
             }
             return StudyPlanResponse(**fallback)
 
-class YMLGenerator:
+class YMLGenerator(AIService):
     def __init__(self):
+        super().__init__()
         self.max_units = 8
         self.subjects = ['matematicas', 'lenguaje', 'ciencias', 'sociales', 'ingles']
-        self.openai_client = None
-        self.setup_openai()
-    
-    def setup_openai(self):
-        """Setup OpenAI client"""
-        api_key = os.getenv("OPENAI_API_KEY")
-        if api_key:
-            self.openai_client = openai.OpenAI(api_key=api_key)
-            logger.info("OpenAI client initialized for YML generation")
-        else:
-            logger.warning("OpenAI API key not found for YML generation")
     
     async def generate_yml_plan(self, request: YMLPlanRequest) -> YMLPlanResponse:
         """Generate YML study plan based on test results"""
@@ -447,7 +437,7 @@ class YMLGenerator:
                     ai_response = json.loads(json_match.group())
                 else:
                     raise ValueError("No JSON found in response")
-            except:
+            except Exception:
                 # Fallback
                 ai_response = {
                     "plan_id": f"plan_{request.user_id}_{request.subject}",
@@ -682,7 +672,7 @@ async def analyze_personality(request: PersonalityTestRequest):
     """Analyze personality and assign hero class"""
     try:
         # Lógica de IA para asignar clase basada en respuestas
-        hero_class = await ai_service.analyze_personality(request.answers)
+        hero_class = await yml_generator.analyze_personality(request.answers)
         return hero_class
     except Exception as e:
         logger.error(f"Error analyzing personality: {e}")

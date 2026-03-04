@@ -609,7 +609,7 @@ class DiagnosticAnalyticsReporting:
             try:
                 correlation = abs(statistics.correlation(x_values, scores))
                 confidence = min(0.95, correlation)
-            except:
+            except Exception:
                 confidence = 0.5
         else:
             confidence = 0.5

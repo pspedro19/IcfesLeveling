@@ -1,18 +1,23 @@
 """Direct SQL script to populate subjects"""
+import os
 import psycopg2
 import uuid
+import logging
 from datetime import datetime
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def populate_subjects():
     """Populate subjects using direct SQL"""
-    
-    # Connection parameters (inside container)
+
+    # Connection parameters (from environment variables)
     conn_params = {
-        'host': 'postgres',  # Container name
-        'port': 5432,  # Internal port
-        'database': 'gameplay_db',
-        'user': 'gameplay',
-        'password': 'gameplay123'
+        'host': os.getenv('DB_HOST', 'postgres'),
+        'port': int(os.getenv('DB_PORT', '5432')),
+        'database': os.getenv('DB_NAME', 'gameplay_db'),
+        'user': os.getenv('DB_USER', 'gameplay'),
+        'password': os.getenv('DB_PASSWORD', '')
     }
     
     try:
@@ -29,7 +34,7 @@ def populate_subjects():
         """)
         
         if not cur.fetchone()[0]:
-            print("Creating subjects table...")
+            logger.info("Creating subjects table...")
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS subjects (
                     id UUID PRIMARY KEY,
@@ -72,19 +77,19 @@ def populate_subjects():
         # Verify subjects were created
         cur.execute("SELECT COUNT(*) FROM subjects;")
         count = cur.fetchone()[0]
-        print(f"✅ Successfully populated {count} subjects")
-        
+        logger.info(f"Successfully populated {count} subjects")
+
         # List all subjects
         cur.execute("SELECT name, description FROM subjects;")
         all_subjects = cur.fetchall()
         for subject in all_subjects:
-            print(f"  - {subject[0]}: {subject[1]}")
-        
+            logger.info(f"  - {subject[0]}: {subject[1]}")
+
         cur.close()
         conn.close()
-        
+
     except Exception as e:
-        print(f"❌ Error: {e}")
+        logger.error(f"Error: {e}")
 
 if __name__ == "__main__":
     populate_subjects()

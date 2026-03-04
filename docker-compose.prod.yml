@@ -1,0 +1,438 @@
+# =============================================================================
+# ICFES Leveling - Production Docker Compose
+# Mobile-first backend stack (no frontend, no pgadmin)
+# =============================================================================
+# Usage:
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+#
+# Required env vars (will fail fast if missing):
+#   DB_PASSWORD, DB_USER, DB_NAME, JWT_SECRET, SECRET_KEY,
+#   REDIS_PASSWORD, CLICKHOUSE_PASSWORD, ALLOWED_ORIGINS
+# =============================================================================
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-common-env: &common-env
+  ENVIRONMENT: production
+  DEBUG: "false"
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16
+    container_name: icfes_prod_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME:?DB_NAME must be set}
+      POSTGRES_USER: ${DB_USER:?DB_USER must be set}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:?DB_USER must be set} -d ${DB_NAME:?DB_NAME must be set}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+    logging: *default-logging
+    networks:
+      - icfes_prod_network
+
+  # ---------------------------------------------------------------------------
+  # Redis 7 (Alpine) — password-protected
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: icfes_prod_redis
+    restart: always
+    command: >
+      redis-server
+        --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+        --appendonly yes
+        --maxmemory 512mb
+        --maxmemory-policy allkeys-lru
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_prod_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 640M
+          cpus: "0.5"
+        reservations:
+          memory: 128M
+    logging: *default-logging
+    networks:
+      - icfes_prod_network
+
+  # ---------------------------------------------------------------------------
+  # ClickHouse — Analytics
+  # ---------------------------------------------------------------------------
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: icfes_prod_clickhouse
+    restart: always
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE:-gameplay_analytics}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD must be set}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ports:
+      - "127.0.0.1:8123:8123"
+      - "127.0.0.1:9000:9000"
+    volumes:
+      - clickhouse_prod_data:/var/lib/clickhouse
+      - clickhouse_prod_logs:/var/log/clickhouse-server
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+    logging: *default-logging
+    networks:
+      - icfes_prod_network
+
+  # ---------------------------------------------------------------------------
+  # Backend API (FastAPI + Gunicorn)
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile.production
+    container_name: icfes_prod_backend
+    restart: always
+    ports:
+      - "4000:4000"
+    environment:
+      <<: *common-env
+      DATABASE_URL: "postgresql://${DB_USER:?DB_USER must be set}:${DB_PASSWORD:?DB_PASSWORD must be set}@postgres:5432/${DB_NAME:?DB_NAME must be set}"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0"
+      CLICKHOUSE_URL: "clickhouse://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD must be set}@clickhouse:9000/${CLICKHOUSE_DATABASE:-gameplay_analytics}"
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set}
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      WOMPI_PUBLIC_KEY: ${WOMPI_PUBLIC_KEY:-}
+      WOMPI_PRIVATE_KEY: ${WOMPI_PRIVATE_KEY:-}
+      WOMPI_EVENT_SECRET: ${WOMPI_EVENT_SECRET:-}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?ALLOWED_ORIGINS must be set}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:?DB_NAME must be set}
+      DB_USER: ${DB_USER:?DB_USER must be set}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+    volumes:
+      - backend_prod_logs:/var/log/icfes
+      - backend_prod_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+        reservations:
+          memory: 512M
+    logging: *default-logging
+    networks:
+      - icfes_prod_network
+
+  # ---------------------------------------------------------------------------
+  # WebSocket Service
+  # ---------------------------------------------------------------------------
+  websocket:
+    build:
+      context: ./apps/websocket
+      dockerfile: Dockerfile.production
+    container_name: icfes_prod_websocket
+    restart: always
+    ports:
+      - "4002:4002"
+    environment:
+      <<: *common-env
+      REDIS_URL: "redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0"
+      DATABASE_URL: "postgresql://${DB_USER:?DB_USER must be set}:${DB_PASSWORD:?DB_PASSWORD must be set}@postgres:5432/${DB_NAME:?DB_NAME must be set}"
+      PORT: 4002
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.connect(('localhost', 4002)); s.close()\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+        reservations:
+          memory: 128M
+    logging: *default-logging
+    networks:
+      - icfes_prod_network
+
+  # ---------------------------------------------------------------------------
+  # AI Service
+  # ---------------------------------------------------------------------------
+  ai-service:
+    build:
+      context: ./apps/ai-service
+      dockerfile: Dockerfile.production
+    container_name: icfes_prod_ai_service
+    restart: always
+    ports:
+      - "8002:8002"
+    environment:
+      <<: *common-env
+      REDIS_URL: "redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0"
+      DATABASE_URL: "postgresql://${DB_USER:?DB_USER must be set}:${DB_PASSWORD:?DB_PASSWORD must be set}@postgres:5432/${DB_NAME:?DB_NAME must be set}"
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+    logging: *default-logging
+    networks:
+      - icfes_prod_network
+
+  # ---------------------------------------------------------------------------
+  # Celery Worker — background task processing
+  # ---------------------------------------------------------------------------
+  celery-worker:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile.production
+    container_name: icfes_prod_celery_worker
+    restart: always
+    command: celery -A app.main:celery_app worker --loglevel=info --concurrency=4
+    environment:
+      <<: *common-env
+      DATABASE_URL: "postgresql://${DB_USER:?DB_USER must be set}:${DB_PASSWORD:?DB_PASSWORD must be set}@postgres:5432/${DB_NAME:?DB_NAME must be set}"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0"
+      CLICKHOUSE_URL: "clickhouse://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD must be set}@clickhouse:9000/${CLICKHOUSE_DATABASE:-gameplay_analytics}"
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:?DB_NAME must be set}
+      DB_USER: ${DB_USER:?DB_USER must be set}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.main:celery_app inspect ping --timeout 10"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 45s
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+    logging: *default-logging
+    networks:
+      - icfes_prod_network
+
+  # ---------------------------------------------------------------------------
+  # Celery Beat — periodic task scheduler
+  # ---------------------------------------------------------------------------
+  celery-beat:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile.production
+    container_name: icfes_prod_celery_beat
+    restart: always
+    command: celery -A app.main:celery_app beat --loglevel=info
+    environment:
+      <<: *common-env
+      DATABASE_URL: "postgresql://${DB_USER:?DB_USER must be set}:${DB_PASSWORD:?DB_PASSWORD must be set}@postgres:5432/${DB_NAME:?DB_NAME must be set}"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0"
+      CLICKHOUSE_URL: "clickhouse://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD must be set}@clickhouse:9000/${CLICKHOUSE_DATABASE:-gameplay_analytics}"
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:?DB_NAME must be set}
+      DB_USER: ${DB_USER:?DB_USER must be set}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+    volumes:
+      - celerybeat_prod_schedule:/app/celerybeat-schedule
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.main:celery_app inspect ping --timeout 10"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 45s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.25"
+        reservations:
+          memory: 128M
+    logging: *default-logging
+    networks:
+      - icfes_prod_network
+
+  # ---------------------------------------------------------------------------
+  # Nginx Reverse Proxy + SSL Termination
+  # ---------------------------------------------------------------------------
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: icfes_prod_nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - certbot_www:/var/www/certbot:ro
+      - certbot_certs:/etc/letsencrypt:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+        reservations:
+          memory: 64M
+    logging: *default-logging
+    networks:
+      - icfes_prod_network
+
+  # ---------------------------------------------------------------------------
+  # Certbot — automatic SSL certificate renewal
+  # ---------------------------------------------------------------------------
+  certbot:
+    image: certbot/certbot:latest
+    container_name: icfes_prod_certbot
+    volumes:
+      - certbot_www:/var/www/certbot
+      - certbot_certs:/etc/letsencrypt
+    # Renew certificates every 12 hours (certbot only renews if needed)
+    entrypoint: /bin/sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 43200; done"
+    depends_on:
+      - nginx
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.1"
+    logging: *default-logging
+    networks:
+      - icfes_prod_network
+
+# =============================================================================
+# Named volumes for data persistence
+# =============================================================================
+volumes:
+  postgres_prod_data:
+    driver: local
+  redis_prod_data:
+    driver: local
+  clickhouse_prod_data:
+    driver: local
+  clickhouse_prod_logs:
+    driver: local
+  backend_prod_logs:
+    driver: local
+  backend_prod_uploads:
+    driver: local
+  celerybeat_prod_schedule:
+    driver: local
+  certbot_www:
+    driver: local
+  certbot_certs:
+    driver: local
+
+# =============================================================================
+# Single isolated network
+# =============================================================================
+networks:
+  icfes_prod_network:
+    driver: bridge
+    name: icfes_prod_network

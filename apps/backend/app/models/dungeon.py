@@ -61,6 +61,70 @@ class DungeonGate(Base):
     def __repr__(self):
         return f"<DungeonGate(id={self.id}, name='{self.name}', type='{self.gate_type}', rank='{self.difficulty_rank}')>"
 
+    def calculate_rewards(self, completion_stats: dict) -> dict:
+        """
+        Calculate rewards based on gate configuration and completion stats.
+
+        Args:
+            completion_stats: dict with keys like 'perfect_clear', 'speed_clear', 'accuracy'
+
+        Returns:
+            dict with 'experience', 'orbs', 'crystals', 'items'
+        """
+        # Base rewards from gate configuration
+        experience = self.base_experience_reward or 0
+        orbs = self.base_orb_reward or 0
+        crystals = self.base_crystal_reward or 0
+
+        # Calculate multiplier based on completion stats
+        multiplier = 1.0
+
+        # Perfect clear bonus (no damage taken) - 1.5x
+        if completion_stats.get('perfect_clear', False):
+            multiplier *= 1.5
+
+        # Speed clear bonus - 1.25x
+        if completion_stats.get('speed_clear', False):
+            multiplier *= 1.25
+
+        # Accuracy bonus - scale from 1.0 to 1.3 based on accuracy (0-100%)
+        accuracy = completion_stats.get('accuracy', 0)
+        if accuracy > 0:
+            accuracy_bonus = 1.0 + (accuracy / 100.0) * 0.3
+            multiplier *= accuracy_bonus
+
+        # Apply multiplier to rewards
+        experience = int(experience * multiplier)
+        orbs = int(orbs * multiplier)
+        crystals = int(crystals * multiplier)
+
+        # Calculate item drops
+        items = []
+
+        # Boss guaranteed drops (always given on completion)
+        if self.boss_guaranteed_drops:
+            items.extend(self.boss_guaranteed_drops)
+
+        # Possible item drops (based on chance, simulate with accuracy as luck factor)
+        if self.possible_item_drops:
+            import random
+            luck_factor = 1.0 + (accuracy / 100.0) * 0.5  # Higher accuracy = better drop chance
+            for item in self.possible_item_drops:
+                # Each item has a base 20% drop chance, modified by luck
+                drop_chance = 0.2 * luck_factor
+                if completion_stats.get('perfect_clear', False):
+                    drop_chance *= 1.5  # Perfect clear increases drop chance
+                if random.random() < drop_chance:
+                    items.append(item)
+
+        return {
+            'experience': experience,
+            'orbs': orbs,
+            'crystals': crystals,
+            'items': items
+        }
+
+
 class DungeonRun(Base):
     __tablename__ = "dungeon_runs"
     
@@ -112,6 +176,83 @@ class DungeonRun(Base):
     
     def __repr__(self):
         return f"<DungeonRun(id={self.id}, gate_id={self.gate_id}, user_id={self.user_id}, status='{self.status}')>"
+
+    def calculate_completion_score(self) -> int:
+        """
+        Calculate a score based on performance metrics.
+
+        Uses: accuracy (questions_correct/questions_answered), time efficiency,
+        damage efficiency (total_damage_dealt vs total_damage_taken)
+
+        Returns:
+            int: Score from 0-10000
+        """
+        score = 0
+
+        # Accuracy component (0-4000 points, 40% of total score)
+        # Based on questions_correct / questions_answered
+        if self.questions_answered and self.questions_answered > 0:
+            accuracy = (self.questions_correct or 0) / self.questions_answered
+            accuracy_score = int(accuracy * 4000)
+        else:
+            accuracy_score = 0
+        score += accuracy_score
+
+        # Time efficiency component (0-3000 points, 30% of total score)
+        # Assume gate has a time limit, faster completion = higher score
+        # Base calculation: if completed within half the expected time, full points
+        if self.total_time_seconds and self.total_time_seconds > 0:
+            # Reference time: 30 minutes (1800 seconds) for full score decay
+            reference_time = 1800
+            time_ratio = min(self.total_time_seconds / reference_time, 1.0)
+            # Inverse relationship: faster = better score
+            time_score = int((1.0 - time_ratio * 0.7) * 3000)  # Minimum 30% score for time
+            time_score = max(0, min(3000, time_score))
+        else:
+            time_score = 1500  # Default 50% if no time recorded
+        score += time_score
+
+        # Damage efficiency component (0-2000 points, 20% of total score)
+        # Based on damage dealt vs damage taken ratio
+        total_damage_dealt = self.total_damage_dealt or 0
+        total_damage_taken = self.total_damage_taken or 0
+
+        if total_damage_dealt > 0:
+            if total_damage_taken == 0:
+                # Perfect run - no damage taken
+                damage_score = 2000
+            else:
+                # Ratio of dealt to taken, capped at 10:1 for max score
+                damage_ratio = min(total_damage_dealt / total_damage_taken, 10.0)
+                damage_score = int((damage_ratio / 10.0) * 2000)
+        else:
+            damage_score = 0
+        score += damage_score
+
+        # Bonus component (0-1000 points, 10% of total score)
+        bonus_score = 0
+
+        # Perfect clear bonus (no damage taken)
+        if self.perfect_clear:
+            bonus_score += 400
+
+        # Speed clear bonus
+        if self.speed_clear:
+            bonus_score += 300
+
+        # No items used bonus
+        if self.no_items_used:
+            bonus_score += 200
+
+        # Boss defeated bonus
+        if self.boss_defeated:
+            bonus_score += 100
+
+        score += bonus_score
+
+        # Ensure score is within bounds
+        return max(0, min(10000, score))
+
 
 class DungeonEncounter(Base):
     __tablename__ = "dungeon_encounters"

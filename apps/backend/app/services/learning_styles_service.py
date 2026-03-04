@@ -168,7 +168,7 @@ class LearningStylesService:
             
             # Cache the result
             cache_key = f"learning_style_detection:{user_id}"
-            cache_service.set(cache_key, detection_result, expire=3600 * 24)  # 24 hours
+            cache_service.set(cache_key, detection_result, ttl=3600 * 24)  # 24 hours
             
             return detection_result
             
@@ -363,7 +363,7 @@ class LearningStylesService:
             
             # Cache the tracking data
             cache_key = f"style_effectiveness:{user_id}:{adaptation_id}"
-            cache_service.set(cache_key, tracking_result, expire=3600 * 12)  # 12 hours
+            cache_service.set(cache_key, tracking_result, ttl=3600 * 12)  # 12 hours
             
             return tracking_result
             

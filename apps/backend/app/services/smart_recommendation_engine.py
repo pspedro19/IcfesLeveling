@@ -328,5 +328,5 @@ class SmartRecommendationEngine:
                 'is_priority': False
             } for v in videos]
             
-        except:
+        except Exception:
             return []

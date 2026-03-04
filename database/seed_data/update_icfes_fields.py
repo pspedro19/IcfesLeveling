@@ -33,7 +33,7 @@ def update_icfes_fields():
         cur = conn.cursor()
         
         logger.info("📖 Cargando datos del Excel...")
-        df = pd.read_excel('database/seed_data/questions.xlsx')
+        df = pd.read_excel('database/allquestions/questions.xlsx')
         logger.info(f"📊 Excel cargado: {len(df)} filas")
         
         # Normalizar nombres de columnas

@@ -1,181 +1,56 @@
-from pydantic import BaseModel
-from typing import List, Dict, Optional, Any
+"""
+Analytics schemas for event tracking and reporting.
+"""
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
 
-class SubjectProgress(BaseModel):
-    subject_id: str
-    subject_name: str
-    questions_answered: int
-    correct_answers: int
-    accuracy_percentage: float
-    average_difficulty: float
-    total_experience: int
-    level_progress: float
-    last_activity: datetime
 
-class ICFESProjection(BaseModel):
-    current_score: float
-    projected_score: float
-    improvement_rate: float
-    target_score: float
-    weeks_to_target: int
-    confidence_level: float
-
-class NationalComparison(BaseModel):
-    user_percentile: float
-    national_average: float
-    user_score: float
-    difference_from_average: float
-    ranking_position: int
-    total_students: int
-
-class StrengthWeaknessHeatmap(BaseModel):
-    subject: str
-    topics: List[str]
-    strength_scores: List[float]
-    weakness_scores: List[float]
-    overall_strength: float
-    overall_weakness: float
-
-class PersonalAnalytics(BaseModel):
-    user_id: str
-    username: str
-    current_level: int
-    current_rank: str
-    total_experience: int
-    
-    # Progreso por materia
-    subjects_progress: List[SubjectProgress]
-    
-    # Proyección ICFES
-    icfes_projection: ICFESProjection
-    
-    # Comparación nacional
-    national_comparison: NationalComparison
-    
-    # Heatmap de fortalezas/debilidades
-    strength_weakness_heatmap: List[StrengthWeaknessHeatmap]
-    
-    # Métricas adicionales
-    total_battles: int
-    win_rate: float
-    average_session_duration: int
-    streak_days: int
-    total_questions_answered: int
-    overall_accuracy: float
-    
-    # Tendencias temporales
-    weekly_progress: List[Dict[str, float]]
-    monthly_trends: List[Dict[str, float]]
-    
-    generated_at: datetime
-
-
-# New schemas for advanced analytics
 class AnalyticsPeriod(str, Enum):
+    """Time period for analytics queries."""
+    HOUR = "hour"
+    DAY = "day"
     WEEK = "week"
     MONTH = "month"
-    QUARTER = "quarter"
     YEAR = "year"
 
 
 class EventTrackRequest(BaseModel):
-    event_type: str
-    event_data: Dict[str, Any]
-    session_id: Optional[str] = None
-    platform: str = "web"
+    """Request to track a single analytics event."""
+    event_type: str = Field(..., description="Type of event (e.g., 'question_answered', 'video_watched')")
+    event_data: Dict[str, Any] = Field(default_factory=dict, description="Event-specific data")
+    timestamp: Optional[datetime] = Field(default=None, description="Event timestamp (defaults to now)")
+    session_id: Optional[str] = Field(default=None, description="Session identifier")
 
 
 class BatchEventTrackRequest(BaseModel):
-    events: List[EventTrackRequest]
-
-
-class EventTrackItem(BaseModel):
-    event_type: str
-    event_data: Dict[str, Any]
-    session_id: Optional[str] = None
-    platform: str = "web"
-    event_time: Optional[datetime] = None
-
-
-class BattleStatsResponse(BaseModel):
-    total_battles: int
-    total_questions: int
-    total_correct: int
-    accuracy: float
-    avg_duration: float
-    total_experience: int
-    total_orbs: int
-
-
-class TopicPerformanceResponse(BaseModel):
-    topic_id: str
-    questions_count: int
-    correct_count: int
-    accuracy: float
-    avg_response_time: float
-
-
-class DailyActivityResponse(BaseModel):
-    date: str
-    battles_count: int
-    accuracy: float
-
-
-class ProgressionResponse(BaseModel):
-    recorded_at: str
-    level: int
-    experience: int
-    rank: str
-    streak_days: int
+    """Request to track multiple analytics events."""
+    events: List[EventTrackRequest] = Field(..., description="List of events to track")
 
 
 class UserAnalyticsResponse(BaseModel):
-    battle_stats: BattleStatsResponse
-    topic_performance: List[TopicPerformanceResponse]
-    daily_activity: List[DailyActivityResponse]
-    progression: List[ProgressionResponse]
-
-
-class GlobalStatsResponse(BaseModel):
-    unique_users: int
-    total_events: int
-    total_sessions: int
-
-
-class EventDistributionResponse(BaseModel):
-    event_type: str
-    count: int
-
-
-class TopPlayerResponse(BaseModel):
+    """User-specific analytics summary."""
     user_id: str
-    total_experience: int
-    battles_count: int
-    accuracy: float
-
-
-class PopularBattleResponse(BaseModel):
-    battle_type: str
-    count: int
-    avg_questions: float
-    avg_accuracy: float
-
-
-class DailyMetricsResponse(BaseModel):
-    date: str
-    active_users: int
-    total_battles: int
-    total_questions: int
-    correct_answers: int
-    total_experience: int
-    accuracy: float
+    total_questions_answered: int = 0
+    correct_answers: int = 0
+    accuracy_rate: float = 0.0
+    total_study_time_minutes: int = 0
+    videos_watched: int = 0
+    sessions_count: int = 0
+    streak_days: int = 0
+    subjects_studied: List[str] = Field(default_factory=list)
+    recent_activity: List[Dict[str, Any]] = Field(default_factory=list)
+    period: AnalyticsPeriod = AnalyticsPeriod.WEEK
 
 
 class GlobalAnalyticsResponse(BaseModel):
-    overall_stats: GlobalStatsResponse
-    event_distribution: List[EventDistributionResponse]
-    top_players: List[TopPlayerResponse]
-    popular_battles: List[PopularBattleResponse]
-    daily_metrics: List[DailyMetricsResponse] 
+    """Global platform analytics summary."""
+    total_users: int = 0
+    active_users_today: int = 0
+    active_users_week: int = 0
+    total_questions_answered: int = 0
+    average_accuracy: float = 0.0
+    popular_subjects: List[Dict[str, Any]] = Field(default_factory=list)
+    user_growth_rate: float = 0.0
+    period: AnalyticsPeriod = AnalyticsPeriod.WEEK

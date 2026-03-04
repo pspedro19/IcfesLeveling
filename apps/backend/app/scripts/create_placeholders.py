@@ -104,7 +104,7 @@ class PlaceholderGenerator:
         for font_path in font_paths:
             try:
                 return ImageFont.truetype(font_path, size)
-            except:
+            except Exception:
                 continue
         
         # Fallback to default font
@@ -155,7 +155,7 @@ class PlaceholderGenerator:
                 # Add shadow for icon
                 draw.text((icon_x + 2, icon_y + 2), icon_text, fill=(0, 0, 0, 80), font=icon_font)
                 draw.text((icon_x, icon_y), icon_text, fill='white', font=icon_font)
-            except:
+            except Exception:
                 pass  # Skip icon if it fails
         
         # Add main text

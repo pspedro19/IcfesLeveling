@@ -401,7 +401,7 @@ class QuestionsUploader:
 
 def main():
     """Función principal"""
-    excel_path = "database/seed_data/questions.xlsx"
+    excel_path = "database/allquestions/questions.xlsx"
     
     if not os.path.exists(excel_path):
         logger.error(f"❌ Archivo no encontrado: {excel_path}")

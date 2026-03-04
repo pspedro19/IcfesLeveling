@@ -28,42 +28,7 @@ async def get_my_cached_profile(
     
     # Cache miss - fetch from database
     logger.info(f"Cache miss for user profile: {current_user.id}")
-    
-    # Check if this is the development mock user
-    if str(current_user.id) == "00000000-0000-0000-0000-000000000001":
-        # Return mock profile for development
-        profile_data = {
-            "user_id": str(current_user.id),
-            "display_name": "Dev User",
-            "avatar_url": "https://via.placeholder.com/150",
-            "hero_class": "Warrior",
-            "level": 5,
-            "experience": 2500,
-            "rank": "C",
-            "hp": 100,
-            "mp": 50,
-            "power": 15,
-            "wisdom": 12,
-            "speed": 10,
-            "orbs": 1500,
-            "crystals": 25,
-            "premium_status": "free",
-            "premium_until": None,
-            "streak_days": 3,
-            "last_login": datetime.utcnow(),
-            "achievements_count": 8,
-            "battles_won": 18,
-            "battles_lost": 7,
-            "questions_answered": 95,
-            "correct_answers": 67,
-            "guild_id": None,
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
-        }
-        # Cache the mock profile
-        cache_service.cache_user_profile(str(current_user.id), profile_data, ttl=3600)
-        return profile_data
-    
+
     profile = db.query(UserProfile).filter(
         UserProfile.user_id == current_user.id
     ).first()

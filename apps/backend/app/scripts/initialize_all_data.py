@@ -26,7 +26,7 @@ class ICFESDataLoader:
             'port': os.getenv('DB_PORT', '5432'),
             'database': os.getenv('DB_NAME', 'gameplay_db'),
             'user': os.getenv('DB_USER', 'gameplay'),
-            'password': os.getenv('DB_PASSWORD', 'gameplay123')
+            'password': os.getenv('DB_PASSWORD', '')
         }
         self.conn = None
         self.cur = None
@@ -49,18 +49,15 @@ class ICFESDataLoader:
         if self.conn:
             self.conn.close()
             
-    def load_icfes_topics_catalog(self, filepath='/app/database/01_icfes_topics_catalog.csv'):
+    def load_icfes_topics_catalog(self, filepath='/app/database/catalogs/icfes_topics.csv'):
         """Load ICFES topics catalog from CSV"""
         try:
             logger.info(f"📚 Loading ICFES topics catalog from {filepath}")
             
             # Check if file exists
             if not os.path.exists(filepath):
-                # Try alternative path
-                filepath = '/app/01_icfes_topics_catalog.csv'
-                if not os.path.exists(filepath):
-                    logger.warning(f"⚠️ ICFES topics catalog not found at {filepath}")
-                    return False
+                logger.warning(f"⚠️ ICFES topics catalog not found at {filepath}")
+                return False
             
             # Read CSV
             df = pd.read_csv(filepath)
@@ -169,7 +166,7 @@ class ICFESDataLoader:
             self.conn.rollback()
             return False
     
-    def load_youtube_catalog(self, filepath='/app/database/01_icfes_youtube_catalog.csv'):
+    def load_youtube_catalog(self, filepath='/app/database/catalogs/youtube_catalog_complete.csv'):
         """Load YouTube video catalog from CSV"""
         try:
             logger.info(f"📺 Loading YouTube catalog from {filepath}")
@@ -231,7 +228,7 @@ class ICFESDataLoader:
             self.conn.rollback()
             return False
     
-    def load_study_plan_templates(self, filepath='/app/database/data/study_plan_templates.csv'):
+    def load_study_plan_templates(self, filepath='/app/database/catalogs/study_plan_templates.csv'):
         """Load study plan templates from CSV"""
         try:
             logger.info(f"📋 Loading study plan templates from {filepath}")
@@ -314,18 +311,15 @@ class ICFESDataLoader:
             self.conn.rollback()
             return False
     
-    def load_icfes_questions(self, filepath='/app/ICFES2 (1).xlsx'):
+    def load_icfes_questions(self, filepath='/app/database/allquestions/questions.xlsx'):
         """Load ICFES questions from Excel file"""
         try:
             logger.info(f"📝 Loading ICFES questions from {filepath}")
             
             # Check if file exists
             if not os.path.exists(filepath):
-                # Try alternative path
-                filepath = '/app/ICFES2.xlsx'
-                if not os.path.exists(filepath):
-                    logger.warning(f"⚠️ ICFES questions file not found at {filepath}")
-                    return False
+                logger.warning(f"⚠️ ICFES questions file not found at {filepath}")
+                return False
             
             # Read Excel file
             df = pd.read_excel(filepath)
@@ -408,7 +402,7 @@ class ICFESDataLoader:
                     self.cur.execute(f"SELECT COUNT(*) FROM {table_name};")
                     count = self.cur.fetchone()[0]
                     logger.info(f"   ✅ {display_name}: {count} records")
-                except:
+                except Exception:
                     logger.warning(f"   ⚠️ {display_name}: Table not found or empty")
             
             return True
@@ -443,6 +437,7 @@ class ICFESDataLoader:
             
         finally:
             self.close()
+
 
 if __name__ == "__main__":
     loader = ICFESDataLoader()

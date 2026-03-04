@@ -10,6 +10,7 @@ from ..models.study_plan import StudyPlan, PlanProgress
 from ..models.question import Question
 from ..models.user import User
 from ..models.subject import Subject
+from .game_engine_service import GameEngineService
 
 class BossService:
     def __init__(self, db: Session):
@@ -193,16 +194,16 @@ class BossService:
         user.orbs += rewards["orbs"]
         user.crystals += rewards["crystals"]
         
-        # Recalcular nivel y rango
-        new_level = self._calculate_level(user.experience)
+        # Recalcular nivel y rango usando el GameEngineService
+        new_level = GameEngineService.calculate_level_for_xp(user.experience)
         if new_level > user.level:
             user.level = new_level
-            user.rank = self._calculate_rank(new_level)
+            user.rank = GameEngineService.calculate_rank(new_level)
             user.hp = min(150, user.hp + 15)  # Bonus extra por vencer boss
             user.mp = min(75, user.mp + 10)
         
         # Generar certificado de dominio
-        certificate = self._generate_certificate(user_id, battle.unit_number, battle.subject_id, battle_id)
+        certificate = self._generate_certificate(user_id, battle.unit_number, battle.subject_id, battle.id)
         
         # Desbloquear siguiente unidad
         self._unlock_next_unit(user_id, battle.unit_number)
@@ -274,26 +275,3 @@ class BossService:
             return True
         
         return False
-    
-    def _calculate_level(self, experience: int) -> int:
-        """Calcula el nivel basado en la experiencia"""
-        return int((experience / 100) ** 0.5) + 1
-    
-    def _calculate_rank(self, level: int) -> str:
-        """Calcula el rango basado en el nivel"""
-        if level >= 90:
-            return "SSS"
-        elif level >= 80:
-            return "SS"
-        elif level >= 70:
-            return "S"
-        elif level >= 60:
-            return "A"
-        elif level >= 50:
-            return "B"
-        elif level >= 40:
-            return "C"
-        elif level >= 30:
-            return "D"
-        else:
-            return "E" 

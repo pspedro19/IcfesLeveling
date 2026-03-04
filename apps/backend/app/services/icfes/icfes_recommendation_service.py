@@ -92,7 +92,7 @@ class ICFESRecommendationService:
         }
         
         # Cache por 24 horas
-        cache_service.set(cache_key, study_path, expire=86400)
+        cache_service.set(cache_key, study_path, ttl=86400)
         
         return study_path
     

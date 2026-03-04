@@ -94,8 +94,13 @@ async def get_reassessment_questions(
             raise HTTPException(status_code=404, detail="Test de reevaluación no encontrado")
         
         # Obtener configuración del test
+        from ..schemas.diagnostic_test import DIAGNOSTIC_TEST_CONFIGS
         subject = db.query(Subject).filter(Subject.id == test.subject_id).first()
-        config = reassessment_service.get_diagnostic_test_config(subject.name)
+        config = DIAGNOSTIC_TEST_CONFIGS.get(subject.name.lower(), {
+            "total_questions": 45,
+            "time_limit_minutes": 90,
+            "topics": []
+        })
         
         # Calcular número de preguntas (20% del test original)
         original_test = db.query(DiagnosticTest).filter(

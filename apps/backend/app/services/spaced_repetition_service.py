@@ -84,7 +84,7 @@ class SpacedRepetitionService:
         self.GRADUATING_INTERVAL = 1  # 1 day
         self.EASY_INTERVAL = 4  # 4 days
         
-    async def create_spaced_repetition_schedule(
+    def create_spaced_repetition_schedule(
         self,
         user_id: str,
         plan_id: str,
@@ -105,28 +105,28 @@ class SpacedRepetitionService:
             
             # Extract topics from plan if not provided
             if not topics:
-                topics = await self._extract_topics_from_plan(study_plan)
+                topics = self._extract_topics_from_plan(study_plan)
             
             # Create spaced items for each topic/concept
-            spaced_items = await self._create_spaced_items(
+            spaced_items = self._create_spaced_items(
                 user_id, plan_id, topics
             )
             
             # Initialize review schedule
-            review_schedule = await self._initialize_review_schedule(spaced_items)
+            review_schedule = self._initialize_review_schedule(spaced_items)
             
             # Create retention curves
-            retention_curves = await self._create_retention_curves(
+            retention_curves = self._create_retention_curves(
                 user_id, spaced_items
             )
             
             # Generate review calendar
-            review_calendar = await self._generate_review_calendar(
+            review_calendar = self._generate_review_calendar(
                 review_schedule, retention_curves
             )
             
             # Create adaptive parameters
-            adaptive_params = await self._create_adaptive_parameters(
+            adaptive_params = self._create_adaptive_parameters(
                 user_id, spaced_items
             )
             
@@ -145,7 +145,7 @@ class SpacedRepetitionService:
                     "total_reviews_scheduled": len(review_calendar),
                     "estimated_retention_rate": adaptive_params.get("estimated_retention", 0.85),
                     "optimal_review_frequency": adaptive_params.get("optimal_frequency", "daily"),
-                    "difficulty_distribution": await self._analyze_difficulty_distribution(spaced_items)
+                    "difficulty_distribution": self._analyze_difficulty_distribution(spaced_items)
                 },
                 "algorithm_settings": {
                     "algorithm_type": "Enhanced SM-2",
@@ -158,7 +158,7 @@ class SpacedRepetitionService:
             
             # Cache the system
             cache_key = f"spaced_system:{user_id}:{plan_id}"
-            cache_service.set(cache_key, spaced_system, expire=3600 * 24)  # 24 hours
+            cache_service.set(cache_key, spaced_system, ttl=3600 * 24)  # 24 hours
             
             return spaced_system
             
@@ -166,7 +166,7 @@ class SpacedRepetitionService:
             logger.error(f"Error creating spaced repetition schedule: {str(e)}")
             raise
     
-    async def get_daily_reviews(
+    def get_daily_reviews(
         self,
         user_id: str,
         date: datetime = None,
@@ -180,7 +180,7 @@ class SpacedRepetitionService:
         
         try:
             # Get all spaced items for user
-            spaced_items = await self._get_user_spaced_items(user_id)
+            spaced_items = self._get_user_spaced_items(user_id)
             
             # Filter items due for review
             due_items = [
@@ -194,17 +194,17 @@ class SpacedRepetitionService:
             review_items = [item for item in due_items if item.status == ItemStatus.REVIEW]
             
             # Prioritize items
-            prioritized_items = await self._prioritize_review_items(
+            prioritized_items = self._prioritize_review_items(
                 new_items, learning_items, review_items, max_reviews
             )
             
             # Create review session
-            review_session = await self._create_review_session(
+            review_session = self._create_review_session(
                 user_id, date, prioritized_items
             )
             
             # Add learning context
-            context = await self._add_learning_context(prioritized_items)
+            context = self._add_learning_context(prioritized_items)
             
             daily_reviews = {
                 "date": date.strftime("%Y-%m-%d"),
@@ -216,13 +216,13 @@ class SpacedRepetitionService:
                 "review_items": len(review_items),
                 "review_session": review_session,
                 "learning_context": context,
-                "estimated_duration_minutes": await self._estimate_session_duration(
+                "estimated_duration_minutes": self._estimate_session_duration(
                     prioritized_items
                 ),
-                "difficulty_balance": await self._calculate_difficulty_balance(
+                "difficulty_balance": self._calculate_difficulty_balance(
                     prioritized_items
                 ),
-                "retention_prediction": await self._predict_session_retention(
+                "retention_prediction": self._predict_session_retention(
                     user_id, prioritized_items
                 )
             }
@@ -233,7 +233,7 @@ class SpacedRepetitionService:
             logger.error(f"Error getting daily reviews: {str(e)}")
             return {"error": str(e)}
     
-    async def process_review_result(
+    def process_review_result(
         self,
         user_id: str,
         item_id: str,
@@ -246,32 +246,32 @@ class SpacedRepetitionService:
         """
         try:
             # Get the spaced item
-            spaced_item = await self._get_spaced_item(user_id, item_id)
+            spaced_item = self._get_spaced_item(user_id, item_id)
             if not spaced_item:
                 raise ValueError(f"Spaced item {item_id} not found")
             
             # Apply SM-2 algorithm
-            updated_item = await self._apply_sm2_algorithm(
+            updated_item = self._apply_sm2_algorithm(
                 spaced_item, result, response_time_ms
             )
             
             # Update learning analytics
-            analytics_update = await self._update_learning_analytics(
+            analytics_update = self._update_learning_analytics(
                 updated_item, result, additional_data
             )
             
             # Adjust related items
-            related_adjustments = await self._adjust_related_items(
+            related_adjustments = self._adjust_related_items(
                 updated_item, result
             )
             
             # Calculate next review predictions
-            next_reviews = await self._calculate_next_review_predictions(
+            next_reviews = self._calculate_next_review_predictions(
                 updated_item
             )
             
             # Save updates
-            await self._save_spaced_item_updates(updated_item)
+            self._save_spaced_item_updates(updated_item)
             
             result_data = {
                 "success": True,
@@ -284,7 +284,7 @@ class SpacedRepetitionService:
                 "analytics_update": analytics_update,
                 "related_adjustments": len(related_adjustments),
                 "retention_prediction": next_reviews["retention_prediction"],
-                "learning_progress": await self._calculate_learning_progress(
+                "learning_progress": self._calculate_learning_progress(
                     user_id, updated_item
                 )
             }
@@ -295,7 +295,7 @@ class SpacedRepetitionService:
             logger.error(f"Error processing review result: {str(e)}")
             return {"success": False, "error": str(e)}
     
-    async def get_retention_analytics(
+    def get_retention_analytics(
         self,
         user_id: str,
         plan_id: str = None,
@@ -306,32 +306,32 @@ class SpacedRepetitionService:
         """
         try:
             # Get spaced items data
-            spaced_items = await self._get_user_spaced_items(
+            spaced_items = self._get_user_spaced_items(
                 user_id, plan_id, days_back
             )
             
             # Calculate retention metrics
-            retention_metrics = await self._calculate_retention_metrics(
+            retention_metrics = self._calculate_retention_metrics(
                 spaced_items, days_back
             )
             
             # Analyze forgetting curves
-            forgetting_curves = await self._analyze_forgetting_curves(
+            forgetting_curves = self._analyze_forgetting_curves(
                 user_id, spaced_items
             )
             
             # Get difficulty progression
-            difficulty_progression = await self._analyze_difficulty_progression(
+            difficulty_progression = self._analyze_difficulty_progression(
                 spaced_items
             )
             
             # Calculate efficiency metrics
-            efficiency_metrics = await self._calculate_efficiency_metrics(
+            efficiency_metrics = self._calculate_efficiency_metrics(
                 spaced_items
             )
             
             # Generate insights
-            insights = await self._generate_retention_insights(
+            insights = self._generate_retention_insights(
                 retention_metrics, forgetting_curves, efficiency_metrics
             )
             
@@ -346,10 +346,10 @@ class SpacedRepetitionService:
                 "difficulty_progression": difficulty_progression,
                 "efficiency_metrics": efficiency_metrics,
                 "insights_and_recommendations": insights,
-                "performance_trends": await self._analyze_performance_trends(
+                "performance_trends": self._analyze_performance_trends(
                     spaced_items
                 ),
-                "optimization_suggestions": await self._generate_optimization_suggestions(
+                "optimization_suggestions": self._generate_optimization_suggestions(
                     retention_metrics, efficiency_metrics
                 )
             }
@@ -362,7 +362,7 @@ class SpacedRepetitionService:
     
     # Private methods implementing SM-2 algorithm and analytics
     
-    async def _apply_sm2_algorithm(
+    def _apply_sm2_algorithm(
         self,
         item: SpacedItem,
         result: ReviewResult,
@@ -455,7 +455,7 @@ class SpacedRepetitionService:
             return self.LEARNING_STEPS[step_index]
         return self.LEARNING_STEPS[-1]
     
-    async def _extract_topics_from_plan(self, study_plan: StudyPlan) -> List[Dict[str, Any]]:
+    def _extract_topics_from_plan(self, study_plan: StudyPlan) -> List[Dict[str, Any]]:
         """Extract topics from study plan for spaced repetition"""
         plan_data = study_plan.plan_data
         if isinstance(plan_data, str):
@@ -483,7 +483,7 @@ class SpacedRepetitionService:
         
         return topics
     
-    async def _create_spaced_items(
+    def _create_spaced_items(
         self,
         user_id: str,
         plan_id: str,
@@ -511,7 +511,7 @@ class SpacedRepetitionService:
             spaced_items.append(concept_item)
             
             # Get related questions for this topic
-            related_questions = await self._get_questions_for_topic(topic["topic_id"])
+            related_questions = self._get_questions_for_topic(topic["topic_id"])
             
             for question in related_questions:
                 question_item = SpacedItem(
@@ -534,7 +534,7 @@ class SpacedRepetitionService:
         
         return spaced_items
     
-    async def _get_questions_for_topic(self, topic_name: str) -> List[Question]:
+    def _get_questions_for_topic(self, topic_name: str) -> List[Question]:
         """Get questions related to a topic"""
         # This would ideally use a proper topic mapping
         # For now, search by topic name in tags or similar
@@ -547,7 +547,7 @@ class SpacedRepetitionService:
         
         return questions
     
-    async def _prioritize_review_items(
+    def _prioritize_review_items(
         self,
         new_items: List[SpacedItem],
         learning_items: List[SpacedItem],
@@ -585,7 +585,7 @@ class SpacedRepetitionService:
         # Limit to max_reviews
         return all_items[:max_reviews]
     
-    async def _calculate_retention_metrics(
+    def _calculate_retention_metrics(
         self, spaced_items: List[SpacedItem], days_back: int
     ) -> Dict[str, Any]:
         """Calculate comprehensive retention metrics"""
@@ -620,7 +620,7 @@ class SpacedRepetitionService:
             "items_graduated": graduated_items,
             "graduation_rate": round(graduated_items / total_items, 3) if total_items > 0 else 0,
             "average_reviews_per_item": round(total_reviews / total_items, 1) if total_items > 0 else 0,
-            "difficulty_distribution": await self._analyze_difficulty_distribution(spaced_items),
+            "difficulty_distribution": self._analyze_difficulty_distribution(spaced_items),
             "status_distribution": {
                 "new": len([item for item in spaced_items if item.status == ItemStatus.NEW]),
                 "learning": len([item for item in spaced_items if item.status == ItemStatus.LEARNING]),

@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 import logging
 
+from sqlalchemy import or_
+
 from ..core.database import get_db
 from ..models.subject import Subject
 from ..models.question import Question
@@ -22,11 +24,11 @@ async def get_questions_requiring_images(
 ):
     """
     Get questions that require images for testing purposes
-    
+
     Args:
         subject_name: Optional subject filter
         limit: Maximum number of questions to return
-        
+
     Returns:
         List of questions that require images with their image URLs
     """
@@ -35,7 +37,7 @@ async def get_questions_requiring_images(
             Question.id,
             Question.pregunta_texto,
             Question.opcion_a,
-            Question.opcion_b, 
+            Question.opcion_b,
             Question.opcion_c,
             Question.opcion_d,
             Question.pregunta_imagen,
@@ -45,7 +47,13 @@ async def get_questions_requiring_images(
             Question.opcion_d_imagen,
             Subject.name.label('subject_name')
         ).join(Subject, Question.subject_id == Subject.id)\
-         .filter(Question.requiere_imagen == True)
+         .filter(or_(
+             Question.pregunta_imagen.isnot(None),
+             Question.opcion_a_imagen.isnot(None),
+             Question.opcion_b_imagen.isnot(None),
+             Question.opcion_c_imagen.isnot(None),
+             Question.opcion_d_imagen.isnot(None)
+         ))
         
         if subject_name:
             query = query.filter(Subject.name.ilike(f"%{subject_name}%"))

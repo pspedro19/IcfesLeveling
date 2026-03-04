@@ -24,7 +24,7 @@ class PracticeSession(Base):
     # Millionaire-style configuration
     max_questions = Column(Integer, default=15)  # Like millionaire's 15 questions
     current_question_index = Column(Integer, default=0)
-    lifelines_available = Column(JSON, default={"50_50": True, "ask_ai": True, "skip_question": True})
+    lifelines_available = Column(JSON, default={"fifty_fifty": True, "ask_ai": True, "skip": True})
     
     # Session progress
     status = Column(String(20), default="active")  # active, completed, failed, paused
@@ -32,20 +32,15 @@ class PracticeSession(Base):
     correct_answers = Column(Integer, default=0)
     current_streak = Column(Integer, default=0)
     max_streak = Column(Integer, default=0)
-    total_experience_gained = Column(Integer, default=0)
-    total_orbs_gained = Column(Integer, default=0)
+    total_xp_earned = Column(Integer, default=0)
+    total_gold_earned = Column(Integer, default=0)
+    total_orbs_earned = Column(Integer, default=0)
     
-    # Performance metrics
-    average_response_time = Column(Float, default=0.0)
-    difficulty_progression = Column(JSON, default=[])  # Track how difficulty changes
-    mastery_improvements = Column(JSON, default={})  # Track specific topic improvements
-    
-    # Gamification elements
-    boss_enemy = Column(String(100), nullable=True)  # Boss name for themed sessions
-    current_hp = Column(Integer, default=100)
-    max_hp = Column(Integer, default=100)
-    power_ups_used = Column(JSON, default=[])
-    achievements_unlocked = Column(JSON, default=[])
+    # Boss Battle (optional)
+    boss_name = Column(String(100), nullable=True)
+    boss_hp = Column(Integer, default=100)
+    boss_max_hp = Column(Integer, default=100)
+    player_hp = Column(Integer, default=100)
     
     # Session timing
     started_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -77,18 +72,36 @@ class PracticeSession(Base):
             return max(-2, -int((1 - accuracy) * 3))
         return 0
 
+    @property
+    def lifelines(self):
+        """Return lifelines in schema-compatible format"""
+        la = self.lifelines_available or {}
+        return {
+            "fifty_fifty": la.get("fifty_fifty", False),
+            "ask_ai": la.get("ask_ai", False),
+            "skip": la.get("skip", False)
+        }
+
+    @property
+    def mastery_improvements(self):
+        """Placeholder for mastery improvements"""
+        return {}
+
     def get_lifeline_status(self):
         """Get current lifeline availability"""
         return {
-            "fifty_fifty": self.lifelines_available.get("50_50", False),
+            "fifty_fifty": self.lifelines_available.get("fifty_fifty", False),
             "ask_ai": self.lifelines_available.get("ask_ai", False),
-            "skip_question": self.lifelines_available.get("skip_question", False)
+            "skip": self.lifelines_available.get("skip", False)
         }
 
     def use_lifeline(self, lifeline_type: str):
         """Use a lifeline and update availability"""
         if self.lifelines_available.get(lifeline_type, False):
-            self.lifelines_available[lifeline_type] = False
+            # Reassign dict so SQLAlchemy detects the change (in-place mutation is not tracked for JSON)
+            updated = dict(self.lifelines_available)
+            updated[lifeline_type] = False
+            self.lifelines_available = updated
             return True
         return False
 
@@ -99,34 +112,28 @@ class PracticeAnswer(Base):
     __tablename__ = "practice_answers"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    practice_session_id = Column(UUID(as_uuid=True), ForeignKey("practice_sessions.id"), nullable=False)
+    session_id = Column(UUID(as_uuid=True), ForeignKey("practice_sessions.id"), nullable=False)
     question_id = Column(UUID(as_uuid=True), ForeignKey("questions.id"), nullable=False)
-    
+
     # Answer details
-    user_answer = Column(String(10), nullable=True)  # a, b, c, d or null for skipped
+    user_answer = Column(String(1), nullable=True)  # A, B, C, D or null for skipped
     is_correct = Column(Boolean, nullable=True)
     response_time_ms = Column(Integer, default=0)
-    
+
     # Question context
     question_order = Column(Integer, nullable=False)  # Order in the session
-    difficulty_at_time = Column(Integer, default=1)
-    was_previously_failed = Column(Boolean, default=False)  # If this was a previously failed question
-    
+    difficulty_at_time = Column(Integer, nullable=True)
+    was_previously_failed = Column(Boolean, default=False)
+
     # Lifelines and help used
-    lifelines_used = Column(JSON, default=[])  # Which lifelines were used for this question
-    fifty_fifty_options = Column(JSON, nullable=True)  # Which options were eliminated
-    ai_explanation_requested = Column(Boolean, default=False)
-    
+    lifelines_used = Column(JSON, default=[])
+    fifty_fifty_eliminated = Column(JSON, nullable=True)  # Which options were eliminated
+    ai_hint_shown = Column(Boolean, default=False)
+
     # Performance impact
-    experience_gained = Column(Integer, default=0)
-    orbs_gained = Column(Integer, default=0)
+    xp_earned = Column(Integer, default=0)
     damage_dealt = Column(Integer, default=0)  # For boss battle theme
     damage_taken = Column(Integer, default=0)
-    
-    # Learning analytics
-    confidence_level = Column(Integer, default=3)  # 1-5 scale, user-reported confidence
-    topic_mastery_before = Column(Float, default=0.0)  # Topic mastery before this question
-    topic_mastery_after = Column(Float, default=0.0)   # Topic mastery after this question
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
@@ -181,30 +188,33 @@ class UserQuestionMastery(Base):
 
     def calculate_mastery_score(self):
         """Calculate current mastery score based on performance"""
-        if self.total_attempts == 0:
+        total = self.total_attempts or 0
+        correct = self.correct_attempts or 0
+        consec = self.consecutive_correct or 0
+        if total == 0:
             return 0.0
-        
-        accuracy = self.correct_attempts / self.total_attempts
-        streak_bonus = min(self.consecutive_correct * 0.1, 0.3)
-        recency_bonus = 0.1 if self.consecutive_correct >= 2 else 0.0
+
+        accuracy = correct / total
+        streak_bonus = min(consec * 0.1, 0.3)
+        recency_bonus = 0.1 if consec >= 2 else 0.0
         
         base_mastery = accuracy + streak_bonus + recency_bonus
         return min(1.0, max(0.0, base_mastery))
 
     def update_performance(self, is_correct: bool, response_time_ms: int, user_answer: str):
         """Update mastery metrics after a new attempt"""
-        self.total_attempts += 1
+        self.total_attempts = (self.total_attempts or 0) + 1
         self.last_attempt_date = func.now()
-        
+
         if is_correct:
-            self.correct_attempts += 1
-            self.consecutive_correct += 1
+            self.correct_attempts = (self.correct_attempts or 0) + 1
+            self.consecutive_correct = (self.consecutive_correct or 0) + 1
             self.consecutive_incorrect = 0
-            
+
             if not self.fastest_correct_time or response_time_ms < self.fastest_correct_time:
                 self.fastest_correct_time = response_time_ms
         else:
-            self.consecutive_incorrect += 1
+            self.consecutive_incorrect = (self.consecutive_incorrect or 0) + 1
             self.consecutive_correct = 0
             
             # Track common wrong answers
@@ -214,7 +224,7 @@ class UserQuestionMastery(Base):
                 self.common_wrong_answers = wrong_answers
         
         # Update average response time
-        if self.average_response_time == 0:
+        if not self.average_response_time:
             self.average_response_time = response_time_ms / 1000.0
         else:
             self.average_response_time = (self.average_response_time + (response_time_ms / 1000.0)) / 2

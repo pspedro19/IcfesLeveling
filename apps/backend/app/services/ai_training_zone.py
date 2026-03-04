@@ -871,25 +871,31 @@ class AITrainingZoneService:
 # Example usage and testing
 async def main():
     """Test the AI Training Zone Service"""
-    
-    database_url = "postgresql://gameplay:gameplay123@localhost:5433/gameplay_db"
-    redis_url = "redis://localhost:6379"
-    openai_api_key = None  # Set if available
-    
+    import os
+
+    # Use environment variables for all credentials
+    database_url = os.getenv("DATABASE_URL", "")
+    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+    openai_api_key = os.getenv("OPENAI_API_KEY")  # Set if available
+
+    if not database_url:
+        logger.error("DATABASE_URL environment variable is required")
+        return
+
     service = AITrainingZoneService(database_url, redis_url, openai_api_key)
     
     try:
-        print("Testing AI Training Zone Service...")
-        
+        logger.info("Testing AI Training Zone Service...")
+
         # Test chat interaction
         chat_response = await service.chat_with_tutor(
             "test_student_001", 
             "Tengo dificultades con las preguntas de matemáticas, especialmente álgebra"
         )
         
-        print(f"Chat Response: {chat_response.response_text[:200]}...")
-        print(f"Follow-up questions: {chat_response.follow_up_questions}")
-        print(f"Suggested actions: {chat_response.suggested_actions}")
+        logger.info(f"Chat Response: {chat_response.response_text[:200]}...")
+        logger.debug(f"Follow-up questions: {chat_response.follow_up_questions}")
+        logger.debug(f"Suggested actions: {chat_response.suggested_actions}")
         
         # Test concept explanation
         concept_response = await service.explain_concept(
@@ -898,8 +904,8 @@ async def main():
             subject_id=1
         )
         
-        print(f"\nConcept explanation: {concept_response.response_text[:200]}...")
-        print(f"Learning objectives: {concept_response.learning_objectives}")
+        logger.info(f"Concept explanation: {concept_response.response_text[:200]}...")
+        logger.debug(f"Learning objectives: {concept_response.learning_objectives}")
         
     except Exception as e:
         logger.error(f"Test error: {e}")

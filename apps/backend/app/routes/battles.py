@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import json
@@ -6,12 +6,14 @@ import time
 from sqlalchemy import func
 
 from ..core.database import get_db
-from ..core.security import get_current_user, calculate_damage, calculate_experience_gain, calculate_orbs_gain, calculate_level, calculate_rank
+from ..core.security import get_current_user
+from ..services.game_engine_service import calculate_damage, calculate_experience_gain, calculate_orbs_gain, calculate_level, calculate_rank
 from ..schemas.battle import BattleCreate, BattleResponse, BattleAnswer, BattleAnswerResponse
 from ..models.user import User
 from ..models.battle import Battle, BattleAnswer as BattleAnswerModel
 from ..models.question import Question
 from ..services.cache_service import cache_service
+from ..middleware.rate_limit import rate_limit
 
 router = APIRouter(prefix="/battles", tags=["battles"])
 
@@ -19,7 +21,9 @@ router = APIRouter(prefix="/battles", tags=["battles"])
 active_connections = {}
 
 @router.post("/", response_model=BattleResponse)
+@rate_limit(limit=100, window=60)  # 100 requests per minute for general endpoints
 async def create_battle(
+    request: Request,
     battle_data: BattleCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -44,7 +48,9 @@ async def create_battle(
     return battle
 
 @router.post("/{battle_id}/answer", response_model=BattleAnswerResponse)
+@rate_limit(limit=60, window=60)  # 60 requests per minute for answer submission
 async def answer_question(
+    request: Request,
     battle_id: str,
     answer_data: BattleAnswer,
     current_user: User = Depends(get_current_user),
@@ -169,7 +175,7 @@ async def answer_question(
                 "orbs_gained": orbs_gained,
                 "battle_status": battle.status
             }))
-        except:
+        except Exception:
             pass
     
     return BattleAnswerResponse(
@@ -185,7 +191,9 @@ async def answer_question(
     )
 
 @router.get("/{battle_id}", response_model=BattleResponse)
+@rate_limit(limit=100, window=60)  # 100 requests per minute for general endpoints
 async def get_battle(
+    request: Request,
     battle_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -202,7 +210,9 @@ async def get_battle(
     return battle
 
 @router.get("/", response_model=List[BattleResponse])
+@rate_limit(limit=100, window=60)  # 100 requests per minute for general endpoints
 async def get_user_battles(
+    request: Request,
     limit: int = 10,
     offset: int = 0,
     current_user: User = Depends(get_current_user),

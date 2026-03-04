@@ -142,7 +142,7 @@ class SchedulingService:
             
             # Cache the schedule
             cache_key = f"intelligent_schedule:{user_id}:{plan_id}"
-            cache_service.set(cache_key, intelligent_schedule, expire=7200)
+            cache_service.set(cache_key, intelligent_schedule, ttl=7200)
             
             return intelligent_schedule
             
@@ -178,7 +178,7 @@ class SchedulingService:
             )
             
             # Cache the schedule
-            cache_service.set(cache_key, daily_schedule, expire=3600)  # 1 hour
+            cache_service.set(cache_key, daily_schedule, ttl=3600)  # 1 hour
             
             return daily_schedule
             

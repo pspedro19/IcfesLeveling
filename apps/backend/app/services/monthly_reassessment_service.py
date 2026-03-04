@@ -297,9 +297,59 @@ class MonthlyReassessmentService:
 
     def _regenerate_study_plan(self, user_id: str, subject_id: str, comparison: Dict[str, Any], new_goals: List[str]):
         """Regenerar plan de estudio basado en la reevaluación"""
-        # Aquí se integraría con el servicio de IA para generar un nuevo plan
-        # Por ahora, simulamos la actualización
-        pass
+        from ..models.study_plan import StudyPlan, PlanProgress
+
+        # Obtener plan activo del usuario
+        current_plan = self.db.query(StudyPlan).filter(
+            StudyPlan.user_id == user_id,
+            StudyPlan.subject_id == subject_id,
+            StudyPlan.is_active == True
+        ).first()
+
+        if not current_plan:
+            return None
+
+        improvement = comparison["improvement_percentage"]
+        topics_declined = comparison["topics_declined"]
+        overall_trend = comparison["overall_trend"]
+
+        # Determinar tipo de ajuste basado en el análisis
+        if overall_trend == "declining" or improvement < -10:
+            # Cambio mayor: marcar para regeneración completa
+            current_plan.needs_regeneration = True
+            current_plan.regeneration_reason = "monthly_reassessment_decline"
+            current_plan.regeneration_priority = "high"
+        elif topics_declined and len(topics_declined) >= 2:
+            # Cambio menor: ajustar prioridades de unidades
+            self._adjust_unit_priorities(current_plan, topics_declined)
+            current_plan.last_adjusted = datetime.utcnow()
+            current_plan.adjustment_reason = "monthly_reassessment_topic_decline"
+        elif overall_trend == "improving" and improvement > 15:
+            # Aumentar dificultad
+            current_plan.recommended_difficulty_increase = True
+            current_plan.last_adjusted = datetime.utcnow()
+            current_plan.adjustment_reason = "monthly_reassessment_excellent_progress"
+
+        # Guardar nuevos objetivos
+        current_plan.current_goals = new_goals
+        current_plan.goals_updated_at = datetime.utcnow()
+
+        self.db.commit()
+        return current_plan
+
+    def _adjust_unit_priorities(self, plan: StudyPlan, weak_topics: List[str]):
+        """Ajustar prioridades de unidades basado en temas débiles"""
+        if not plan.units:
+            return
+
+        # Marcar unidades con temas débiles como prioritarias
+        for unit in plan.units:
+            unit_topic_names = [t.name for t in unit.topics] if hasattr(unit, 'topics') and unit.topics else []
+            if any(topic in weak_topics for topic in unit_topic_names):
+                if hasattr(unit, 'priority'):
+                    unit.priority = "high"
+                if hasattr(unit, 'recommended_review'):
+                    unit.recommended_review = True
 
     def get_user_reassessments(self, user_id: str) -> List[DiagnosticTest]:
         """Obtener todas las reevaluaciones mensuales de un usuario"""

@@ -16,17 +16,14 @@ echo "Installing Python packages..."
 pip3 install pandas psycopg2-binary > /dev/null 2>&1
 
 # Check if YouTube catalog CSV exists
-CSV_FILE="/docker-entrypoint-initdb.d/youtube_catalog_extendido_enriquecido.csv"
-FALLBACK_CSV="/data/youtube_catalog_extendido_enriquecido.csv"
+# Use the new consolidated path
+CSV_FILE="/seed_data/catalogs/youtube_catalog_complete.csv"
 
 if [ -f "$CSV_FILE" ]; then
     CATALOG_FILE="$CSV_FILE"
-    echo "Found YouTube catalog: $CSV_FILE"
-elif [ -f "$FALLBACK_CSV" ]; then
-    CATALOG_FILE="$FALLBACK_CSV"
-    echo "Found YouTube catalog: $FALLBACK_CSV"
+    echo "Found YouTube catalog: $CATALOG_FILE"
 else
-    echo "⚠️ YouTube catalog CSV not found, skipping video loading"
+    echo "⚠️ YouTube catalog CSV not found at $CSV_FILE, skipping video loading"
     exit 0
 fi
 
@@ -102,7 +99,8 @@ def is_valid_youtube_id(youtube_id):
 
 def main():
     try:
-        catalog_file = sys.argv[1] if len(sys.argv) > 1 else '/docker-entrypoint-initdb.d/youtube_catalog_extendido_enriquecido.csv'
+        # Use the new consolidated path as the default
+        catalog_file = sys.argv[1] if len(sys.argv) > 1 else '/seed_data/catalogs/youtube_catalog_complete.csv'
         
         print(f"Loading YouTube catalog from: {catalog_file}")
         

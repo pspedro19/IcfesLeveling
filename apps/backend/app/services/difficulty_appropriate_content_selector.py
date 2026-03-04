@@ -1142,7 +1142,7 @@ if __name__ == "__main__":
         current_theta=0.5
     )
     
-    print("Difficulty-Appropriate Content Selector initialized successfully!")
-    print(f"Student theta: {criteria.student_ability.theta}")
-    print(f"Target success rate: {criteria.target_success_rate}")
-    print(f"Learning progression: {criteria.learning_progression}")
+    logger.info("Difficulty-Appropriate Content Selector initialized successfully!")
+    logger.debug(f"Student theta: {criteria.student_ability.theta}")
+    logger.debug(f"Target success rate: {criteria.target_success_rate}")
+    logger.debug(f"Learning progression: {criteria.learning_progression}")

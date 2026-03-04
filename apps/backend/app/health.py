@@ -218,7 +218,7 @@ async def metrics_endpoint(db: Session = Depends(get_db)):
         redis_info = {}
         try:
             redis_info = cache.redis_client.info()
-        except:
+        except Exception:
             pass
         
         metrics = {

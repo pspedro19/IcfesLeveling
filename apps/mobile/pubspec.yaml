@@ -1,0 +1,135 @@
+name: icfes_mobile
+description: ICFES Preparation App - Offline-First & Gamified
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State Management
+  flutter_riverpod: ^2.5.0
+  riverpod_annotation: ^2.3.0
+
+  # Offline-First (CRITICO)
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  connectivity_plus: ^6.0.0
+  # workmanager: ^0.5.2  # Mobile only, not for web
+
+  # Network
+  dio: ^5.4.0
+  retrofit: ^4.1.0
+  web_socket_channel: ^2.4.0
+
+  # Storage
+  flutter_secure_storage: ^9.0.0
+  shared_preferences: ^2.3.0
+
+  # Navigation
+  go_router: ^13.0.0
+
+  # Animations
+  rive: ^0.12.0
+  lottie: ^3.0.0
+  flutter_animate: ^4.5.0
+
+  # Ads (Rewarded ads for heart refill)
+  google_mobile_ads: ^5.1.0
+
+  # Audio
+  audioplayers: ^6.0.0
+
+  # Analytics & Monitoring
+  firebase_analytics: ^11.0.0
+  sentry_flutter: ^8.0.0
+
+  # Firebase Auth (Social Login)
+  firebase_core: ^3.8.1
+  firebase_auth: ^5.3.4
+  firebase_messaging: ^15.0.0
+  google_sign_in: ^6.2.2
+  sign_in_with_apple: ^6.1.4
+  crypto: ^3.0.6  # For Apple Sign-In nonce
+
+  # Push Notifications
+  flutter_local_notifications: ^17.0.0
+  timezone: ^0.9.4
+
+  # DI
+  get_it: ^7.6.0
+  injectable: ^2.3.0
+
+  # Fonts
+  google_fonts: ^8.0.0
+
+  # Utils
+  freezed_annotation: ^2.4.0
+  json_annotation: ^4.8.0
+  intl: ^0.20.2
+  uuid: ^4.0.0
+
+  # URL Launcher (privacy policy, terms links)
+  url_launcher: ^6.2.0
+
+  # Environment Configuration
+  flutter_dotenv: ^5.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  build_runner: ^2.4.8
+  riverpod_generator: ^2.4.0
+  retrofit_generator: ^8.1.0
+  freezed: ^2.5.0
+  json_serializable: ^6.7.0
+  injectable_generator: ^2.4.0
+  hive_generator: ^2.0.0
+  mockito: ^5.4.4
+  hive_test: ^1.0.1
+  flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.14.1
+  flutter_native_splash: ^2.4.0
+
+flutter:
+  generate: false  # Temporarily disabled due to OneDrive permission issues
+  uses-material-design: true
+
+  assets:
+    - .env
+    - assets/images/
+    - assets/animations/
+    - assets/sounds/
+    - assets/icons/
+
+  fonts:
+    - family: Nunito
+      fonts:
+        - asset: assets/fonts/Nunito-Regular.ttf
+        - asset: assets/fonts/Nunito-Bold.ttf
+          weight: 700
+
+# App Icon Configuration
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/app_icon.png"
+  adaptive_icon_background: "#0A0A0A"
+  adaptive_icon_foreground: "assets/icons/app_icon_foreground.png"
+
+# Splash Screen Configuration
+flutter_native_splash:
+  color: "#0A0A0A"
+  image: assets/icons/splash_logo.png
+  android: true
+  ios: true
+  android_12:
+    color: "#0A0A0A"
+    icon_background_color: "#0A0A0A"

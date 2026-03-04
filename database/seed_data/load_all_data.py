@@ -175,16 +175,16 @@ class DataLoader:
             logger.error(f"Error loading ICFES topics: {e}")
             self.conn.rollback()
     
-    def load_questions_from_csv(self, file_path):
-        """Load questions from CSV file with ICFES metadata mapping"""
+    def load_questions_from_excel(self, file_path):
+        """Load questions from Excel file with ICFES metadata mapping"""
         if not os.path.exists(file_path):
-            logger.warning(f"Questions CSV not found: {file_path}")
+            logger.warning(f"Questions Excel file not found: {file_path}")
             return 0
         
         try:
-            # Read CSV file
-            df = pd.read_csv(file_path)
-            logger.info(f"❓ Loading {len(df)} questions from questions.csv")
+            # Read Excel file
+            df = pd.read_excel(file_path)
+            logger.info(f"❓ Loading {len(df)} questions from questions.xlsx")
             
             questions_data = []
             metadata_data = []
@@ -212,7 +212,7 @@ class DataLoader:
                 
                 question_id = str(uuid.uuid4())
                 
-                # Map CSV fields to database structure
+                # Map Excel fields to database structure
                 questions_data.append((
                     question_id,  # id
                     subject_id,   # subject_id
@@ -306,7 +306,7 @@ class DataLoader:
             return len(questions_data)
             
         except Exception as e:
-            logger.error(f"Error loading questions CSV: {e}")
+            logger.error(f"Error loading questions Excel: {e}")
             import traceback
             logger.error(traceback.format_exc())
             self.conn.rollback()
@@ -540,52 +540,29 @@ class DataLoader:
             # Load base data with ICFES mapping
             self.load_subjects_and_areas()
             
-            # Define file paths - check multiple possible locations
-            possible_paths = [
-                '/app/seed_data',  # Docker mounted volume
-                '/seed_data',      # Alternative mount point
-                './seed_data',     # Current directory
-                '.',               # Current directory (if running from seed_data)
-                './database/seed_data'  # Local development
-            ]
-            
-            base_path = None
-            for path in possible_paths:
-                if os.path.exists(path) and os.path.exists(os.path.join(path, 'questions.csv')):
-                    base_path = path
-                    logger.info(f"📁 Found CSV files in: {base_path}")
-                    break
-            
-            if not base_path:
-                # If no path with questions.csv, use the first existing path
-                for path in possible_paths:
-                    if os.path.exists(path):
-                        base_path = path
-                        logger.info(f"📁 Using path: {base_path}")
-                        break
-            
-            if not base_path:
-                base_path = '.'  # Fallback to current directory
+            # Use a static base path pointing to the new consolidated data structure
+            base_path = './database'
+            logger.info(f"📁 Using static base path for data: {base_path}")
             
             # Load ICFES topics catalog first (creates mapping)
-            topics_path = f'{base_path}/topics_catalog.csv'
+            topics_path = f'{base_path}/catalogs/icfes_topics.csv'
             self.load_icfes_topics_extended(topics_path)
             
-            # Load questions with ICFES metadata
-            questions_path = f'{base_path}/questions.csv'
-            questions_loaded = self.load_questions_from_csv(questions_path)
+            # Load questions with ICFES metadata from Excel
+            questions_path = f'{base_path}/allquestions/questions.xlsx'
+            questions_loaded = self.load_questions_from_excel(questions_path)
             
-            # Load enriched YouTube videos
-            youtube_path = f'{base_path}/youtube_catalog_extendido_enriquecido.csv'
+            # Load enriched YouTube videos from the complete catalog
+            youtube_path = f'{base_path}/catalogs/youtube_catalog_complete.csv'
             self.load_youtube_videos_enriched(youtube_path)
             
             # Load study plan templates
-            templates_path = f'{base_path}/study_plan_templates.csv'
+            templates_path = f'{base_path}/catalogs/study_plan_templates.csv'
             self.load_study_plan_templates(templates_path)
             
             # Fallback only if no questions loaded
             if questions_loaded == 0:
-                logger.warning("⚠️ No questions loaded from CSV, creating minimal fallback...")
+                logger.warning("⚠️ No questions loaded from Excel, creating minimal fallback...")
                 self.load_questions_fallback()
             
             # Verify data
@@ -607,6 +584,7 @@ class DataLoader:
                 self.cur.close()
             if self.conn:
                 self.conn.close()
+
 
 if __name__ == "__main__":
     loader = DataLoader()
